@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { registerUser } from '../services/auth';
 
@@ -44,20 +44,24 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Criar conta</Text>
-      <TextInput style={styles.input} placeholder="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
-      <TextInput style={styles.input} placeholder="Senha" value={password} onChangeText={setPassword} secureTextEntry />
-      <TextInput style={styles.input} placeholder="Confirmar senha" value={confirm} onChangeText={setConfirm} secureTextEntry />
-      <Button title="Cadastrar" onPress={handleRegister} />
+      <TextInput style={styles.input} placeholderTextColor={"#a4a8ff"} placeholder="E-mail" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+      <TextInput style={styles.input} placeholderTextColor={"#a4a8ff"} placeholder="Senha" value={password} onChangeText={setPassword} secureTextEntry />
+      <TextInput style={styles.input} placeholderTextColor={"#a4a8ff"} placeholder="Confirmar senha" value={confirm} onChangeText={setConfirm} secureTextEntry />
+      <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
+        <Text style={styles.registerButtonText}>{'Cadastrar'}</Text>
+      </TouchableOpacity>
       <Text style={styles.note}>Os dados são salvos localmente (simulação).</Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, justifyContent: 'center' },
-  title: { fontSize: 28, fontWeight: '600', marginBottom: 12 },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 12 },
-  note: { marginTop: 12, fontSize: 12, color: '#888' },
+  container: { flex: 1, padding: 30, justifyContent: 'center',  backgroundColor: '#5559ff' },
+  title: { fontSize: 36, color: "#fff", fontWeight: '600', marginBottom: 16 },
+  input: { borderWidth: 2, borderColor: '#e9c46a', padding: 12, borderRadius: 8, marginBottom: 12 },
+  note: { marginTop: 12, fontSize: 12, color: '#a4a8ff' },
+  registerButton: { backgroundColor: '#e9c46a', paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  registerButtonText: { color: '#5559ff', fontSize: 20, fontWeight: 'bold' },
 });
 
 export default SignupScreen;

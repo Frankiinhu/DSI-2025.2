@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   cardTitle: { 
     fontSize: 18, 
     fontWeight: '700',
-    color: '#2a9d8f',
+    color: '#5559ff',
     marginBottom: 4,
   },
   cardSubtitle: { 
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   },
   pushBtn: { 
     marginTop: 16, 
-    backgroundColor: '#0077cc', 
+    backgroundColor: '#5559ff', 
     padding: 14, 
     borderRadius: 12, 
     alignItems: 'center',

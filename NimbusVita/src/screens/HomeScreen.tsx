@@ -1,12 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SymptomChecker from '../components/SymptomChecker';
 import AlertCard from '../components/AlertCard';
 import ExplanationCard from '../components/ExplanationCard';
 import { signOut, getCurrentUser, User } from '../services/auth';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-const HomeScreen: React.FC = () => {
+const logo = require('../../assets/logo.png');
+
+type RootStackParamList = {
+  Login: undefined;
+  Signup: undefined;
+  Home: undefined;
+};
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+
+const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -32,7 +43,9 @@ const HomeScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            Alert.alert('Logout', 'Você saiu da conta com sucesso.');
+            Alert.alert('Logout', 'Você saiu da conta com sucesso.', [
+              { text: 'OK', onPress: () => navigation.replace('Login') }
+            ]);
           }
         }
       ]
@@ -53,7 +66,7 @@ const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#2a9d8f" />
+      <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header with gradient-like background */}
         <View style={styles.header}>
@@ -63,9 +76,17 @@ const HomeScreen: React.FC = () => {
               <Text style={styles.userName}>{getUserFirstName()}</Text>
               <Text style={styles.subtitle}>Como você está se sentindo hoje?</Text>
             </View>
-            <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-              <Text style={styles.logoutText}>Sair</Text>
-            </TouchableOpacity>
+            <View style={{ alignItems: 'center' }}>
+              <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+                <Text style={styles.logoutText}>Sair</Text>
+              </TouchableOpacity>
+
+              <Image
+                source={logo}
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
+            </View>
           </View>
         </View>
 
@@ -102,13 +123,13 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#a4a8ff',
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    backgroundColor: '#2a9d8f',
+    backgroundColor: '#5559ff',
     paddingTop: 20,
     paddingBottom: 30,
     borderBottomLeftRadius: 25,
@@ -179,11 +200,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#e4e4e4'
   },
   statNumber: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#2a9d8f',
+    color: '#5559ff',
     marginBottom: 4,
   },
   statLabel: {
@@ -210,6 +233,7 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
+  headerLogo: { width: 60, height: 60, marginTop: 16, marginBottom: -16, alignSelf: 'center' },
 });
 
 export default HomeScreen;

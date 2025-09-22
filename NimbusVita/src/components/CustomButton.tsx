@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   primaryButton: {
-    backgroundColor: '#2a9d8f',
+    backgroundColor: '#5559ff',
   },
   secondaryButton: {
     backgroundColor: '#e9c46a',
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   outlineButton: {
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: '#2a9d8f',
+    borderColor: '#5559ff',
   },
   text: {
     fontSize: 16,

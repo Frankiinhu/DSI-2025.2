@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     fontSize: 18, 
     fontWeight: '700', 
     marginBottom: 12,
-    color: '#2a9d8f',
+    color: '#5559ff',
   },
   paragraph: { 
     color: '#444', 
