@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import SymptomChecker from '../components/SymptomChecker';
 import AlertCard from '../components/AlertCard';
 import ExplanationCard from '../components/ExplanationCard';
-import { signOut, getCurrentUser, User } from '../services/auth';
+import { signOut, getCurrentUser, PublicUser } from '../services/auth';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 const logo = require('../../assets/logo.png');
@@ -18,7 +18,7 @@ type RootStackParamList = {
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -59,21 +59,15 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     return 'Boa noite';
   };
 
-  const getUserFirstName = () => {
-    if (!currentUser?.email) return 'Usuário';
-    return currentUser.email.split('@')[0];
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header with gradient-like background */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.userName}>{getUserFirstName()}</Text>
+              <Text style={styles.userName}>{currentUser?.username || 'Usuário'}</Text>
               <Text style={styles.subtitle}>Como você está se sentindo hoje?</Text>
             </View>
             <View style={{ alignItems: 'center' }}>
@@ -112,7 +106,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.footerNote}>
               💡 Versão de protótipo — previsões são simuladas para demonstração
             </Text>
-            <Text style={styles.versionText}>v1.0.0 • Build 2025.2</Text>
+            <Text style={styles.versionText}>v1.0.2 • Build 2025.2</Text>
           </View>
         </View>
       </ScrollView>
