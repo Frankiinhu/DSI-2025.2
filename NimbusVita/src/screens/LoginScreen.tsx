@@ -1,9 +1,8 @@
-// Your LoginScreen.tsx file
 import React, { act, useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { loginUser } from '../services/auth';
-import { SafeAreaView } from 'react-native-safe-area-context'; // Ensure this is imported
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const logo = require('../../assets/logo.png');
 
@@ -16,15 +15,28 @@ type RootStackParamList = {
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
-  const [email, setEmail] = useState('');
+  // Estado genérico para username ou email
+  const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    if (!loginInput || !password) {
+      return Alert.alert('Erro', 'Preencha todos os campos');
+    }
     setLoading(true);
-    const res = await loginUser(email.trim().toLowerCase(), password);
+    
+    // Processa o input. Se for email, converte para minúsculas.
+    const isEmail = loginInput.includes('@');
+    const processedInput = isEmail ? loginInput.trim().toLowerCase() : loginInput.trim();
+    
+    const res = await loginUser(processedInput, password);
     setLoading(false);
-    if (!res.ok) return Alert.alert('Erro', res.message || 'Não foi possível logar');
+    
+    if (!res.ok) {
+      return Alert.alert('Erro', res.message || 'Não foi possível logar');
+    }
+    
     navigation.replace('Home');
   };
 
@@ -46,15 +58,18 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={styles.subtitle}>
             Identifique riscos de doenças com base em sintomas e condições climáticas
           </Text>
+          
+          {}
           <TextInput
             style={styles.input}
-            placeholder="E-mail"
+            placeholder="Username ou E-mail"
             placeholderTextColor={"#a4a8ff"}
-            value={email}
-            onChangeText={setEmail}
+            value={loginInput}
+            onChangeText={setLoginInput}
             autoCapitalize="none"
-            keyboardType="email-address"
+            keyboardType="default"
           />
+          
           <TextInput
             style={styles.input}
             placeholder="Senha"
@@ -75,7 +90,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           <Text style={styles.note}>
-            Autenticação simulada — dados salvos localmente sem criptografia.
+            Autenticação simulada. Dados salvos localmente, senhas protegidas com hash (SHA-256).
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
