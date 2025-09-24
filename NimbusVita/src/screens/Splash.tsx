@@ -6,17 +6,17 @@ import { useNavigation } from '@react-navigation/native';
 import { View, StyleSheet, Dimensions } from 'react-native';
 
 export function Splash() {
-    const navigation = useNavigation();
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
     
     return (
-        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#5559ff'}}>
             <LottieView
                 source={require("../assets/Splash.json")}
                 style={{width: "100%", height: "100%"}}
                 autoPlay
                 loop={false}
                 speed={1.0}
-                onAnimationFinish={() => navigation.navigate('Login')}
+                onAnimationFinish={() => navigation.navigate("Login")}
             />
         </View>
     );

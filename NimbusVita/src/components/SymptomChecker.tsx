@@ -3,67 +3,67 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, FlatList, S
 
 const SYMPTOMS = {
   // Sintomas Gerais
-  fever: '🌡️ Febre',
-  high_fever: '🌡️ Febre alta',
-  chills: '🥶 Calafrios',
-  shivering: '🥶 Tremores',
-  fatigue: '😴 Fadiga',
-  weakness: '💪 Fraqueza',
-  body_aches: '💥 Dores no corpo',
+  fever: 'Febre',
+  high_fever: 'Febre alta',
+  chills: 'Calafrios',
+  shivering: 'Tremores',
+  fatigue: 'Fadiga',
+  weakness: 'Fraqueza',
+  body_aches: 'Dores no corpo',
   
   // Sintomas Respiratórios
-  cough: '😷 Tosse',
-  sore_throat: '🗣️ Dor de garganta',
-  runny_nose: '👃 Nariz escorrendo',
-  sneezing: '🤧 Espirros',
-  shortness_of_breath: '😮‍💨 Falta de ar',
-  rapid_breathing: '💨 Respiração rápida',
-  reduced_smell_and_taste: '👃 Perda de olfato e paladar',
+  cough: 'Tosse',
+  sore_throat: 'Dor de garganta',
+  runny_nose: 'Nariz escorrendo',
+  sneezing: 'Espirros',
+  shortness_of_breath: 'Falta de ar',
+  rapid_breathing: 'Respiração rápida',
+  reduced_smell_and_taste: 'Perda de olfato e paladar',
   
   // Sintomas Neurológicos
-  headache: '🧠 Dor de cabeça',
-  severe_headache: '🧠 Dor de cabeça severa',
-  throbbing_headache: '🧠 Dor de cabeça latejante',
-  sinus_headache: '🧠 Dor de cabeça sinusal',
-  dizziness: '😵‍💫 Tontura',
-  confusion: '🤔 Confusão mental',
-  pain_behind_the_eyes: '👁️ Dor atrás dos olhos',
-  pain_behind_eyes: '👁️ Dor atrás dos olhos',
-  trouble_seeing: '👁️ Problemas de visão',
+  headache: 'Dor de cabeça',
+  severe_headache: 'Dor de cabeça severa',
+  throbbing_headache: 'Dor de cabeça latejante',
+  sinus_headache: 'Dor de cabeça sinusal',
+  dizziness: 'Tontura',
+  confusion: 'Confusão mental',
+  pain_behind_the_eyes: 'Dor atrás dos olhos',
+  pain_behind_eyes: 'Dor atrás dos olhos',
+  trouble_seeing: 'Problemas de visão',
   
   // Sintomas Gastrointestinais
-  nausea: '🤢 Náusea',
-  vomiting: '🤮 Vômito',
-  abdominal_pain: '🤱 Dor abdominal',
-  diarrhea: '🚽 Diarreia',
+  nausea: 'Náusea',
+  vomiting: 'Vômito',
+  abdominal_pain: 'Dor abdominal',
+  diarrhea: 'Diarreia',
   
   // Sintomas Musculoesqueléticos
-  joint_pain: '🦴 Dor nas articulações',
-  back_pain: '🔙 Dor nas costas',
-  knee_ache: '🦵 Dor no joelho',
+  joint_pain: 'Dor nas articulações',
+  back_pain: 'Dor nas costas',
+  knee_ache: 'Dor no joelho',
   
   // Sintomas Cardiovasculares
-  chest_pain: '💗 Dor no peito',
-  rapid_heart_rate: '💓 Batimento cardíaco acelerado',
+  chest_pain: 'Dor no peito',
+  rapid_heart_rate: 'Batimento cardíaco acelerado',
   
   // Sintomas Dermatológicos
-  rashes: '🔴 Erupções cutâneas',
-  skin_irritation: '🩹 Irritação da pele',
-  itchiness: '😣 Coceira',
+  rashes: 'Erupções cutâneas',
+  skin_irritation: 'Irritação da pele',
+  itchiness: 'Coceira',
   
   // Outros Sintomas
-  swollen_glands: '🦠 Glândulas inchadas',
-  facial_pain: '😣 Dor facial',
+  swollen_glands: 'Glândulas inchadas',
+  facial_pain: 'Dor facial',
   
   // Condições Pré-existentes
-  asthma_history: '🫁 Histórico de asma',
-  asthma: '🫁 Asma',
-  high_cholesterol: '🧪 Colesterol alto',
-  diabetes: '🩸 Diabetes',
-  obesity: '⚖️ Obesidade',
-  hiv_aids: '🩺 HIV/AIDS',
-  nasal_polyps: '👃 Pólipos nasais',
-  high_blood_pressure: '💉 Pressão alta',
+  asthma_history: 'Histórico de asma',
+  asthma: 'Asma',
+  high_cholesterol: 'Colesterol alto',
+  diabetes: 'Diabetes',
+  obesity: 'Obesidade',
+  hiv_aids: 'HIV/AIDS',
+  nasal_polyps: 'Pólipos nasais',
+  high_blood_pressure: 'Pressão alta',
 };
 
 const CONDITIONS = ['Dengue', 'Gripe', 'Resfriado', 'Alergia', 'COVID-19', 'Sinusite'];
@@ -74,11 +74,31 @@ const QUICK_SYMPTOMS = [
 
 const randomFactor = () => Math.random() * 0.4 + 0.8; // 0.8 - 1.2
 
-const SymptomChecker: React.FC = () => {
+interface SymptomCheckerProps {
+  onCheckupComplete?: (symptoms: string[], results: Record<string, number>) => void;
+  preSelectedSymptoms?: string[];
+}
+
+const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete, preSelectedSymptoms }) => {
   const [searchText, setSearchText] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState<Set<string>>(new Set());
   const [predictions, setPredictions] = useState<Record<string, number> | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Effect para definir sintomas pré-selecionados
+  React.useEffect(() => {
+    if (preSelectedSymptoms && preSelectedSymptoms.length > 0) {
+      // Converter nomes dos sintomas de volta para chaves
+      const symptomKeys = preSelectedSymptoms
+        .map(symptomName => {
+          const entry = Object.entries(SYMPTOMS).find(([_, value]) => value === symptomName);
+          return entry ? entry[0] : null;
+        })
+        .filter(Boolean) as string[];
+      
+      setSelectedSymptoms(new Set(symptomKeys));
+    }
+  }, [preSelectedSymptoms]);
 
   const filteredSymptoms = Object.entries(SYMPTOMS).filter(([key, value]) =>
     value.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -179,6 +199,13 @@ const SymptomChecker: React.FC = () => {
     }
     
     setPredictions(res);
+    
+    // Chama a callback se fornecida
+    if (onCheckupComplete) {
+      const symptomsArray = Array.from(selectedSymptoms);
+      const symptomsNames = symptomsArray.map(key => SYMPTOMS[key as keyof typeof SYMPTOMS]);
+      onCheckupComplete(symptomsNames, res);
+    }
   };
 
   const clearAll = () => {
@@ -296,7 +323,10 @@ const SymptomChecker: React.FC = () => {
         onPress={mockPredict}
         disabled={selectedSymptoms.size === 0}
       >
-        <Text style={styles.predictBtnText}>
+        <Text style={[
+          styles.predictBtnText,
+          selectedSymptoms.size === 0 && styles.predictBtnTextDisabled
+        ]}>
           {selectedSymptoms.size > 0 ? 'Analisar Sintomas' : 'Selecione sintomas para analisar'}
         </Text>
       </TouchableOpacity>
@@ -329,7 +359,7 @@ const SymptomChecker: React.FC = () => {
               `Esta análise considera ${selectedSymptoms.size} sintoma${selectedSymptoms.size > 1 ? 's' : ''} selecionado${selectedSymptoms.size > 1 ? 's' : ''} e utiliza um algoritmo que pondera a frequência de cada sintoma em diferentes condições médicas.\n\nIMPORTANTE: Este é um protótipo educacional. As probabilidades são simuladas e não substituem consulta médica profissional.`
             )}
           >
-            <Text style={styles.explainBtnText}>ℹ️ Como foi calculado</Text>
+            <Text style={styles.explainBtnText}>ⓘ Como foi calculado</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -500,9 +530,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f0e1ff',
   },
   predictBtnText: {
-    color: '#c2bba8ff',
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  predictBtnTextDisabled: {
+    color: '#c2bba8',
   },
   resultsContainer: {
     marginTop: 20,
@@ -553,7 +586,7 @@ const styles = StyleSheet.create({
   },
   explainBtn: { 
     marginTop: 16, 
-    backgroundColor: '#26287cff', 
+    backgroundColor: '#e9c46a', 
     padding: 14, 
     borderRadius: 12, 
     alignItems: 'center',
@@ -564,7 +597,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   explainBtnText: {
-    color: '#fff',
+    color: '#5559ff',
     fontSize: 14,
     fontWeight: '600',
   },
