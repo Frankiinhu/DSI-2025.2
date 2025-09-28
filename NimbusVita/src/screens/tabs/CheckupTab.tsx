@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar  } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -17,10 +17,12 @@ interface CheckupStats {
   totalCheckups: number;
   checkupsToday: number;
   consecutiveDays: number;
+
 }
 
 const CheckupTab: React.FC = () => {
   const [checkupHistory, setCheckupHistory] = useState<CheckupRecord[]>([]);
+
   const [filteredHistory, setFilteredHistory] = useState<CheckupRecord[]>([]);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<'today' | '7days' | '30days'>('30days');
   const [editingRecord, setEditingRecord] = useState<CheckupRecord | null>(null);
@@ -30,12 +32,14 @@ const CheckupTab: React.FC = () => {
     consecutiveDays: 0,
   });
 
+
   useEffect(() => {
     loadCheckupHistory();
   }, []);
 
   const loadCheckupHistory = async () => {
     try {
+
       const historyData = await AsyncStorage.getItem('checkupHistory');
       if (historyData) {
         const history: CheckupRecord[] = JSON.parse(historyData);
@@ -205,6 +209,8 @@ const CheckupTab: React.FC = () => {
   const deleteCheckupRecord = async (id: string) => {
     Alert.alert(
       'Excluir Verificação',
+
+
       'Tem certeza que deseja excluir esta verificação?',
       [
         { text: 'Cancelar', style: 'cancel' },
@@ -239,6 +245,7 @@ const CheckupTab: React.FC = () => {
       `Data: ${record.date}\n\nSintomas: ${symptomsText}\n\nResultados:\n${resultsText}`,
       [{ text: 'OK' }]
     );
+
   };
 
   return (
@@ -408,6 +415,7 @@ const CheckupTab: React.FC = () => {
             <Text style={styles.footerNote}>
               Importante: Este é um protótipo educacional. As análises são simuladas e não substituem consulta médica profissional.
             </Text>
+
           </View>
         </View>
       </ScrollView>
@@ -423,6 +431,7 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+
   container: {
     padding: 20,
     paddingTop: 30,
@@ -481,11 +490,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+
   },
   historyTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#5559ff',
+
     marginLeft: 8,
   },
   headerDivider: {
@@ -555,10 +566,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyHistorySubtext: {
+
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
   },
+
   historyList: {
     gap: 4,
   },
@@ -701,6 +714,7 @@ const styles = StyleSheet.create({
     color: '#721c24',
     fontSize: 14,
     fontWeight: '600',
+
   },
 });
 

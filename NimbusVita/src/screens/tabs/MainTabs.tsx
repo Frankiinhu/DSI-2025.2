@@ -81,8 +81,8 @@ const MainTabs: React.FC = () => {
           tabBarLabel: ({ focused }) => <TabBarLabel focused={focused} label="Perfil" />,
         }}
       />
+
     </Tab.Navigator>
   );
 };
-
 export default MainTabs;
