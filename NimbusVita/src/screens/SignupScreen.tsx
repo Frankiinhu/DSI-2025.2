@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { registerUser, UserRegistration } from '../services/auth'; // Importei o tipo
+import { MaterialIcons } from '@expo/vector-icons';
+
+
 
 type RootStackParamList = {
   Login: undefined;
@@ -64,10 +67,11 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Criar conta</Text>
+
       
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={"#a4a8ff"} 
+        placeholderTextColor={"#5559ff"} 
         placeholder="Nome de usuário" 
         value={username} 
         onChangeText={setUsername} 
@@ -76,7 +80,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={"#a4a8ff"} 
+        placeholderTextColor={"#5559ff"} 
         placeholder="E-mail" 
         value={email} 
         onChangeText={setEmail} 
@@ -85,7 +89,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       />
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={"#a4a8ff"} 
+        placeholderTextColor={"#5559ff"} 
         placeholder="Senha" 
         value={password} 
         onChangeText={setPassword} 
@@ -93,12 +97,15 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       />
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={"#a4a8ff"} 
+        placeholderTextColor={"#5559ff"} 
         placeholder="Confirmar senha" 
         value={confirm} 
         onChangeText={setConfirm} 
         secureTextEntry 
       />
+      <TouchableOpacity style= {styles.back} onPress={() => navigation.navigate('Login')}>
+      <MaterialIcons name="arrow-back-ios-new" size={24} color="#ffffff"/>
+</TouchableOpacity>      
       
       <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
         <Text style={styles.registerButtonText}>{'Cadastrar'}</Text>
@@ -112,19 +119,47 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 30, justifyContent: 'center',  backgroundColor: '#5559ff' },
+  container: { flex: 1, padding: 30, justifyContent: 'center',  backgroundColor: '#5559ff',},
   title: { fontSize: 36, color: "#fff", fontWeight: '600', marginBottom: 16 },
   input: { 
     borderWidth: 2, 
-    borderColor: '#e9c46a', 
+    borderColor: '#ffffffff',
+    backgroundColor: '#ffffff', 
     padding: 12, 
     borderRadius: 8, 
     marginBottom: 12,
-    color: '#FFFFFF' 
+    color: '#5559ff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6, 
   },
   note: { marginTop: 12, fontSize: 12, color: '#a4a8ff', textAlign: 'center' },
-  registerButton: { backgroundColor: '#e9c46a', paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  registerButtonText: { color: '#5559ff', fontSize: 20, fontWeight: 'bold' },
+  registerButton: { 
+    backgroundColor: '#e9c46a', 
+    paddingVertical: 12, 
+    borderRadius: 8, 
+    alignItems: 'center', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,  },
+  registerButtonText: { color: '#ffffff', fontSize: 20, fontWeight: 'bold' 
+
+  },
+  back: {
+    color: '#ffffff',
+    position: 'absolute', 
+    padding: 8,
+    borderRadius: '5%',
+    top: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    
+    
+
+  }
 });
 
 export default SignupScreen;

@@ -54,7 +54,11 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             resizeMode="contain"
             accessibilityLabel="Logo do app"
           />
-          <Text style={styles.title}>NimbusVita</Text>
+ <Text style={styles.title}>
+            <Text style={styles.nimbus}>Nimbus</Text>
+            <Text style={styles.vita}>Vita</Text>
+          </Text>
+          
           <Text style={styles.subtitle}>
             Identifique riscos de doenças com base em sintomas e condições climáticas
           </Text>
@@ -62,8 +66,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           {}
           <TextInput
             style={styles.input}
-            placeholder="Username ou E-mail"
-            placeholderTextColor={"#a4a8ff"}
+            placeholder="Nome de usuário ou E-mail"
+            placeholderTextColor={"#5559ff"}
             value={loginInput}
             onChangeText={setLoginInput}
             autoCapitalize="none"
@@ -73,7 +77,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Senha"
-            placeholderTextColor={"#a4a8ff"}
+            placeholderTextColor={"#5559ff"}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -115,11 +119,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   title: {
-    color: "#fff",
     fontSize: 36,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
+  },
+  nimbus: {
+    color: "#FFFFFF",
+  },
+  vita: {
+    color: "#e9c46a",
   },
   subtitle: {
     fontSize: 14,
@@ -127,11 +136,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     marginBottom: 20,
     textAlign: 'center',
+
   },
   input: {
-    color: "#fff",
+    color: "#5559ff",
     borderWidth: 2,
-    borderColor: '#e9c46a',
+    borderColor: '#ffffffff',
+    backgroundColor: '#ffffffff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
@@ -157,9 +173,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   loginButtonText: {
-    color: '#5559ff',
+    color: '#ffffff',
     fontSize: 20,
     fontWeight: 'bold',
   },
