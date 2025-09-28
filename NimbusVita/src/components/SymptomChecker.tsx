@@ -76,13 +76,31 @@ const randomFactor = () => Math.random() * 0.4 + 0.8; // 0.8 - 1.2
 
 interface SymptomCheckerProps {
   onCheckupComplete?: (symptoms: string[], results: Record<string, number>) => void;
+
+  preSelectedSymptoms?: string[];
 }
 
-const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete }) => {
+const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete, preSelectedSymptoms }) => {
+
   const [searchText, setSearchText] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState<Set<string>>(new Set());
   const [predictions, setPredictions] = useState<Record<string, number> | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Effect para definir sintomas pré-selecionados
+  React.useEffect(() => {
+    if (preSelectedSymptoms && preSelectedSymptoms.length > 0) {
+      // Converter nomes dos sintomas de volta para chaves
+      const symptomKeys = preSelectedSymptoms
+        .map(symptomName => {
+          const entry = Object.entries(SYMPTOMS).find(([_, value]) => value === symptomName);
+          return entry ? entry[0] : null;
+        })
+        .filter(Boolean) as string[];
+      
+      setSelectedSymptoms(new Set(symptomKeys));
+    }
+  }, [preSelectedSymptoms]);
 
   const filteredSymptoms = Object.entries(SYMPTOMS).filter(([key, value]) =>
     value.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -343,7 +361,7 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete }) =>
               `Esta análise considera ${selectedSymptoms.size} sintoma${selectedSymptoms.size > 1 ? 's' : ''} selecionado${selectedSymptoms.size > 1 ? 's' : ''} e utiliza um algoritmo que pondera a frequência de cada sintoma em diferentes condições médicas.\n\nIMPORTANTE: Este é um protótipo educacional. As probabilidades são simuladas e não substituem consulta médica profissional.`
             )}
           >
-            <Text style={styles.explainBtnText}>ℹ️ Como foi calculado</Text>
+            <Text style={styles.explainBtnText}>ⓘ Como foi calculado</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -570,7 +588,7 @@ const styles = StyleSheet.create({
   },
   explainBtn: { 
     marginTop: 16, 
-    backgroundColor: '#26287cff', 
+    backgroundColor: '#e9c46a', 
     padding: 14, 
     borderRadius: 12, 
     alignItems: 'center',
@@ -581,7 +599,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   explainBtnText: {
-    color: '#fff',
+    color: '#5559ff',
     fontSize: 14,
     fontWeight: '600',
   },
