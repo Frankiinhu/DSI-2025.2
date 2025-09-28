@@ -53,7 +53,6 @@ const HomeTab: React.FC = () => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
@@ -368,7 +367,6 @@ const HomeTab: React.FC = () => {
     return recommendations;
   };
 
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
@@ -391,12 +389,10 @@ const HomeTab: React.FC = () => {
             <TouchableOpacity onPress={generateRandomWeatherData} style={styles.debugBtn}>
               <MaterialIcons name="refresh" size={20} color="#fff" />
             </TouchableOpacity>
-
           </View>
         </View>
 
         <View style={styles.container}>
-
           {/* Status Card */}
           <StatusCard
             location={statusData.location}
@@ -499,7 +495,6 @@ const HomeTab: React.FC = () => {
             factors={getRiskFactors()}
             recommendations={getRecommendations()}
           />
-
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -514,12 +509,10 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-
   container: {
     padding: 20,
     paddingTop: 30,
   },
-
   header: {
     backgroundColor: '#5559ff',
     paddingTop: 20,
@@ -535,9 +528,7 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-
     alignItems: 'flex-start',
-
     paddingHorizontal: 20,
   },
   headerLeft: {
@@ -548,13 +539,11 @@ const styles = StyleSheet.create({
   headerTextContainer: {
     flex: 1,
     marginLeft: 15,
-
   },
   greeting: {
     fontSize: 16,
     color: '#e9c46a',
     fontWeight: '500',
-
     marginBottom: 2,
   },
   userName: {
@@ -562,12 +551,10 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     marginBottom: 4,
-
   },
   subtitle: {
     fontSize: 14,
     color: '#ffffff',
-
     opacity: 0.8,
   },
   debugBtn: {
@@ -593,7 +580,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 24,
-
   },
 });
 
