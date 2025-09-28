@@ -76,10 +76,12 @@ const randomFactor = () => Math.random() * 0.4 + 0.8; // 0.8 - 1.2
 
 interface SymptomCheckerProps {
   onCheckupComplete?: (symptoms: string[], results: Record<string, number>) => void;
+
   preSelectedSymptoms?: string[];
 }
 
 const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete, preSelectedSymptoms }) => {
+
   const [searchText, setSearchText] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState<Set<string>>(new Set());
   const [predictions, setPredictions] = useState<Record<string, number> | null>(null);

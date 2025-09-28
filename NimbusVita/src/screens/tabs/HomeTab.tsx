@@ -528,7 +528,6 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
     paddingHorizontal: 20,
   },
   headerLeft: {
@@ -551,6 +550,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     marginBottom: 4,
+
   },
   subtitle: {
     fontSize: 14,
