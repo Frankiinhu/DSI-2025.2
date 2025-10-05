@@ -119,8 +119,21 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 30, justifyContent: 'center',  backgroundColor: '#5559ff',},
-  title: { fontSize: 36, color: "#fff", fontWeight: '600', marginBottom: 16 },
+  container: { 
+    flex: 1, 
+    padding: 30, 
+    justifyContent: 'center', 
+    backgroundColor: '#5559ff',
+  },
+  title: { 
+    fontSize: 36,
+    alignContent: 'center',
+    textAlign: 'center', 
+    color: "#fff", 
+    fontWeight: '600', 
+    marginBottom: 50
+
+  },
   input: { 
     borderWidth: 2, 
     borderColor: '#ffffffff',
