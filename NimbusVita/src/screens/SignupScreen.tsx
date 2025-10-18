@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-datetimepicker/datetimepicker';
 import { registerUser, UserRegistration } from '../services/auth'; // Importei o tipo
 import { MaterialIcons } from '@expo/vector-icons';
-
-
+import { theme } from '../theme';
 
 type RootStackParamList = {
   Login: undefined;
@@ -41,11 +40,11 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
     try {
       const userToRegister: UserRegistration = {
-        fullName: email.trim(),
+        fullName: fullName.trim(),
         username: username.trim(),
         email: email.trim().toLowerCase(),
         password: password,
-
+        birthdate: birthdate ? birthdate.toISOString() : undefined,
       };
       
       console.log('Tentando registrar usuário:', { 
@@ -108,6 +107,30 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         onChangeText={setConfirm} 
         secureTextEntry 
       />
+      
+      <TouchableOpacity
+        style={[styles.input, { justifyContent: 'center' }]}
+        onPress={() => setShowDatePicker(true)}
+      >
+        <Text style={{ color: birthdate ? theme.text.inverse : theme.text.brand }}>
+          {birthdate ? birthdate.toLocaleDateString() : 'Data de nascimento'}
+        </Text>
+      </TouchableOpacity>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={birthdate ?? new Date(2000, 0, 1)}
+          mode="date"
+          maximumDate={new Date()}
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
+            setShowDatePicker(Platform.OS === 'ios');
+            if (event.type === 'set' && selectedDate) {
+              setBirthdate(selectedDate);
+            }
+          }}
+        />
+      )}
       <TouchableOpacity style={styles.back} onPress={() => navigation.navigate('Login')}>
         <MaterialIcons name="arrow-back-ios-new" size={24} color={theme.text.inverse}/>
       </TouchableOpacity>      

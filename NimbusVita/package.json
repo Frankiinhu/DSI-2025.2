@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
+    "@react-native-datetimepicker/datetimepicker": "^5.0.0",
     "@lottiefiles/dotlottie-react": "^0.13.5",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.7",
