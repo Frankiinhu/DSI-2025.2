@@ -207,6 +207,12 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete, preS
       const symptomsArray = Array.from(selectedSymptoms);
       const symptomsNames = symptomsArray.map(key => SYMPTOMS[key as keyof typeof SYMPTOMS]);
       onCheckupComplete(symptomsNames, res);
+      
+      // Limpar sintomas após completar o checkup (sempre, incluindo modo de edição)
+      setTimeout(() => {
+        setSelectedSymptoms(new Set());
+        setPredictions(null);
+      }, 500); // Pequeno delay para feedback visual
     }
   };
 

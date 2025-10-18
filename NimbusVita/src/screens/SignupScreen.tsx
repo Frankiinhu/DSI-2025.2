@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { registerUser, UserRegistration } from '../services/auth'; // Importei o tipo
 import { MaterialIcons } from '@expo/vector-icons';
+import { useAuth } from '../contexts/AuthContext';
 
 
 
@@ -13,54 +13,60 @@ type RootStackParamList = {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Signup'>;
 
-type RegisterResponse = { ok: boolean; message?: string };
-
 const SignupScreen: React.FC<Props> = ({ navigation }) => {
+  const { signUp } = useAuth();
+  
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
+    // Validações
     if (!username || !email || !password) {
       return Alert.alert('Erro', 'Preencha nome de usuário, email e senha');
     }
+    
     if (password !== confirm) {
       return Alert.alert('Erro', 'As senhas não coincidem');
     }
     
-    // Validação de email básica
+    // Validação de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       return Alert.alert('Erro', 'Por favor, insira um email válido');
     }
 
+    if (password.length < 6) {
+      return Alert.alert('Erro', 'A senha deve ter no mínimo 6 caracteres');
+    }
+
+    setLoading(true);
+
     try {
-      const userToRegister: UserRegistration = {
-        username: username.trim(),
-        email: email.trim().toLowerCase(),
-        password: password,
-      };
+      // Usa o AuthContext para registrar
+      const result = await signUp(
+        username.trim(),
+        email.trim().toLowerCase(),
+        password
+      );
       
-      console.log('Tentando registrar usuário:', { 
-        username: userToRegister.username, 
-        email: userToRegister.email, 
-        password: '***' 
-      });
-
-      const res: RegisterResponse = await registerUser(userToRegister);
-      
-      console.log('Resposta do registro:', res);
-      if (!res.ok) {
-        return Alert.alert('Erro', res.message || 'Não foi possível registrar');
+      if (!result.ok) {
+        Alert.alert('Erro', result.error || 'Não foi possível criar conta');
+      } else {
+        // Sucesso! A navegação acontece automaticamente
+        Alert.alert(
+          'Sucesso', 
+          'Conta criada com sucesso!',
+          [{ text: 'OK' }]
+        );
       }
-      
-      Alert.alert('Sucesso', 'Conta registrada. Faça login.');
-      navigation.goBack(); // Volta para a tela de Login
-
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no registro:', error);
-      Alert.alert('Erro', `Erro inesperado: ${error instanceof Error ? error.message : String(error)}`);
+      Alert.alert('Erro', error.message || 'Erro inesperado ao criar conta');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,11 +114,13 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 </TouchableOpacity>      
       
       <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-        <Text style={styles.registerButtonText}>{'Cadastrar'}</Text>
+        <Text style={styles.registerButtonText}>
+          {loading ? 'Criando conta...' : 'Cadastrar'}
+        </Text>
       </TouchableOpacity>
       
       <Text style={styles.note}>
-        Modo de Demonstração: Os dados são salvos apenas neste dispositivo.
+        Dados protegidos com Supabase. Senha criptografada com bcrypt.
       </Text>
     </View>
   );
