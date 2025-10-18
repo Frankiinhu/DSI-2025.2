@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import WeatherCard from '../../components/WeatherCard';
 import StatusCard from '../../components/StatusCard';
 import RiskAnalysis from '../../components/RiskAnalysis';
+import { theme } from '../../theme';
 
 const logo = require('../../../assets/logo.png');
 
@@ -359,7 +360,7 @@ const HomeTab: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
+      <StatusBar barStyle="light-content" backgroundColor={theme.background.brand} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -491,7 +492,7 @@ const HomeTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#a4a8ff',
+    backgroundColor: theme.background.accent,
   },
   scrollView: {
     flex: 1,
@@ -501,12 +502,12 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   header: {
-    backgroundColor: '#5559ff',
+    backgroundColor: theme.background.brand,
     paddingTop: 20,
     paddingBottom: 30,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
-    shadowColor: '#000',
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -529,19 +530,19 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    color: '#e9c46a',
+    color: theme.text.highlight,
     fontWeight: '500',
     marginBottom: 2,
   },
   userName: {
     fontSize: 20,
-    color: '#ffffff',
+    color: theme.text.inverse,
     fontWeight: '700',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#ffffff',
+    color: theme.text.inverse,
     opacity: 0.8,
   },
   headerLogo: { 
@@ -551,7 +552,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: theme.text.primary,
     marginBottom: 16,
     marginTop: 8,
   },

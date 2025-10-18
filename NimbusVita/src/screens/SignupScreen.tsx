@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-
-
+import { registerUser, UserRegistration } from '../services/auth';
+import { MaterialIcons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 type RootStackParamList = {
   Login: undefined;
@@ -74,10 +74,9 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Criar conta</Text>
 
-      
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={"#5559ff"} 
+        placeholderTextColor={theme.text.brand} 
         placeholder="Nome de usuário" 
         value={username} 
         onChangeText={setUsername} 
@@ -86,7 +85,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={"#5559ff"} 
+        placeholderTextColor={theme.text.brand} 
         placeholder="E-mail" 
         value={email} 
         onChangeText={setEmail} 
@@ -95,7 +94,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       />
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={"#5559ff"} 
+        placeholderTextColor={theme.text.brand} 
         placeholder="Senha" 
         value={password} 
         onChangeText={setPassword} 
@@ -103,15 +102,15 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       />
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={"#5559ff"} 
+        placeholderTextColor={theme.text.brand} 
         placeholder="Confirmar senha" 
         value={confirm} 
         onChangeText={setConfirm} 
         secureTextEntry 
       />
-      <TouchableOpacity style= {styles.back} onPress={() => navigation.navigate('Login')}>
-      <MaterialIcons name="arrow-back-ios-new" size={24} color="#ffffff"/>
-</TouchableOpacity>      
+      <TouchableOpacity style={styles.back} onPress={() => navigation.navigate('Login')}>
+        <MaterialIcons name="arrow-back-ios-new" size={24} color={theme.text.inverse}/>
+      </TouchableOpacity>      
       
       <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
         <Text style={styles.registerButtonText}>
@@ -127,46 +126,62 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 30, justifyContent: 'center',  backgroundColor: '#5559ff',},
-  title: { fontSize: 36, color: "#fff", fontWeight: '600', marginBottom: 16 },
+  container: { 
+    flex: 1, 
+    padding: 30, 
+    justifyContent: 'center', 
+    backgroundColor: '#5559ff',
+  },
+  title: { 
+    fontSize: 36,
+    alignContent: 'center',
+    textAlign: 'center', 
+    color: "#fff", 
+    fontWeight: '600', 
+    marginBottom: 50
+  },
   input: { 
     borderWidth: 2, 
-    borderColor: '#ffffffff',
-    backgroundColor: '#ffffff', 
+    borderColor: theme.surface.primary,
+    backgroundColor: theme.surface.primary, 
     padding: 12, 
     borderRadius: 8, 
     marginBottom: 12,
-    color: '#5559ff',
-    shadowColor: '#000',
+    color: theme.text.brand,
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: theme.shadow.opacity,
     shadowRadius: 6, 
   },
-  note: { marginTop: 12, fontSize: 12, color: '#a4a8ff', textAlign: 'center' },
+  note: { 
+    marginTop: 12, 
+    fontSize: 12, 
+    color: theme.colors.accent.main, 
+    textAlign: 'center' 
+  },
   registerButton: { 
-    backgroundColor: '#e9c46a', 
+    backgroundColor: theme.interactive.secondary, 
     paddingVertical: 12, 
     borderRadius: 8, 
     alignItems: 'center', 
-    shadowColor: '#000',
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,  },
-  registerButtonText: { color: '#ffffff', fontSize: 20, fontWeight: 'bold' 
-
+    shadowOpacity: theme.shadow.opacity,
+    shadowRadius: 6,  
+  },
+  registerButtonText: { 
+    color: theme.text.inverse, 
+    fontSize: 20, 
+    fontWeight: 'bold' 
   },
   back: {
-    color: '#ffffff',
+    color: theme.text.inverse,
     position: 'absolute', 
     padding: 8,
-    borderRadius: '5%',
+    borderRadius: 5,
     top: 40,
     alignItems: 'center',
     justifyContent: 'center',
-
-    
-    
-
   }
 });
 

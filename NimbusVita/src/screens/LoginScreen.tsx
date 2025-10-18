@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image, Scro
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
+import { theme } from '../theme';
 
 const logo = require('../../assets/logo.png');
 
@@ -48,7 +49,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
+      <StatusBar barStyle="light-content" backgroundColor={theme.background.brand} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -60,7 +61,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             resizeMode="contain"
             accessibilityLabel="Logo do app"
           />
- <Text style={styles.title}>
+          <Text style={styles.title}>
             <Text style={styles.nimbus}>Nimbus</Text>
             <Text style={styles.vita}>Vita</Text>
           </Text>
@@ -73,7 +74,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Nome de usuário ou E-mail"
-            placeholderTextColor={"#5559ff"}
+            placeholderTextColor={theme.text.brand}
             value={loginInput}
             onChangeText={setLoginInput}
             autoCapitalize="none"
@@ -83,7 +84,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Senha"
-            placeholderTextColor={"#5559ff"}
+            placeholderTextColor={theme.text.brand}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -111,7 +112,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#5559ff',
+    backgroundColor: theme.background.brand,
   },
   scrollContent: {
     flexGrow: 1,
@@ -131,66 +132,64 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   nimbus: {
-    color: "#FFFFFF",
+    color: theme.text.inverse,
   },
   vita: {
-    color: "#e9c46a",
+    color: theme.text.highlight,
   },
   subtitle: {
     fontSize: 14,
-    color: '#fff',
+    color: theme.text.inverse,
     paddingHorizontal: 40,
     marginBottom: 20,
     textAlign: 'center',
-
   },
   input: {
-    color: "#5559ff",
+    color: theme.text.brand,
     borderWidth: 2,
-    borderColor: '#ffffffff',
-    backgroundColor: '#ffffffff',
-    shadowColor: '#000',
+    borderColor: theme.surface.primary,
+    backgroundColor: theme.surface.primary,
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: theme.shadow.opacity,
     shadowRadius: 6,
-
     padding: 12,
     borderRadius: 8,
     marginBottom: 12,
   },
   row: {
-    color: "#fff",
+    color: theme.text.inverse,
     flexDirection: 'row',
     marginTop: 16,
     justifyContent: 'center',
   },
   link: {
-    color: '#e9c46a',
+    color: theme.text.highlight,
   },
   note: {
     marginTop: 24,
     fontSize: 12,
     paddingHorizontal: 40,
-    color: '#a4a8ff',
+    color: theme.colors.accent.main,
     textAlign: 'center',
   },
   loginButton: {
-    backgroundColor: '#e9c46a',
+    backgroundColor: theme.interactive.secondary,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: theme.shadow.opacity,
     shadowRadius: 6,
   },
   loginButtonText: {
-    color: '#ffffff',
+    color: theme.text.inverse,
     fontSize: 20,
     fontWeight: 'bold',
   },
   account: {
-    color: '#fff',
+    color: theme.text.inverse,
   }
 });
 

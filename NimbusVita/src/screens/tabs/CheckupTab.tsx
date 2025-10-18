@@ -13,6 +13,7 @@ import {
   syncPendingCheckups,
   getSyncStatus
 } from '../../services/supabase/checkup.storage.service';
+import { theme } from '../../theme';
 
 interface CheckupRecord {
   id: string;
@@ -544,7 +545,7 @@ const CheckupTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#a4a8ff',
+    backgroundColor: theme.background.accent,
   },
   scrollView: {
     flex: 1,
@@ -552,7 +553,7 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     paddingTop: 30,
-    backgroundColor: '#a4a8ff',
+    backgroundColor: theme.background.accent,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -562,27 +563,27 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.surface.primary,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#e4e4e4'
+    borderColor: theme.border.light
   },
   statNumber: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#5559ff',
+    color: theme.text.brand,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: '#666',
+    color: theme.text.secondary,
     textAlign: 'center',
     fontWeight: '500',
   },
@@ -591,17 +592,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   historyHeader: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.surface.primary,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: theme.border.light,
   },
   historyTitleContainer: {
     flexDirection: 'row',
@@ -611,7 +612,7 @@ const styles = StyleSheet.create({
   historyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#5559ff',
+    color: theme.text.brand,
     marginLeft: 8,
   },
   headerDivider: {
@@ -622,10 +623,10 @@ const styles = StyleSheet.create({
   },
   timeFilterContainer: {
     flexDirection: 'row',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.surface.secondary,
     borderRadius: 12,
     padding: 4,
-    shadowColor: '#000',
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
@@ -640,8 +641,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   timeFilterButtonActive: {
-    backgroundColor: '#5559ff',
-    shadowColor: '#5559ff',
+    backgroundColor: theme.interactive.primary,
+    shadowColor: theme.interactive.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -650,10 +651,10 @@ const styles = StyleSheet.create({
   timeFilterText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#666',
+    color: theme.text.secondary,
   },
   timeFilterTextActive: {
-    color: '#ffffff',
+    color: theme.text.inverse,
     fontWeight: '600',
   },
   emptyHistoryCard: {
@@ -674,7 +675,7 @@ const styles = StyleSheet.create({
   },
   emptyHistoryText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.text.secondary,
     fontWeight: '600',
     marginBottom: 8,
     marginTop: 16,
@@ -682,18 +683,18 @@ const styles = StyleSheet.create({
   },
   emptyHistorySubtext: {
     fontSize: 14,
-    color: '#999',
+    color: theme.text.muted,
     textAlign: 'center',
   },
   historyList: {
     gap: 4,
   },
   historyItemCard: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: theme.surface.secondary,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e8e9ff',
+    borderColor: theme.colors.accent.light,
     overflow: 'hidden',
   },
   historyItem: {
@@ -709,7 +710,7 @@ const styles = StyleSheet.create({
   },
   historyItemDate: {
     fontSize: 13,
-    color: '#666',
+    color: theme.text.secondary,
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -719,24 +720,24 @@ const styles = StyleSheet.create({
   symptomsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f2ff',
+    backgroundColor: theme.surface.accent,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#d4d8ff',
+    borderColor: theme.colors.accent.main,
     alignSelf: 'flex-start',
   },
   symptomsCount: {
     fontSize: 12,
-    color: '#5559ff',
+    color: theme.text.brand,
     fontWeight: '700',
     marginLeft: 4,
     marginRight: 4,
   },
   symptomsLabel: {
     fontSize: 12,
-    color: '#5559ff',
+    color: theme.text.brand,
     fontWeight: '500',
   },
   historyItemStats: {
@@ -756,7 +757,7 @@ const styles = StyleSheet.create({
   },
   historyItemResult: {
     fontSize: 14,
-    color: '#333',
+    color: theme.text.primary,
     fontWeight: '500',
     lineHeight: 20,
   },
@@ -768,25 +769,25 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: 8,
-    backgroundColor: '#f0f2ff',
+    backgroundColor: theme.surface.accent,
     borderRadius: 20,
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#d4d8ff',
+    borderColor: theme.colors.accent.main,
   },
   deleteButton: {
     padding: 8,
-    backgroundColor: '#fff2f2',
+    backgroundColor: theme.colors.neutral.light,
     borderRadius: 20,
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#ffe4e4',
+    borderColor: theme.colors.error,
   },
   deleteButtonText: {
     fontSize: 16,
@@ -795,7 +796,7 @@ const styles = StyleSheet.create({
   },
   moreRecordsText: {
     textAlign: 'center',
-    color: '#999',
+    color: theme.text.muted,
     fontSize: 12,
     marginTop: 12,
     fontStyle: 'italic',
@@ -807,13 +808,15 @@ const styles = StyleSheet.create({
   },
   footerNote: {
     textAlign: 'center',
-    color: '#4a5498',
+    color: theme.colors.primary.dark,
     fontSize: 14,
     lineHeight: 20,
     paddingHorizontal: 20,
   },
-  editModeCard: {
-    backgroundColor: '#e8f4f8',
+  cancelEditButton: {
+    backgroundColor: theme.colors.neutral.light,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     borderRadius: 12,
     padding: 16,
     marginTop: -10,
@@ -858,10 +861,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: '#d4d8ff',
+    borderColor: theme.colors.error,
   },
   cancelEditText: {
-    color: '#5559ff',
+    color: theme.colors.error,
     fontSize: 14,
     fontWeight: '600',
   },
