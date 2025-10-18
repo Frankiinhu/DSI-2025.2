@@ -67,7 +67,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.userName}>{currentUser?.username || 'Usuário'}</Text>
+              <Text style={styles.userName}>{currentUser?.fullName.split(' ')[0] || 'Usuário'}</Text>
               <Text style={styles.subtitle}>Como você está se sentindo hoje?</Text>
             </View>
             <View style={{ alignItems: 'center' }}>
@@ -106,7 +106,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.footerNote}>
               💡 Versão de protótipo — previsões são simuladas para demonstração
             </Text>
-            <Text style={styles.versionText}>v1.0.2 • Build 2025.2</Text>
+            <Text style={styles.versionText}>v1.5.2 • Build 2025.2</Text>
           </View>
         </View>
       </ScrollView>
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: '#999',
+    color: '#888',
     textAlign: 'center',
   },
   headerLogo: { width: 60, height: 60, marginTop: 16, marginBottom: -16, alignSelf: 'center' },

@@ -6,20 +6,29 @@ const TOKEN_KEY = 'nimbus_token';
 const USERNAME_INDEX_KEY = 'nimbus_usernames';
 
 export type StoredUser = {
+  fullName: string;
   username: string;
   email: string;
   passwordHash: string;
+  birthdate?: string;
+  gender?: 'masculino' | 'feminino' | 'outro'
 };
 
 export type UserRegistration = {
+  fullName: string;
   username: string;
   email: string;
   password: string;
+  birthdate?: string;
+  gender?: 'masculino' | 'feminino' | 'outro'
 };
 
 export type PublicUser = {
+  fullName: string;
   username: string;
   email: string;
+  birthdate?: string;
+  gender?: 'masculino' | 'feminino' | 'outro'
 };
 
 type SessionToken = {
@@ -41,8 +50,8 @@ export const registerUser = async (
 ): Promise<{ ok: boolean; message?: string }> => {
   try {
 
-    if (!user.username || !user.email || !user.password) {
-      return { ok: false, message: 'Todos os campos são obrigatórios' };
+    if (!user.fullName || !user.username || !user.email || !user.password) { //outros elementos a serem adicionados
+      return { ok: false, message: 'Preencha os campos obrigatórios' };
     }
 
     console.log('Iniciando registro de usuário:', user.email, user.username);
@@ -67,10 +76,18 @@ export const registerUser = async (
     );
 
     const newUser: StoredUser = {
+      fullName: user.fullName,
       username: user.username,
       email: user.email,
       passwordHash: passwordHash,
     };
+
+    if (user.birthdate) {
+    newUser.birthdate = user.birthdate;
+  }
+    if (user.gender) {
+    newUser.gender = user.gender;
+  }
 
     usernames[user.username] = user.email;
 
@@ -164,8 +181,11 @@ export const getCurrentUser = async (): Promise<PublicUser | null> => {
 
     const storedUser: StoredUser = JSON.parse(rawUser);
     return {
+      fullName: storedUser.fullName,
       username: storedUser.username,
       email: storedUser.email,
+      birthdate: storedUser.birthdate,
+      gender: storedUser.gender
     };
   } catch (e) {
     console.error('Erro em getCurrentUser:', e);

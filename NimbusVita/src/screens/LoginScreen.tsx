@@ -88,7 +88,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
           <View style={styles.row}>
-            <Text style={styles.account}>Não tem conta?</Text>
+            <Text style={styles.account}>Não possui uma conta?</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
               <Text style={styles.link}> Cadastre-se</Text>
             </TouchableOpacity>

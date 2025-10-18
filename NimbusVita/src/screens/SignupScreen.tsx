@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { registerUser, UserRegistration } from '../services/auth'; // Importei o tipo
 import { MaterialIcons } from '@expo/vector-icons';
-
 
 
 type RootStackParamList = {
@@ -16,14 +16,17 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Signup'>;
 type RegisterResponse = { ok: boolean; message?: string };
 
 const SignupScreen: React.FC<Props> = ({ navigation }) => {
+  const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [birthdate, setBirthdate] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleRegister = async () => {
-    if (!username || !email || !password) {
-      return Alert.alert('Erro', 'Preencha nome de usuário, email e senha');
+    if (!fullName || !username || !email || !password) {
+      return Alert.alert('Erro', 'Preencha os campos obrigatórios');
     }
     if (password !== confirm) {
       return Alert.alert('Erro', 'As senhas não coincidem');
@@ -37,9 +40,11 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
     try {
       const userToRegister: UserRegistration = {
+        fullName: email.trim(),
         username: username.trim(),
         email: email.trim().toLowerCase(),
         password: password,
+
       };
       
       console.log('Tentando registrar usuário:', { 
@@ -68,7 +73,15 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Criar conta</Text>
 
-      
+<TextInput 
+        style={styles.input} 
+        placeholderTextColor={"#5559ff"} 
+        placeholder="Nome Completo" 
+        value={fullName} 
+        onChangeText={setFullName}
+        autoCapitalize="words"
+      />
+
       <TextInput 
         style={styles.input} 
         placeholderTextColor={"#5559ff"} 
@@ -103,6 +116,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         onChangeText={setConfirm} 
         secureTextEntry 
       />
+
       <TouchableOpacity style= {styles.back} onPress={() => navigation.navigate('Login')}>
       <MaterialIcons name="arrow-back-ios-new" size={24} color="#ffffff"/>
 </TouchableOpacity>      
