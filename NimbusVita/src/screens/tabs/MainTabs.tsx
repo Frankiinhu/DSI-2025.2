@@ -26,8 +26,11 @@ const MainTabs: React.FC = () => {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: '#5559ff',
+          borderTopLeftRadius: 25,
+          borderTopRightRadius: 25,
           borderTopWidth: 4,
           borderTopColor: '#8183ff',
+          marginBlockStart: -20,
           paddingTop: 16,
           paddingBottom: 8,
           height: 120,
