@@ -5,6 +5,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { signOut, getCurrentUser, PublicUser } from '../../services/auth';
 import { useNavigation } from '@react-navigation/native';
+import { theme } from '../../theme';
 
 const ProfileTab: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
@@ -138,7 +139,7 @@ const ProfileTab: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
+      <StatusBar barStyle="light-content" backgroundColor={theme.background.brand} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Perfil</Text>
@@ -201,7 +202,7 @@ const ProfileTab: React.FC = () => {
                 <Text style={styles.infoLabel}>Gênero:</Text>
                 <TouchableOpacity style={styles.editButton} onPress={handleEditGender}>
                   <Text style={styles.editButtonText}>{gender}</Text>
-                  <MaterialIcons name="edit" size={16} color="#5559ff" style={styles.editIcon} />
+                  <MaterialIcons name="edit" size={16} color={theme.text.brand} style={styles.editIcon} />
                 </TouchableOpacity>
               </View>
             )}
@@ -209,27 +210,27 @@ const ProfileTab: React.FC = () => {
 
           <View style={styles.optionsContainer}>
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="settings" size={24} color="#5559ff" style={styles.optionIcon} />
+              <MaterialIcons name="settings" size={24} color={theme.text.brand} style={styles.optionIcon} />
               <Text style={styles.optionText}>Configurações</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="bar-chart" size={24} color="#5559ff" style={styles.optionIcon} />
+              <MaterialIcons name="bar-chart" size={24} color={theme.text.brand} style={styles.optionIcon} />
               <Text style={styles.optionText}>Estatísticas de Saúde</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="notifications" size={24} color="#5559ff" style={styles.optionIcon} />
+              <MaterialIcons name="notifications" size={24} color={theme.text.brand} style={styles.optionIcon} />
               <Text style={styles.optionText}>Notificações</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="info" size={24} color="#5559ff" style={styles.optionIcon} />
+              <MaterialIcons name="info" size={24} color={theme.text.brand} style={styles.optionIcon} />
               <Text style={styles.optionText}>Sobre o App</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.optionItem, styles.logoutOption]} onPress={handleLogout}>
-              <MaterialIcons name="logout" size={24} color="#d4572a" style={styles.optionIcon} />
+              <MaterialIcons name="logout" size={24} color={theme.status.error} style={styles.optionIcon} />
               <Text style={[styles.optionText, styles.logoutText]}>Sair</Text>
             </TouchableOpacity>
           </View>
@@ -247,13 +248,13 @@ const ProfileTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#a4a8ff',
+    backgroundColor: theme.background.accent,
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    backgroundColor: '#5559ff',
+    backgroundColor: theme.background.brand,
     paddingTop: 20,
     paddingBottom: 30,
     paddingHorizontal: 20,
@@ -263,12 +264,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#ffffff',
+    color: theme.text.inverse,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#ffffff',
+    color: theme.text.inverse,
     opacity: 0.9,
   },
   container: {
@@ -276,11 +277,11 @@ const styles = StyleSheet.create({
     paddingTop: 30,
   },
   profileCard: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface.primary,
     padding: 24,
     borderRadius: 16,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#5559ff',
+    color: theme.text.brand,
     marginBottom: 16,
   },
   infoRow: {
@@ -303,14 +304,14 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
+    color: theme.text.primary,
   },
   infoValue: {
     fontSize: 16,
-    color: '#666',
+    color: theme.text.secondary,
   },
   editButton: {
-    backgroundColor: '#f0f2ff',
+    backgroundColor: theme.surface.accent,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
@@ -322,7 +323,7 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 14,
-    color: '#5559ff',
+    color: theme.text.brand,
     fontWeight: '500',
   },
   placeholderText: {
@@ -335,14 +336,14 @@ const styles = StyleSheet.create({
     borderBottomColor: '#f0f0f0',
   },
   ageInput: {
-    backgroundColor: '#f0f2ff',
+    backgroundColor: theme.surface.accent,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
     fontSize: 14,
-    color: '#333',
+    color: theme.text.primary,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: theme.border.light,
     marginLeft: 10,
     width: 80,
     textAlign: 'right',
@@ -355,23 +356,23 @@ const styles = StyleSheet.create({
   },
   genderButton: {
     flex: 1,
-    backgroundColor: '#f0f2ff',
+    backgroundColor: theme.surface.accent,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: theme.border.light,
   },
   genderButtonText: {
     fontSize: 12,
-    color: '#5559ff',
+    color: theme.text.brand,
     fontWeight: '600',
   },
   optionsContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: theme.surface.primary,
     borderRadius: 16,
-    shadowColor: '#000',
+    shadowColor: theme.shadow.color,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.border.light,
   },
   optionIcon: {
     marginRight: 12,
@@ -391,14 +392,14 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 16,
-    color: '#333',
+    color: theme.text.primary,
     fontWeight: '500',
   },
   logoutOption: {
     borderBottomWidth: 0,
   },
   logoutText: {
-    color: '#d4572a',
+    color: theme.status.error,
   },
   footer: {
     alignItems: 'center',
@@ -407,12 +408,12 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#5559ff',
+    color: theme.text.brand,
     marginBottom: 4,
   },
   buildText: {
     fontSize: 12,
-    color: '#999',
+    color: theme.text.muted,
   },
 });
 
