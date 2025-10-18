@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-datetimepicker/datetimepicker';
-import { registerUser, UserRegistration } from '../services/auth'; // Importei o tipo
+import { registerUser, UserRegistration } from '../services/auth';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../theme';
 
@@ -23,6 +23,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [confirm, setConfirm] = useState('');
   const [birthdate, setBirthdate] = useState<Date | undefined>(undefined);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [gender, setGender] = useState<'masculino' | 'feminino' | 'outro' | undefined>(undefined);
 
   const handleRegister = async () => {
     if (!fullName || !username || !email || !password) {
@@ -39,12 +40,17 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     try {
+      // Basic birthdate sanity check (not in the future)
+      if (birthdate && birthdate > new Date()) {
+        return Alert.alert('Erro', 'Data de nascimento inválida');
+      }
       const userToRegister: UserRegistration = {
         fullName: fullName.trim(),
         username: username.trim(),
         email: email.trim().toLowerCase(),
         password: password,
         birthdate: birthdate ? birthdate.toISOString() : undefined,
+        gender: gender,
       };
       
       console.log('Tentando registrar usuário:', { 
@@ -73,6 +79,15 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Criar conta</Text>
 
+      <TextInput 
+        style={styles.input} 
+        placeholderTextColor={theme.text.brand} 
+        placeholder="Nome completo" 
+        value={fullName}
+        onChangeText={setFullName}
+        autoCapitalize="none" 
+      />
+      
       <TextInput 
         style={styles.input} 
         placeholderTextColor={theme.text.brand} 
@@ -124,13 +139,42 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
           maximumDate={new Date()}
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-            setShowDatePicker(Platform.OS === 'ios');
+            // On Android the picker closes after selection; on iOS we keep it open when using spinner
+            if (Platform.OS === 'android') {
+              setShowDatePicker(false);
+            }
             if (event.type === 'set' && selectedDate) {
               setBirthdate(selectedDate);
+            }
+            // For iOS when user dismisses without setting
+            if (event.type === 'dismissed') {
+              setShowDatePicker(false);
             }
           }}
         />
       )}
+
+      {/* Gender selection */}
+      <View style={styles.genderRow}>
+        <TouchableOpacity
+          style={[styles.genderButton, gender === 'masculino' && styles.genderSelected]}
+          onPress={() => setGender('masculino')}
+        >
+          <Text style={[styles.genderText, gender === 'masculino' && styles.genderTextSelected]}>Masculino</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.genderButton, gender === 'feminino' && styles.genderSelected]}
+          onPress={() => setGender('feminino')}
+        >
+          <Text style={[styles.genderText, gender === 'feminino' && styles.genderTextSelected]}>Feminino</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.genderButton, gender === 'outro' && styles.genderSelected]}
+          onPress={() => setGender('outro')}
+        >
+          <Text style={[styles.genderText, gender === 'outro' && styles.genderTextSelected]}>Outro</Text>
+        </TouchableOpacity>
+      </View>
       <TouchableOpacity style={styles.back} onPress={() => navigation.navigate('Login')}>
         <MaterialIcons name="arrow-back-ios-new" size={24} color={theme.text.inverse}/>
       </TouchableOpacity>      
@@ -203,6 +247,35 @@ const styles = StyleSheet.create({
     top: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  }
+  ,
+  genderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  genderButton: {
+    flex: 1,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.surface.primary,
+    borderWidth: 1,
+    borderColor: theme.surface.primary,
+  },
+  genderSelected: {
+    backgroundColor: theme.interactive.secondary,
+    borderColor: theme.interactive.secondary,
+  },
+  genderText: {
+    color: theme.text.brand,
+    fontSize: 14,
+  },
+  genderTextSelected: {
+    color: theme.text.inverse,
+    fontWeight: '600',
   }
 });
 
