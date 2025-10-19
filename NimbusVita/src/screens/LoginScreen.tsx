@@ -1,8 +1,8 @@
-import React, { act, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { loginUser } from '../services/auth';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
 
 const logo = require('../../assets/logo.png');
 
@@ -15,29 +15,35 @@ type RootStackParamList = {
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
-  // Estado genérico para username ou email
+  const { signIn } = useAuth();
+  
+  // Estado para campos do formulário
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    // Validação básica
     if (!loginInput || !password) {
       return Alert.alert('Erro', 'Preencha todos os campos');
     }
+
     setLoading(true);
     
-    // Processa o input. Se for email, converte para minúsculas.
-    const isEmail = loginInput.includes('@');
-    const processedInput = isEmail ? loginInput.trim().toLowerCase() : loginInput.trim();
-    
-    const res = await loginUser(processedInput, password);
-    setLoading(false);
-    
-    if (!res.ok) {
-      return Alert.alert('Erro', res.message || 'Não foi possível logar');
+    try {
+      // Usa o AuthContext para fazer login
+      const result = await signIn(loginInput, password);
+      
+      if (!result.ok) {
+        Alert.alert('Erro', result.error || 'Não foi possível fazer login');
+      }
+      // Se login bem-sucedido, a navegação acontece automaticamente
+      // O AuthContext detecta a mudança e atualiza a navegação
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Erro desconhecido ao fazer login');
+    } finally {
+      setLoading(false);
     }
-    
-    navigation.replace('Home');
   };
 
   return (
@@ -94,7 +100,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           <Text style={styles.note}>
-            Autenticação simulada. Dados salvos localmente, senhas protegidas com hash (SHA-256).
+            Autenticação via Supabase. Dados protegidos com JWT e Row Level Security (RLS).
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

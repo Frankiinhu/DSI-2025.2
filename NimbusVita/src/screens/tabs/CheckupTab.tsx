@@ -1,9 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import SymptomChecker from '../../components/SymptomChecker';
+import { useAuth } from '../../contexts/AuthContext';
+import { 
+  createCheckupOfflineFirst, 
+  getCheckupsOfflineFirst, 
+  deleteCheckupOfflineFirst,
+  updateCheckupOfflineFirst,
+  syncPendingCheckups,
+  getSyncStatus
+} from '../../services/supabase/checkup.storage.service';
 
 interface CheckupRecord {
   id: string;
@@ -20,10 +29,12 @@ interface CheckupStats {
 }
 
 const CheckupTab: React.FC = () => {
+  const { user } = useAuth();
   const [checkupHistory, setCheckupHistory] = useState<CheckupRecord[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<CheckupRecord[]>([]);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<'today' | '7days' | '30days'>('30days');
   const [editingRecord, setEditingRecord] = useState<CheckupRecord | null>(null);
+  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<CheckupStats>({
     totalCheckups: 0,
     checkupsToday: 0,
@@ -31,19 +42,52 @@ const CheckupTab: React.FC = () => {
   });
 
   useEffect(() => {
-    loadCheckupHistory();
-  }, []);
+    if (user) {
+      loadCheckupHistory();
+    }
+  }, [user]);
+
+  // Recarregar histórico sempre que a aba receber foco
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadCheckupHistory();
+      }
+    }, [user])
+  );
 
   const loadCheckupHistory = async () => {
+    if (!user) return;
+    
     try {
-      const historyData = await AsyncStorage.getItem('checkupHistory');
-      if (historyData) {
-        const history: CheckupRecord[] = JSON.parse(historyData);
-        setCheckupHistory(history);
-        calculateStats(history);
+      setLoading(true);
+      const response = await getCheckupsOfflineFirst(user.id);
+      
+      if (!response.ok || !response.checkups) {
+        throw new Error(response.message || 'Erro ao carregar checkups');
       }
+      
+      // Converter formato local para formato do componente
+      const history: CheckupRecord[] = response.checkups.map((checkup) => ({
+        id: checkup.id,
+        date: checkup.date,
+        symptoms: checkup.symptoms,
+        results: checkup.results,
+        timestamp: checkup.timestamp,
+      }));
+      
+      setCheckupHistory(history);
+      calculateStats(history);
+      
+      // Tentar sincronizar pendentes em background
+      syncPendingCheckups().catch(err => 
+        console.error('Background sync error:', err)
+      );
     } catch (error) {
-      console.log('Erro ao carregar histórico:', error);
+      console.error('Erro ao carregar histórico:', error);
+      Alert.alert('Erro', 'Não foi possível carregar o histórico de verificações');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,38 +164,88 @@ const CheckupTab: React.FC = () => {
   };
 
   const addCheckupRecord = async (symptoms: string[], results: Record<string, number>) => {
-    const newRecord: CheckupRecord = {
-      id: Date.now().toString(),
-      date: new Date().toLocaleString('pt-BR'),
-      symptoms,
-      results,
-      timestamp: Date.now(),
-    };
+    if (!user) {
+      Alert.alert('Erro', 'Você precisa estar logado para salvar verificações');
+      return;
+    }
 
     try {
-      let updatedHistory: CheckupRecord[];
+      setLoading(true);
       
+      // Se está editando um checkup existente, atualiza em vez de criar
       if (editingRecord) {
-        // Se está editando, remove o registro antigo e adiciona o novo no topo
-        updatedHistory = [newRecord, ...checkupHistory.filter(record => record.id !== editingRecord.id)];
-        setEditingRecord(null);
-        
-        Alert.alert(
-          'Verificação Atualizada',
-          'A verificação foi editada e movida para o topo do histórico.',
-          [{ text: 'OK' }]
+        const response = await updateCheckupOfflineFirst(
+          editingRecord.id,
+          user.id,
+          symptoms,
+          results
         );
+        
+        if (!response.ok) {
+          throw new Error(response.message || 'Erro ao atualizar verificação');
+        }
+        
+        // Recarregar histórico
+        await loadCheckupHistory();
+        
+        // Mostrar feedback apropriado
+        if (response.checkup?.syncStatus === 'synced') {
+          Alert.alert(
+            '✅ Verificação Atualizada',
+            'Atualizado localmente e sincronizado com o Supabase!',
+            [{ text: 'OK' }]
+          );
+        } else if (response.checkup?.syncStatus === 'pending') {
+          Alert.alert(
+            '📱 Atualizado Localmente',
+            'Verificação atualizada no dispositivo. Será sincronizada quando houver conexão.',
+            [{ text: 'OK' }]
+          );
+        }
+        
+        setEditingRecord(null);
       } else {
-        // Nova verificação normal
-        updatedHistory = [newRecord, ...checkupHistory];
+        // Criar novo checkup
+        const response = await createCheckupOfflineFirst(
+          user.id,
+          symptoms,
+          results
+        );
+        
+        if (!response.ok) {
+          throw new Error(response.message || 'Erro ao salvar verificação');
+        }
+        
+        // Recarregar histórico
+        await loadCheckupHistory();
+        
+        // Mostrar feedback apropriado
+        if (response.checkup?.syncStatus === 'synced') {
+          Alert.alert(
+            '✅ Verificação Salva',
+            'Salvo localmente e sincronizado com o Supabase!',
+            [{ text: 'OK' }]
+          );
+        } else if (response.checkup?.syncStatus === 'pending') {
+          Alert.alert(
+            '📱 Salvo Localmente',
+            'Verificação salva no dispositivo. Será sincronizada quando houver conexão.',
+            [{ text: 'OK' }]
+          );
+        } else if (response.checkup?.syncStatus === 'error') {
+          Alert.alert(
+            '⚠️ Salvo com Aviso',
+            response.message || 'Salvo localmente, mas houve erro na sincronização.',
+            [{ text: 'OK' }]
+          );
+        }
       }
       
-      await AsyncStorage.setItem('checkupHistory', JSON.stringify(updatedHistory));
-      setCheckupHistory(updatedHistory);
-      calculateStats(updatedHistory);
-      filterHistoryByTime(updatedHistory, selectedTimeFilter);
     } catch (error) {
-      console.log('Erro ao salvar verificação:', error);
+      console.error('Erro ao salvar verificação:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a verificação');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -162,10 +256,10 @@ const CheckupTab: React.FC = () => {
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Reexecutar Mesmos Sintomas',
+          text: 'Reexecutar (Criar Nova)',
           style: 'default',
           onPress: () => {
-            // Simular nova análise com os mesmos sintomas
+            // Simular nova análise com os mesmos sintomas (cria novo registro)
             const simulateNewResults = () => {
               const baseResults = record.results;
               const newResults: Record<string, number> = {};
@@ -180,21 +274,20 @@ const CheckupTab: React.FC = () => {
               return newResults;
             };
 
-            // Criar novo registro
+            // Criar novo registro (não está em modo de edição)
             const newResults = simulateNewResults();
-            setEditingRecord(record);
             addCheckupRecord(record.symptoms, newResults);
           }
         },
         {
-          text: 'Editar Verificação',
+          text: 'Editar Esta Verificação',
           style: 'default',
           onPress: () => {
             setEditingRecord(record);
             Alert.alert(
-              'Modo de Edição Ativado',
-              'Os sintomas desta verificação aparecerão pré-selecionados no formulário acima. Você pode adicionar novos sintomas ou remover os existentes.',
-              [{ text: 'OK' }]
+              '✏️ Modo de Edição Ativado',
+              'Os sintomas desta verificação aparecerão pré-selecionados no formulário acima.\n\n• Você pode adicionar novos sintomas\n• Você pode remover sintomas existentes\n• Ao concluir, esta verificação será ATUALIZADA (não criará uma nova)',
+              [{ text: 'Entendido' }]
             );
           }
         }
@@ -203,6 +296,8 @@ const CheckupTab: React.FC = () => {
   };
 
   const deleteCheckupRecord = async (id: string) => {
+    if (!user) return;
+    
     Alert.alert(
       'Excluir Verificação',
       'Tem certeza que deseja excluir esta verificação?',
@@ -213,13 +308,21 @@ const CheckupTab: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updatedHistory = checkupHistory.filter(record => record.id !== id);
-              await AsyncStorage.setItem('checkupHistory', JSON.stringify(updatedHistory));
-              setCheckupHistory(updatedHistory);
-              calculateStats(updatedHistory);
-              filterHistoryByTime(updatedHistory, selectedTimeFilter);
+              setLoading(true);
+              const response = await deleteCheckupOfflineFirst(id, user.id);
+              
+              if (!response.ok) {
+                throw new Error(response.message || 'Erro ao excluir verificação');
+              }
+              
+              // Recarregar histórico
+              await loadCheckupHistory();
+              Alert.alert('✅ Sucesso', 'Verificação excluída com sucesso');
             } catch (error) {
-              console.log('Erro ao excluir verificação:', error);
+              console.error('Erro ao excluir verificação:', error);
+              Alert.alert('❌ Erro', 'Não foi possível excluir a verificação');
+            } finally {
+              setLoading(false);
             }
           }
         }
@@ -245,27 +348,50 @@ const CheckupTab: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
+          {/* Loading Indicator */}
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <View style={styles.loadingCard}>
+                <MaterialIcons name="sync" size={32} color="#5559ff" />
+                <Text style={styles.loadingText}>Sincronizando com Supabase...</Text>
+              </View>
+            </View>
+          )}
+          
           {/* Symptom Checker */}
           <SymptomChecker 
             onCheckupComplete={addCheckupRecord} 
             preSelectedSymptoms={editingRecord?.symptoms}
           />
 
-          {/* Botão Cancelar Edição */}
+          {/* Indicador de Modo de Edição */}
           {editingRecord && (
-            <TouchableOpacity 
-              style={styles.cancelEditButton}
-              onPress={() => {
-                setEditingRecord(null);
-                Alert.alert(
-                  'Edição Cancelada',
-                  'O modo de edição foi cancelado.',
-                  [{ text: 'OK' }]
-                );
-              }}
-            >
-              <Text style={styles.cancelEditText}>Cancelar Edição</Text>
-            </TouchableOpacity>
+            <View style={styles.editModeCard}>
+              <View style={styles.editModeHeader}>
+                <MaterialIcons name="edit" size={20} color="#5559ff" />
+                <Text style={styles.editModeTitle}>Modo de Edição Ativo</Text>
+              </View>
+              <Text style={styles.editModeText}>
+                Editando verificação de {editingRecord.date}
+              </Text>
+              <Text style={styles.editModeSubtext}>
+                {editingRecord.symptoms.length} sintoma{editingRecord.symptoms.length > 1 ? 's' : ''} pré-selecionado{editingRecord.symptoms.length > 1 ? 's' : ''}
+              </Text>
+              <TouchableOpacity 
+                style={styles.cancelEditButton}
+                onPress={() => {
+                  setEditingRecord(null);
+                  Alert.alert(
+                    '❌ Edição Cancelada',
+                    'O modo de edição foi cancelado.',
+                    [{ text: 'OK' }]
+                  );
+                }}
+              >
+                <MaterialIcons name="close" size={16} color="#721c24" />
+                <Text style={styles.cancelEditText}>Cancelar Edição</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* Quick Stats Cards */}
@@ -686,20 +812,85 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: 20,
   },
-  cancelEditButton: {
-    backgroundColor: '#f8d7da',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+  editModeCard: {
+    backgroundColor: '#e8f4f8',
     borderRadius: 12,
-    alignItems: 'center',
+    padding: 16,
     marginTop: -10,
     marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#5559ff',
+    shadowColor: '#5559ff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  editModeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  editModeTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#5559ff',
+    marginLeft: 8,
+  },
+  editModeText: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  editModeSubtext: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 12,
+  },
+  cancelEditButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderColor: '#f5c6cb',
+    borderColor: '#d4d8ff',
   },
   cancelEditText: {
-    color: '#721c24',
+    color: '#5559ff',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingCard: {
+    backgroundColor: '#fff',
+    padding: 24,
+    borderRadius: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#5559ff',
     fontWeight: '600',
   },
 });

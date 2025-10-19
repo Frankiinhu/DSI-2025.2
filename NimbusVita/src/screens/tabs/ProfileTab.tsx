@@ -3,24 +3,16 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signOut, getCurrentUser, PublicUser } from '../../services/auth';
-import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ProfileTab: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
+  const { user: currentUser, signOut } = useAuth();
   const [age, setAge] = useState<string>('');
   const [gender, setGender] = useState<string>('');
-  const navigation = useNavigation();
 
   useEffect(() => {
-    loadUserData();
     loadProfileData();
   }, []);
-
-  const loadUserData = async () => {
-    const user = await getCurrentUser();
-    setCurrentUser(user);
-  };
 
   const loadProfileData = async () => {
     try {
@@ -127,9 +119,6 @@ const ProfileTab: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            Alert.alert('Logout', 'Você saiu da conta com sucesso.', [
-              { text: 'OK', onPress: () => navigation.navigate('Login' as never) }
-            ]);
           }
         }
       ]

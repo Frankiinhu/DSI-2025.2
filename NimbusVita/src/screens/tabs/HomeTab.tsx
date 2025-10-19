@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { signOut, getCurrentUser, PublicUser } from '../../services/auth';
+import { useAuth } from '../../contexts/AuthContext';
 import WeatherCard from '../../components/WeatherCard';
 import StatusCard from '../../components/StatusCard';
 import RiskAnalysis from '../../components/RiskAnalysis';
@@ -28,7 +28,7 @@ interface StatusData {
 }
 
 const HomeTab: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
+  const { user: currentUser, signOut } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [weatherData, setWeatherData] = useState<WeatherData>({
     temperature: 28,
@@ -48,22 +48,12 @@ const HomeTab: React.FC = () => {
   });
 
   useEffect(() => {
-    loadUserData();
     generateRandomWeatherData();
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const loadUserData = async () => {
-    try {
-      const user = await getCurrentUser();
-      setCurrentUser(user);
-    } catch (error) {
-      console.error('Error loading user data:', error);
-    }
-  };
 
   const generateRandomWeatherData = () => {
     const conditions = ['Nublado', 'Ensolarado', 'Parcialmente Nublado', 'Chuvoso', 'Tempestade'];
@@ -386,9 +376,6 @@ const HomeTab: React.FC = () => {
                 <Text style={styles.subtitle}>Como você está se sentindo hoje?</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={generateRandomWeatherData} style={styles.debugBtn}>
-              <MaterialIcons name="refresh" size={20} color="#fff" />
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -556,13 +543,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#ffffff',
     opacity: 0.8,
-  },
-  debugBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   headerLogo: { 
     width: 64, 
