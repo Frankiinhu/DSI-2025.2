@@ -6,13 +6,14 @@ import HomeTab from './HomeTab';
 import CheckupTab from './CheckupTab';
 import AlertsTab from './AlertsTab';
 import ProfileTab from './ProfileTab';
+import { Colors, Spacing, Shadows } from '../../styles';
 
 const Tab = createBottomTabNavigator();
 
 const TabBarLabel = ({ focused, label }: { focused: boolean; label: string }) => (
   <Text style={{ 
     fontSize: 20, 
-    color: focused ? '#fff' : '#b9bdff',
+    color: focused ? Colors.textWhite : Colors.accentLight,
     fontWeight: focused ? '800' : '400',
   }}>
     {label}
@@ -25,20 +26,16 @@ const MainTabs: React.FC = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#5559ff',
+          backgroundColor: Colors.primary,
           borderTopWidth: 4,
           borderTopColor: '#8183ff',
-          paddingTop: 16,
-          paddingBottom: 8,
+          paddingTop: Spacing.base,
+          paddingBottom: Spacing.sm,
           height: 120,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 8,
+          ...Shadows.lg,
         },
-        tabBarActiveTintColor: '#fff',
-        tabBarInactiveTintColor: '#b9bdff',
+        tabBarActiveTintColor: Colors.textWhite,
+        tabBarInactiveTintColor: Colors.accentLight,
       }}
     >
       <Tab.Screen 

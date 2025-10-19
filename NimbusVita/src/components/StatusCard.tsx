@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Colors } from '../styles';
 
 interface StatusCardProps {
   location: string;
@@ -51,7 +52,7 @@ const StatusCard: React.FC<StatusCardProps> = ({
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.locationContainer}>
-          <MaterialIcons name="location-on" size={16} color="#5559ff" />
+          <MaterialIcons name="location-on" size={16} color={Colors.primary} />
           <Text style={styles.location}>{location}</Text>
         </View>
       </View>
@@ -80,7 +81,7 @@ const StatusCard: React.FC<StatusCardProps> = ({
           <MaterialIcons 
             name={getWeatherIcon(weatherCondition) as any} 
             size={20} 
-            color="#5559ff" 
+            color={Colors.primary} 
           />
           <Text style={styles.weatherCondition}>{weatherCondition}</Text>
         </View>

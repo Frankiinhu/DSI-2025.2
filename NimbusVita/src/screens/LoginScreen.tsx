@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image, Scro
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius } from '../styles';
 
 const logo = require('../../assets/logo.png');
 
@@ -48,7 +49,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -73,7 +74,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Nome de usuário ou E-mail"
-            placeholderTextColor={"#5559ff"}
+            placeholderTextColor={Colors.primary}
             value={loginInput}
             onChangeText={setLoginInput}
             autoCapitalize="none"
@@ -83,7 +84,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Senha"
-            placeholderTextColor={"#5559ff"}
+            placeholderTextColor={Colors.primary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -111,87 +112,81 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#5559ff',
+    backgroundColor: Colors.primary,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 30,
+    padding: Spacing.xl2,
     justifyContent: 'center',
   },
   logo: {
     width: 180,
     height: 180,
-    marginBottom: 16,
+    marginBottom: Spacing.base,
     alignSelf: 'center',
   },
   title: {
-    fontSize: 36,
-    fontWeight: '700',
-    marginBottom: 8,
+    ...Typography.h1,
+    marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   nimbus: {
-    color: "#FFFFFF",
+    color: Colors.textWhite,
   },
   vita: {
-    color: "#e9c46a",
+    color: Colors.secondary,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#fff',
-    paddingHorizontal: 40,
-    marginBottom: 20,
+    ...Typography.body,
+    color: Colors.textWhite,
+    paddingHorizontal: Spacing.xl4,
+    marginBottom: Spacing.lg,
     textAlign: 'center',
-
   },
   input: {
-    color: "#5559ff",
-    borderWidth: 2,
-    borderColor: '#ffffffff',
-    backgroundColor: '#ffffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  row: {
-    color: "#fff",
-    flexDirection: 'row',
-    marginTop: 16,
-    justifyContent: 'center',
-  },
-  link: {
-    color: '#e9c46a',
-  },
-  note: {
-    marginTop: 24,
-    fontSize: 12,
-    paddingHorizontal: 40,
-    color: '#a4a8ff',
-    textAlign: 'center',
+    backgroundColor: Colors.textWhite,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.base,
+    fontSize: 16,
+    color: Colors.primary,
+    marginBottom: Spacing.md,
   },
   loginButton: {
-    backgroundColor: '#e9c46a',
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: Colors.secondary,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    justifyContent: 'center',
   },
   loginButtonText: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...Typography.button,
+    color: Colors.textWhite,
+  },
+  row: {
+    flexDirection: 'row',
+    marginTop: Spacing.base,
+    justifyContent: 'center',
   },
   account: {
-    color: '#fff',
-  }
+    ...Typography.body,
+    color: Colors.textWhite,
+  },
+  link: {
+    ...Typography.body,
+    color: Colors.secondary,
+    fontWeight: '600',
+  },
+  note: {
+    ...Typography.caption,
+    marginTop: Spacing.xl2,
+    paddingHorizontal: Spacing.xl4,
+    color: Colors.accentLight,
+    textAlign: 'center',
+  },
 });
 
 export default LoginScreen;

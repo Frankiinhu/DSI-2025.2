@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 
 const ProfileTab: React.FC = () => {
   const { user: currentUser, signOut } = useAuth();
@@ -127,7 +128,7 @@ const ProfileTab: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Perfil</Text>
@@ -190,7 +191,7 @@ const ProfileTab: React.FC = () => {
                 <Text style={styles.infoLabel}>Gênero:</Text>
                 <TouchableOpacity style={styles.editButton} onPress={handleEditGender}>
                   <Text style={styles.editButtonText}>{gender}</Text>
-                  <MaterialIcons name="edit" size={16} color="#5559ff" style={styles.editIcon} />
+                  <MaterialIcons name="edit" size={16} color={Colors.primary} style={styles.editIcon} />
                 </TouchableOpacity>
               </View>
             )}
@@ -198,22 +199,22 @@ const ProfileTab: React.FC = () => {
 
           <View style={styles.optionsContainer}>
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="settings" size={24} color="#5559ff" style={styles.optionIcon} />
+              <MaterialIcons name="settings" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={styles.optionText}>Configurações</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="bar-chart" size={24} color="#5559ff" style={styles.optionIcon} />
+              <MaterialIcons name="bar-chart" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={styles.optionText}>Estatísticas de Saúde</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="notifications" size={24} color="#5559ff" style={styles.optionIcon} />
+              <MaterialIcons name="notifications" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={styles.optionText}>Notificações</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="info" size={24} color="#5559ff" style={styles.optionIcon} />
+              <MaterialIcons name="info" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={styles.optionText}>Sobre o App</Text>
             </TouchableOpacity>
 
@@ -236,172 +237,128 @@ const ProfileTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#a4a8ff',
+    backgroundColor: Colors.accent,
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    backgroundColor: '#5559ff',
-    paddingTop: 20,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
+    ...ComponentStyles.header,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 4,
+    ...ComponentStyles.headerTitle,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#ffffff',
-    opacity: 0.9,
+    ...ComponentStyles.headerSubtitle,
   },
   container: {
-    padding: 20,
-    paddingTop: 30,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl2,
   },
   profileCard: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
+    ...ComponentStyles.card,
+    marginBottom: Spacing.lg,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#5559ff',
-    marginBottom: 16,
+    ...Typography.h5,
+    color: Colors.primary,
+    marginBottom: Spacing.base,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.borderLight,
   },
   infoLabel: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '500',
-    color: '#333',
+    color: Colors.textPrimary,
   },
   infoValue: {
-    fontSize: 16,
-    color: '#666',
+    ...Typography.body,
+    color: Colors.textSecondary,
   },
   editButton: {
-    backgroundColor: '#f0f2ff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: Colors.inputBackground,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.base,
     flexDirection: 'row',
     alignItems: 'center',
   },
   editIcon: {
-    marginLeft: 6,
+    marginLeft: Spacing.xs,
   },
   editButtonText: {
-    fontSize: 14,
-    color: '#5559ff',
+    ...Typography.labelSmall,
+    color: Colors.primary,
     fontWeight: '500',
   },
-  placeholderText: {
-    color: '#999',
-    fontStyle: 'italic',
-  },
   infoRowColumn: {
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.borderLight,
   },
   ageInput: {
-    backgroundColor: '#f0f2ff',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    fontSize: 14,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginLeft: 10,
+    ...ComponentStyles.input,
+    marginLeft: Spacing.md,
     width: 80,
     textAlign: 'right',
+    paddingVertical: Spacing.sm,
   },
   genderButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
-    gap: 8,
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
   },
   genderButton: {
+    ...ComponentStyles.chip,
     flex: 1,
-    backgroundColor: '#f0f2ff',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
   },
   genderButtonText: {
-    fontSize: 12,
-    color: '#5559ff',
+    ...ComponentStyles.chipText,
+    color: Colors.primary,
     fontWeight: '600',
   },
   optionsContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
-    marginBottom: 20,
+    ...ComponentStyles.card,
+    marginBottom: Spacing.lg,
+    padding: 0,
   },
   optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    ...ComponentStyles.listItem,
   },
   optionIcon: {
-    marginRight: 12,
+    marginRight: Spacing.md,
     width: 24,
   },
   optionText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    ...ComponentStyles.listItemText,
   },
   logoutOption: {
     borderBottomWidth: 0,
   },
   logoutText: {
-    color: '#d4572a',
+    color: Colors.danger,
   },
   footer: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: Spacing.lg,
   },
   versionText: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '600',
-    color: '#5559ff',
-    marginBottom: 4,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
   },
   buildText: {
-    fontSize: 12,
-    color: '#999',
+    ...Typography.caption,
+    color: Colors.textTertiary,
   },
 });
 

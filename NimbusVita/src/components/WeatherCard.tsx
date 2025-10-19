@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Colors } from '../styles';
 
 interface WeatherCardProps {
   title: string;
@@ -18,7 +19,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
   unit, 
   status, 
   icon, 
-  iconColor = '#5559ff',
+  iconColor = Colors.primary,
   statusColor = '#666'
 }) => {
   // Função para determinar a cor de fundo baseada na cor do status
@@ -26,13 +27,13 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
     if (!statusColor) return '#f8f9fa';
     
     switch (statusColor) {
-      case '#d4572a': // Laranja escuro - Alto risco
+      case Colors.weather.hot: // Laranja escuro - Alto risco
         return '#fdf2f0';
-      case '#e9c46a': // Amarelo dourado - Moderado
+      case Colors.weather.warm: // Amarelo dourado - Moderado
         return '#fefbf6';
-      case '#5559ff': // Azul principal - Normal/Frio
+      case Colors.primary: // Azul principal - Normal/Frio
         return '#f0f1ff';
-      case '#7b7fff': // Azul claro - Bom
+      case Colors.weather.air.good: // Azul claro - Bom
         return '#f5f6ff';
       case '#f5d76e': // Amarelo claro - UV baixo
         return '#fefdf4';

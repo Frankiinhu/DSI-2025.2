@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Colors } from '../styles';
 
 interface RiskFactor {
   name: string;
@@ -141,7 +142,7 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
         ))}
 
         <View style={styles.personalizedTip}>
-          <MaterialIcons name="person" size={16} color="#5559ff" />
+          <MaterialIcons name="person" size={16} color={Colors.primary} />
           <Text style={styles.personalizedTitle}>Dica Personalizada</Text>
           <Text style={styles.personalizedDescription}>
             Monitore como se sente e ajuste atividades conforme necessário.
@@ -294,7 +295,7 @@ const styles = StyleSheet.create({
   personalizedTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#5559ff',
+    color: Colors.primary,
     marginLeft: 4,
     marginBottom: 4,
   },

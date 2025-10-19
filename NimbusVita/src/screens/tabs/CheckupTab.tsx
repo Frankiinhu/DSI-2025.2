@@ -13,6 +13,7 @@ import {
   syncPendingCheckups,
   getSyncStatus
 } from '../../services/supabase/checkup.storage.service';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 
 interface CheckupRecord {
   id: string;
@@ -352,7 +353,7 @@ const CheckupTab: React.FC = () => {
           {loading && (
             <View style={styles.loadingOverlay}>
               <View style={styles.loadingCard}>
-                <MaterialIcons name="sync" size={32} color="#5559ff" />
+                <MaterialIcons name="sync" size={32} color={Colors.primary} />
                 <Text style={styles.loadingText}>Sincronizando com Supabase...</Text>
               </View>
             </View>
@@ -368,7 +369,7 @@ const CheckupTab: React.FC = () => {
           {editingRecord && (
             <View style={styles.editModeCard}>
               <View style={styles.editModeHeader}>
-                <MaterialIcons name="edit" size={20} color="#5559ff" />
+                <MaterialIcons name="edit" size={20} color={Colors.primary} />
                 <Text style={styles.editModeTitle}>Modo de Edição Ativo</Text>
               </View>
               <Text style={styles.editModeText}>
@@ -415,7 +416,7 @@ const CheckupTab: React.FC = () => {
             {/* Header com Título e Filtro Unificados */}
             <View style={styles.historyHeader}>
               <View style={styles.historyTitleContainer}>
-                <MaterialIcons name="history" size={24} color="#5559ff" />
+                <MaterialIcons name="history" size={24} color={Colors.primary} />
                 <Text style={styles.historyTitle}>Histórico de Verificações</Text>
               </View>
               
@@ -487,7 +488,7 @@ const CheckupTab: React.FC = () => {
                         </View>
                         <View style={styles.symptomsBadgeContainer}>
                           <View style={styles.symptomsBadge}>
-                            <MaterialIcons name="medical-information" size={16} color="#5559ff" />
+                            <MaterialIcons name="medical-information" size={16} color={Colors.primary} />
                             <Text style={styles.symptomsCount}>{record.symptoms.length}</Text>
                             <Text style={styles.symptomsLabel}>sintoma{record.symptoms.length > 1 ? 's' : ''}</Text>
                           </View>
@@ -508,7 +509,7 @@ const CheckupTab: React.FC = () => {
                             style={styles.editButton}
                             onPress={() => editCheckupRecord(record)}
                           >
-                            <MaterialIcons name="edit" size={16} color="#5559ff" />
+                            <MaterialIcons name="edit" size={16} color={Colors.primary} />
                           </TouchableOpacity>
                           <TouchableOpacity 
                             style={styles.deleteButton}
@@ -544,160 +545,115 @@ const CheckupTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#a4a8ff',
+    backgroundColor: Colors.accent,
   },
   scrollView: {
     flex: 1,
   },
   container: {
-    padding: 20,
-    paddingTop: 30,
-    backgroundColor: '#a4a8ff',
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl2,
+    backgroundColor: Colors.accent,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
-    gap: 10,
+    marginBottom: Spacing.md,
+    gap: Spacing.md,
   },
   statCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.base,
     flex: 1,
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 16,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#e4e4e4'
+    ...Shadows.md,
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#5559ff',
-    marginBottom: 4,
+    ...Typography.h3,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
   },
   statLabel: {
-    fontSize: 11,
-    color: '#666',
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    fontWeight: '500',
   },
   historyContainer: {
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.lg,
   },
   historyHeader: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.base,
+    ...Shadows.md,
   },
   historyTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.base,
   },
   historyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#5559ff',
-    marginLeft: 8,
+    ...Typography.h4,
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
   },
   headerDivider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginVertical: 12,
-    marginHorizontal: -20,
+    ...ComponentStyles.divider,
+    marginHorizontal: -Spacing.lg,
   },
   timeFilterContainer: {
     flexDirection: 'row',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.base,
+    padding: Spacing.xs,
+    ...Shadows.sm,
   },
   timeFilterButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.base,
+    borderRadius: BorderRadius.base,
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
   timeFilterButtonActive: {
-    backgroundColor: '#5559ff',
-    shadowColor: '#5559ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: Colors.primary,
+    ...Shadows.md,
   },
   timeFilterText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
+    ...Typography.labelSmall,
+    color: Colors.textSecondary,
   },
   timeFilterTextActive: {
-    color: '#ffffff',
+    ...Typography.labelSmall,
+    color: Colors.textWhite,
     fontWeight: '600',
-  },
-  emptyHistoryCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
   },
   emptyHistory: {
-    padding: 30,
-    alignItems: 'center',
+    ...ComponentStyles.emptyState,
   },
   emptyHistoryText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 16,
-    textAlign: 'center',
+    ...ComponentStyles.emptyStateText,
   },
   emptyHistorySubtext: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
+    ...ComponentStyles.emptyStateSubtext,
   },
   historyList: {
-    gap: 4,
+    gap: Spacing.xs,
   },
   historyItemCard: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.base,
+    marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: '#e8e9ff',
+    borderColor: Colors.borderLight,
     overflow: 'hidden',
   },
   historyItem: {
-    padding: 16,
+    padding: Spacing.base,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -708,161 +664,138 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   historyItemDate: {
-    fontSize: 13,
-    color: '#666',
+    ...Typography.caption,
+    color: Colors.textSecondary,
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   symptomsBadgeContainer: {
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   symptomsBadge: {
+    ...ComponentStyles.badge,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f2ff',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    backgroundColor: Colors.inputBackground,
     borderWidth: 1,
-    borderColor: '#d4d8ff',
+    borderColor: Colors.borderLight,
     alignSelf: 'flex-start',
   },
   symptomsCount: {
-    fontSize: 12,
-    color: '#5559ff',
-    fontWeight: '700',
-    marginLeft: 4,
-    marginRight: 4,
+    ...Typography.captionBold,
+    color: Colors.primary,
+    marginLeft: Spacing.xs,
+    marginRight: Spacing.xs,
   },
   symptomsLabel: {
-    fontSize: 12,
-    color: '#5559ff',
+    ...Typography.caption,
+    color: Colors.primary,
     fontWeight: '500',
   },
-  historyItemStats: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  historyItemSymptoms: {
-    fontSize: 11,
-    color: '#5559ff',
-    fontWeight: '600',
-  },
   historyItemResults: {
-    gap: 6,
-    marginTop: 4,
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
   },
   historyItemResult: {
-    fontSize: 14,
-    color: '#333',
+    ...Typography.body,
+    color: Colors.textPrimary,
     fontWeight: '500',
     lineHeight: 20,
   },
   actionButtons: {
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 8,
-    marginLeft: 16,
+    gap: Spacing.sm,
+    marginLeft: Spacing.base,
   },
   editButton: {
-    padding: 8,
-    backgroundColor: '#f0f2ff',
-    borderRadius: 20,
+    padding: Spacing.sm,
+    backgroundColor: Colors.inputBackground,
+    borderRadius: BorderRadius.full,
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#d4d8ff',
+    borderColor: Colors.borderLight,
   },
   deleteButton: {
-    padding: 8,
-    backgroundColor: '#fff2f2',
-    borderRadius: 20,
+    padding: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.full,
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#ffe4e4',
-  },
-  deleteButtonText: {
-    fontSize: 16,
-    color: '#d4572a',
-    fontWeight: 'bold',
+    borderColor: Colors.danger,
   },
   moreRecordsText: {
+    ...Typography.caption,
     textAlign: 'center',
-    color: '#999',
-    fontSize: 12,
-    marginTop: 12,
+    color: Colors.textTertiary,
+    marginTop: Spacing.md,
     fontStyle: 'italic',
   },
   footer: {
-    marginTop: 16,
-    marginBottom: 20,
+    marginTop: Spacing.base,
+    marginBottom: Spacing.lg,
     alignItems: 'center',
   },
   footerNote: {
+    ...Typography.bodySmall,
     textAlign: 'center',
-    color: '#4a5498',
-    fontSize: 14,
+    color: Colors.primaryDark,
     lineHeight: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.lg,
   },
   editModeCard: {
-    backgroundColor: '#e8f4f8',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: -10,
-    marginBottom: 10,
+    backgroundColor: Colors.secondaryLight,
+    borderRadius: BorderRadius.base,
+    padding: Spacing.base,
+    marginTop: -Spacing.md,
+    marginBottom: Spacing.md,
     borderWidth: 2,
-    borderColor: '#5559ff',
-    shadowColor: '#5559ff',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    borderColor: Colors.primary,
+    ...Shadows.md,
   },
   editModeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   editModeTitle: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '700',
-    color: '#5559ff',
-    marginLeft: 8,
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
   },
   editModeText: {
-    fontSize: 14,
-    color: '#333',
+    ...Typography.bodySmall,
+    color: Colors.textPrimary,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   editModeSubtext: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 12,
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.md,
   },
   cancelEditButton: {
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.base,
+    borderRadius: BorderRadius.base,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
+    gap: Spacing.xs,
     borderWidth: 1,
-    borderColor: '#d4d8ff',
+    borderColor: Colors.borderLight,
   },
   cancelEditText: {
-    color: '#5559ff',
-    fontSize: 14,
+    ...Typography.labelSmall,
+    color: Colors.primary,
     fontWeight: '600',
   },
   loadingOverlay: {
@@ -871,26 +804,20 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    backgroundColor: Colors.overlayLight,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000,
   },
   loadingCard: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 16,
+    ...ComponentStyles.card,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...Shadows.xl,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#5559ff',
+    ...Typography.body,
+    marginTop: Spacing.md,
+    color: Colors.primary,
     fontWeight: '600',
   },
 });

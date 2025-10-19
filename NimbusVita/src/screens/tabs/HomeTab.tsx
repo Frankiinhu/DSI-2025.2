@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import WeatherCard from '../../components/WeatherCard';
 import StatusCard from '../../components/StatusCard';
 import RiskAnalysis from '../../components/RiskAnalysis';
+import { Colors, Typography, Spacing, ComponentStyles } from '../../styles';
 
 const logo = require('../../../assets/logo.png');
 
@@ -359,7 +359,7 @@ const HomeTab: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#5559ff" />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -402,12 +402,12 @@ const HomeTab: React.FC = () => {
                      weatherData.temperature < 18 ? 'Frio' : 
                      weatherData.temperature < 24 ? 'Fresco' : 'Agradável'}
               icon="thermostat"
-              iconColor={weatherData.temperature > 34 ? "#d4572a" : 
-                        weatherData.temperature > 28 ? "#e9c46a" : 
-                        weatherData.temperature < 18 ? "#5559ff" : "#7b7fff"}
-              statusColor={weatherData.temperature > 28 ? "#d4572a" : 
-                          weatherData.temperature > 25 ? "#e9c46a" : 
-                          weatherData.temperature < 18 ? "#5559ff" : "#7b7fff"}
+              iconColor={weatherData.temperature > 34 ? Colors.weather.hot : 
+                        weatherData.temperature > 28 ? Colors.weather.warm : 
+                        weatherData.temperature < 18 ? Colors.weather.cool : Colors.primaryLight}
+              statusColor={weatherData.temperature > 28 ? Colors.danger : 
+                          weatherData.temperature > 25 ? Colors.warning : 
+                          weatherData.temperature < 18 ? Colors.primary : Colors.primaryLight}
             />
             <WeatherCard
               title="Umidade"
@@ -417,10 +417,10 @@ const HomeTab: React.FC = () => {
                      weatherData.humidity > 60 ? 'Alta' : 
                      weatherData.humidity < 40 ? 'Baixa' : 'Normal'}
               icon="water-drop"
-              iconColor={weatherData.humidity > 70 ? "#d4572a" : 
-                        weatherData.humidity > 60 ? "#e9c46a" : "#5559ff"}
-              statusColor={weatherData.humidity > 70 ? "#d4572a" : 
-                          weatherData.humidity > 60 ? "#e9c46a" : "#5559ff"}
+              iconColor={weatherData.humidity > 70 ? Colors.danger : 
+                        weatherData.humidity > 60 ? Colors.warning : Colors.primary}
+              statusColor={weatherData.humidity > 70 ? Colors.danger : 
+                          weatherData.humidity > 60 ? Colors.warning : Colors.primary}
             />
             <WeatherCard
               title="Pressão"
@@ -430,10 +430,10 @@ const HomeTab: React.FC = () => {
                      weatherData.pressure < 1013 ? 'Baixa' : 
                      weatherData.pressure > 1020 ? 'Alta' : 'Normal'}
               icon="speed"
-              iconColor={weatherData.pressure < 1000 ? "#d4572a" : 
-                        weatherData.pressure < 1013 ? "#e9c46a" : "#7b7fff"}
-              statusColor={weatherData.pressure < 1000 ? "#d4572a" : 
-                          weatherData.pressure < 1013 ? "#e9c46a" : "#7b7fff"}
+              iconColor={weatherData.pressure < 1000 ? Colors.danger : 
+                        weatherData.pressure < 1013 ? Colors.warning : Colors.primaryLight}
+              statusColor={weatherData.pressure < 1000 ? Colors.danger : 
+                          weatherData.pressure < 1013 ? Colors.warning : Colors.primaryLight}
             />
             <WeatherCard
               title="Vento"
@@ -443,10 +443,10 @@ const HomeTab: React.FC = () => {
                      weatherData.windSpeed > 20 ? 'Forte' : 
                      weatherData.windSpeed > 10 ? 'Moderado' : 'Fraco'}
               icon="air"
-              iconColor={weatherData.windSpeed > 30 ? "#d4572a" : 
-                        weatherData.windSpeed > 20 ? "#e9c46a" : "#9999b3"}
-              statusColor={weatherData.windSpeed > 30 ? "#d4572a" : 
-                          weatherData.windSpeed > 20 ? "#e9c46a" : "#9999b3"}
+              iconColor={weatherData.windSpeed > 30 ? Colors.danger : 
+                        weatherData.windSpeed > 20 ? Colors.warning : Colors.textSecondary}
+              statusColor={weatherData.windSpeed > 30 ? Colors.danger : 
+                          weatherData.windSpeed > 20 ? Colors.warning : Colors.textSecondary}
             />
             <WeatherCard
               title="UV"
@@ -456,10 +456,10 @@ const HomeTab: React.FC = () => {
                      weatherData.uvIndex > 6 ? 'Alto' : 
                      weatherData.uvIndex > 3 ? 'Moderado' : 'Baixo'}
               icon="wb-sunny"
-              iconColor={weatherData.uvIndex > 8 ? "#d4572a" : 
-                        weatherData.uvIndex > 6 ? "#e9c46a" : "#f5d76e"}
-              statusColor={weatherData.uvIndex > 8 ? "#d4572a" : 
-                          weatherData.uvIndex > 6 ? "#e9c46a" : "#f5d76e"}
+              iconColor={weatherData.uvIndex > 8 ? Colors.danger : 
+                        weatherData.uvIndex > 6 ? Colors.warning : Colors.secondaryLight}
+              statusColor={weatherData.uvIndex > 8 ? Colors.danger : 
+                          weatherData.uvIndex > 6 ? Colors.warning : Colors.secondaryLight}
             />
             <WeatherCard
               title="Qualidade do Ar"
@@ -469,10 +469,10 @@ const HomeTab: React.FC = () => {
                      weatherData.airQuality > 100 ? 'Insalubre' : 
                      weatherData.airQuality > 50 ? 'Moderada' : 'Boa'}
               icon="visibility"
-              iconColor={weatherData.airQuality > 150 ? "#d4572a" : 
-                        weatherData.airQuality > 100 ? "#e9c46a" : "#7b7fff"}
-              statusColor={weatherData.airQuality > 150 ? "#d4572a" : 
-                          weatherData.airQuality > 100 ? "#e9c46a" : "#7b7fff"}
+              iconColor={weatherData.airQuality > 150 ? Colors.danger : 
+                        weatherData.airQuality > 100 ? Colors.warning : Colors.primaryLight}
+              statusColor={weatherData.airQuality > 150 ? Colors.danger : 
+                          weatherData.airQuality > 100 ? Colors.warning : Colors.primaryLight}
             />
           </View>
 
@@ -491,32 +491,23 @@ const HomeTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#a4a8ff',
+    backgroundColor: Colors.accent,
   },
   scrollView: {
     flex: 1,
   },
   container: {
-    padding: 20,
-    paddingTop: 30,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl2,
   },
   header: {
-    backgroundColor: '#5559ff',
-    paddingTop: 20,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
+    ...ComponentStyles.header,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.lg,
   },
   headerLeft: {
     flex: 1,
@@ -525,23 +516,22 @@ const styles = StyleSheet.create({
   },
   headerTextContainer: {
     flex: 1,
-    marginLeft: 15,
+    marginLeft: Spacing.base,
   },
   greeting: {
-    fontSize: 16,
-    color: '#e9c46a',
+    ...Typography.body,
+    color: Colors.secondary,
     fontWeight: '500',
     marginBottom: 2,
   },
   userName: {
-    fontSize: 20,
-    color: '#ffffff',
-    fontWeight: '700',
-    marginBottom: 4,
+    ...Typography.h4,
+    color: Colors.textWhite,
+    marginBottom: Spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#ffffff',
+    ...Typography.bodySmall,
+    color: Colors.textWhite,
     opacity: 0.8,
   },
   headerLogo: { 
@@ -549,17 +539,16 @@ const styles = StyleSheet.create({
     height: 64,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#000',
-    marginBottom: 16,
-    marginTop: 8,
+    ...Typography.h4,
+    color: Colors.textDark,
+    marginBottom: Spacing.base,
+    marginTop: Spacing.sm,
   },
   weatherGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: Spacing.xl2,
   },
 });
 

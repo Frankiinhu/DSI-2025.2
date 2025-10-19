@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, FlatList, ScrollView } from 'react-native';
+import { Colors } from '../styles';
 
 const SYMPTOMS = {
   // Sintomas Gerais
@@ -392,7 +393,7 @@ const styles = StyleSheet.create({
   cardTitle: { 
     fontSize: 20, 
     fontWeight: '700',
-    color: '#5559ff',
+    color: Colors.primary,
     marginBottom: 4,
   },
   cardSubtitle: { 
@@ -459,7 +460,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   dropdownItemTextSelected: {
-    color: '#5559ff',
+    color: Colors.primary,
     fontWeight: '600',
   },
   moreResultsText: {
@@ -511,7 +512,7 @@ const styles = StyleSheet.create({
   },
   symptomChipText: {
     fontSize: 14,
-    color: '#5559ff',
+    color: Colors.primary,
     fontWeight: '500',
   },
   symptomChipRemove: {
@@ -522,7 +523,7 @@ const styles = StyleSheet.create({
   },
   predictBtn: {
     color: "#fff",
-    backgroundColor: '#5559ff',
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -554,7 +555,7 @@ const styles = StyleSheet.create({
   resultsTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#5559ff',
+    color: Colors.primary,
     marginBottom: 4,
   },
   resultsSubtitle: {
@@ -579,7 +580,7 @@ const styles = StyleSheet.create({
   resultPercentage: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#5559ff',
+    color: Colors.primary,
   },
   barBg: { 
     height: 12, 
@@ -605,7 +606,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   explainBtnText: {
-    color: '#5559ff',
+    color: Colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },

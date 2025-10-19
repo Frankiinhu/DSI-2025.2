@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert } from 'react-native';
+import { Colors } from '../styles';
 
 const AlertCard: React.FC = () => {
   const [enabled, setEnabled] = useState(false);
@@ -62,7 +63,7 @@ const styles = StyleSheet.create({
   cardTitle: { 
     fontSize: 18, 
     fontWeight: '700',
-    color: '#5559ff',
+    color: Colors.primary,
     marginBottom: 4,
   },
   cardSubtitle: { 
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   },
   pushBtn: { 
     marginTop: 16, 
-    backgroundColor: '#5559ff', 
+    backgroundColor: Colors.primary, 
     padding: 14, 
     borderRadius: 12, 
     alignItems: 'center',
