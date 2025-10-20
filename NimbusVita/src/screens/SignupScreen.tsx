@@ -175,6 +175,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         Dados protegidos com Supabase. Senha criptografada com bcrypt.
       </Text>
     </SafeAreaView>
+    </SafeAreaView>
   );
 };
 
