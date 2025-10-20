@@ -6,21 +6,34 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
+console.log('🔧 Configuração do Supabase:');
+console.log('  - URL:', supabaseUrl ? '✅ Definida' : '❌ Não encontrada');
+console.log('  - ANON_KEY:', supabaseAnonKey ? '✅ Definida' : '❌ Não encontrada');
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    '❌ Credenciais do Supabase não encontradas!\n\n' +
+  console.error(
+    '❌ ERRO CRÍTICO: Credenciais do Supabase não encontradas!\n\n' +
     'Por favor, configure o arquivo .env com:\n' +
     '- EXPO_PUBLIC_SUPABASE_URL\n' +
     '- EXPO_PUBLIC_SUPABASE_ANON_KEY\n\n' +
     'Veja o arquivo .env.example para referência.'
   );
+  
+  // NÃO LANÇAR ERRO - Permitir que o app inicie mesmo sem credenciais
+  // throw new Error('Credenciais do Supabase não encontradas');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    storage: AsyncStorage,
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-  },
-});
+console.log('✅ Cliente Supabase criado com sucesso');
+
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co', 
+  supabaseAnonKey || 'placeholder-key', 
+  {
+    auth: {
+      storage: AsyncStorage,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+    },
+  }
+);

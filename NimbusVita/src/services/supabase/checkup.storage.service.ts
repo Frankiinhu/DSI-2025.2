@@ -228,25 +228,17 @@ export const createCheckupOfflineFirst = async (
 
 /**
  * BUSCAR CHECKUPS (Cache-First)
- * 1. Retorna dados locais imediatamente
- * 2. Sincroniza em background
+ * Retorna dados locais imediatamente
+ * Sincronização é feita apenas no startup do app (AuthContext)
  */
 export const getCheckupsOfflineFirst = async (
   userId: string
 ): Promise<CheckupStorageResponse> => {
   try {
-    // 1. Buscar dados locais (rápido)
+    // Buscar dados locais (rápido)
     const localCheckups = await getLocalCheckups();
     const userCheckups = localCheckups.filter(c => c.userId === userId);
     console.log(`📱 Carregados ${userCheckups.length} checkups locais`);
-
-    // 2. Tentar sincronizar em background
-    const online = await isOnline();
-    if (online) {
-      syncCheckupsInBackground(userId).catch(err => 
-        console.error('Background sync error:', err)
-      );
-    }
 
     return { ok: true, checkups: userCheckups };
   } catch (error) {
@@ -307,15 +299,25 @@ export const updateCheckupOfflineFirst = async (
   symptoms: string[],
   results: Record<string, number>
 ): Promise<CheckupStorageResponse> => {
+  console.log('🔍 updateCheckupOfflineFirst: Iniciando...');
+  console.log('  - checkupId:', checkupId);
+  console.log('  - userId:', userId);
+  
   try {
     // 1. Buscar checkup local
     const localCheckups = await getLocalCheckups();
+    console.log(`📱 Total de checkups locais: ${localCheckups.length}`);
+    console.log(`📋 IDs disponíveis: ${localCheckups.map(c => c.id).join(', ')}`);
+    
     const checkupIndex = localCheckups.findIndex(c => c.id === checkupId);
     
     if (checkupIndex === -1) {
+      console.error(`❌ Checkup não encontrado! ID buscado: ${checkupId}`);
+      console.error(`   IDs disponíveis: ${localCheckups.map(c => c.id).join(', ')}`);
       return { ok: false, message: 'Checkup não encontrado' };
     }
 
+    console.log(`✅ Checkup encontrado no índice ${checkupIndex}`);
     const existingCheckup = localCheckups[checkupIndex];
     
     // 2. Atualizar dados localmente (mantém data e timestamp originais)
@@ -400,24 +402,40 @@ const syncCheckupsInBackground = async (userId: string): Promise<void> => {
 
     const supabaseCheckups = Array.isArray(response.data) ? response.data : [response.data];
     
-    // 2. Converter para formato local
-    const converted: LocalCheckup[] = supabaseCheckups.map((checkup: any) => ({
-      id: `supabase_${checkup.id}`,
-      userId: checkup.user_id,
-      date: new Date(checkup.checkup_date).toLocaleString('pt-BR'),
-      symptoms: Array.isArray(checkup.symptoms)
-        ? checkup.symptoms.map((s: any) => s.symptom_name || s.symptom_key || s)
-        : [],
-      results: checkup.predictions || {},
-      timestamp: new Date(checkup.checkup_date).getTime(),
-      syncStatus: 'synced',
-      supabaseId: checkup.id,
-    }));
-
-    // 3. Mesclar com dados locais (mantendo pendentes)
+    // Primeiro, buscar checkups locais para preservar IDs
     const localCheckups = await getLocalCheckups();
+    
+    // Criar mapa de checkups locais por supabaseId
+    const localBySupabaseId = new Map<string, LocalCheckup>();
+    localCheckups.forEach(local => {
+      if (local.supabaseId) {
+        localBySupabaseId.set(local.supabaseId, local);
+      }
+    });
+    
+    // 2. Converter para formato local (PRESERVANDO ID LOCAL SE EXISTIR)
+    const converted: LocalCheckup[] = supabaseCheckups.map((checkup: any) => {
+      const existingLocal = localBySupabaseId.get(checkup.id);
+      
+      return {
+        id: existingLocal?.id || `supabase_${checkup.id}`, // ✅ MANTÉM ID LOCAL
+        userId: checkup.user_id,
+        date: new Date(checkup.checkup_date).toLocaleString('pt-BR'),
+        symptoms: Array.isArray(checkup.symptoms)
+          ? checkup.symptoms.map((s: any) => s.symptom_name || s.symptom_key || s)
+          : [],
+        results: checkup.predictions || {},
+        timestamp: new Date(checkup.checkup_date).getTime(),
+        syncStatus: 'synced' as const,
+        supabaseId: checkup.id,
+      };
+    });
+
+    // 3. Filtrar locais pendentes que NÃO foram sincronizados ainda
     const pendingLocal = localCheckups.filter(c => 
-      c.userId === userId && c.syncStatus === 'pending'
+      c.userId === userId && 
+      c.syncStatus === 'pending' &&
+      !c.supabaseId // Só incluir se ainda não tem ID do Supabase
     );
 
     const merged = [...pendingLocal, ...converted];
@@ -534,27 +552,42 @@ export const syncCheckupsOnStartup = async (userId: string): Promise<void> => {
     const supabaseCheckups = Array.isArray(response.data) ? response.data : [response.data];
     console.log(`☁️ Encontrados ${supabaseCheckups.length} checkups no Supabase`);
 
-    // 2. Converter para formato local
-    const convertedCheckups: LocalCheckup[] = supabaseCheckups.map((checkup: any) => ({
-      id: `supabase_${checkup.id}`,
-      userId: checkup.user_id,
-      date: new Date(checkup.checkup_date).toLocaleString('pt-BR'),
-      symptoms: Array.isArray(checkup.symptoms)
-        ? checkup.symptoms.map((s: any) => s.symptom_name || s.symptom_key || s)
-        : [],
-      results: checkup.predictions || {},
-      timestamp: new Date(checkup.checkup_date).getTime(),
-      syncStatus: 'synced',
-      supabaseId: checkup.id,
-    }));
-
-    // 3. Buscar dados locais
+    // Buscar dados locais PRIMEIRO para preservar IDs
     const localCheckups = await getLocalCheckups();
     const userLocalCheckups = localCheckups.filter(c => c.userId === userId);
     console.log(`📱 Encontrados ${userLocalCheckups.length} checkups locais`);
+    
+    // Criar mapa de checkups locais por supabaseId
+    const localBySupabaseId = new Map<string, LocalCheckup>();
+    userLocalCheckups.forEach(local => {
+      if (local.supabaseId) {
+        localBySupabaseId.set(local.supabaseId, local);
+      }
+    });
+
+    // 2. Converter para formato local (PRESERVANDO ID LOCAL SE EXISTIR)
+    const convertedCheckups: LocalCheckup[] = supabaseCheckups.map((checkup: any) => {
+      const existingLocal = localBySupabaseId.get(checkup.id);
+      
+      return {
+        id: existingLocal?.id || `supabase_${checkup.id}`, // ✅ MANTÉM ID LOCAL
+        userId: checkup.user_id,
+        date: new Date(checkup.checkup_date).toLocaleString('pt-BR'),
+        symptoms: Array.isArray(checkup.symptoms)
+          ? checkup.symptoms.map((s: any) => s.symptom_name || s.symptom_key || s)
+          : [],
+        results: checkup.predictions || {},
+        timestamp: new Date(checkup.checkup_date).getTime(),
+        syncStatus: 'synced' as const,
+        supabaseId: checkup.id,
+      };
+    });
 
     // 4. Identificar checkups pendentes (não sincronizados)
-    const pendingCheckups = userLocalCheckups.filter(c => c.syncStatus === 'pending' || c.syncStatus === 'error');
+    const pendingCheckups = userLocalCheckups.filter(c => 
+      (c.syncStatus === 'pending' || c.syncStatus === 'error') &&
+      !c.supabaseId // Só incluir se ainda não foi sincronizado
+    );
     console.log(`⏳ ${pendingCheckups.length} checkups pendentes de sincronização`);
 
     // 5. Criar mapa de IDs do Supabase para evitar duplicatas

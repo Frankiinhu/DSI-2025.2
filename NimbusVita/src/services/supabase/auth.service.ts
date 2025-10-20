@@ -170,20 +170,35 @@ export const signOut = async (): Promise<void> => {
  * Obtém o usuário atual
  */
 export const getCurrentUser = async (): Promise<Profile | null> => {
+  console.log('🔍 getCurrentUser: Iniciando...');
+  
   try {
+    console.log('📡 getCurrentUser: Buscando sessão do Supabase...');
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) return null;
+    if (!user) {
+      console.log('ℹ️ getCurrentUser: Nenhum usuário autenticado');
+      return null;
+    }
 
-    const { data: profile } = await supabase
+    console.log(`✅ getCurrentUser: Usuário encontrado (ID: ${user.id})`);
+    console.log('📡 getCurrentUser: Buscando perfil do banco...');
+    
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
 
+    if (error) {
+      console.error('❌ getCurrentUser: Erro ao buscar perfil:', error);
+      return null;
+    }
+
+    console.log('✅ getCurrentUser: Perfil carregado com sucesso');
     return profile;
   } catch (error) {
-    console.error('Get current user error:', error);
+    console.error('❌ getCurrentUser: Erro inesperado:', error);
     return null;
   }
 };

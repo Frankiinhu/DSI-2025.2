@@ -9,9 +9,7 @@ import {
   createCheckupOfflineFirst, 
   getCheckupsOfflineFirst, 
   deleteCheckupOfflineFirst,
-  updateCheckupOfflineFirst,
-  syncPendingCheckups,
-  getSyncStatus
+  updateCheckupOfflineFirst
 } from '../../services/supabase/checkup.storage.service';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 
@@ -62,28 +60,31 @@ const CheckupTab: React.FC = () => {
     
     try {
       setLoading(true);
+      console.log('🔄 loadCheckupHistory: Carregando checkups para userId:', user.id);
+      
       const response = await getCheckupsOfflineFirst(user.id);
       
       if (!response.ok || !response.checkups) {
         throw new Error(response.message || 'Erro ao carregar checkups');
       }
       
+      console.log(`✅ Carregados ${response.checkups.length} checkups`);
+      
       // Converter formato local para formato do componente
-      const history: CheckupRecord[] = response.checkups.map((checkup) => ({
-        id: checkup.id,
-        date: checkup.date,
-        symptoms: checkup.symptoms,
-        results: checkup.results,
-        timestamp: checkup.timestamp,
-      }));
+      const history: CheckupRecord[] = response.checkups.map((checkup) => {
+        console.log(`  - Checkup ID: ${checkup.id}, Sintomas: ${checkup.symptoms.length}, Timestamp: ${checkup.timestamp}`);
+        return {
+          id: checkup.id,
+          date: checkup.date,
+          symptoms: checkup.symptoms,
+          results: checkup.results,
+          timestamp: checkup.timestamp,
+        };
+      });
       
       setCheckupHistory(history);
       calculateStats(history);
       
-      // Tentar sincronizar pendentes em background
-      syncPendingCheckups().catch(err => 
-        console.error('Background sync error:', err)
-      );
     } catch (error) {
       console.error('Erro ao carregar histórico:', error);
       Alert.alert('Erro', 'Não foi possível carregar o histórico de verificações');
@@ -175,6 +176,11 @@ const CheckupTab: React.FC = () => {
       
       // Se está editando um checkup existente, atualiza em vez de criar
       if (editingRecord) {
+        console.log('✏️ MODO DE EDIÇÃO DETECTADO');
+        console.log('  - Editando checkup ID:', editingRecord.id);
+        console.log('  - Timestamp original:', editingRecord.timestamp);
+        console.log('  - Sintomas novos:', symptoms);
+        
         const response = await updateCheckupOfflineFirst(
           editingRecord.id,
           user.id,
@@ -183,26 +189,20 @@ const CheckupTab: React.FC = () => {
         );
         
         if (!response.ok) {
+          console.error('❌ Erro ao atualizar:', response.message);
           throw new Error(response.message || 'Erro ao atualizar verificação');
         }
+        
+        console.log('✅ Checkup atualizado com sucesso!');
         
         // Recarregar histórico
         await loadCheckupHistory();
         
-        // Mostrar feedback apropriado
-        if (response.checkup?.syncStatus === 'synced') {
-          Alert.alert(
-            '✅ Verificação Atualizada',
-            'Atualizado localmente e sincronizado com o Supabase!',
-            [{ text: 'OK' }]
-          );
-        } else if (response.checkup?.syncStatus === 'pending') {
-          Alert.alert(
-            '📱 Atualizado Localmente',
-            'Verificação atualizada no dispositivo. Será sincronizada quando houver conexão.',
-            [{ text: 'OK' }]
-          );
-        }
+        Alert.alert(
+          '✅ Verificação Atualizada',
+          'Sua verificação foi atualizada com sucesso!',
+          [{ text: 'OK' }]
+        );
         
         setEditingRecord(null);
       } else {
@@ -220,26 +220,11 @@ const CheckupTab: React.FC = () => {
         // Recarregar histórico
         await loadCheckupHistory();
         
-        // Mostrar feedback apropriado
-        if (response.checkup?.syncStatus === 'synced') {
-          Alert.alert(
-            '✅ Verificação Salva',
-            'Salvo localmente e sincronizado com o Supabase!',
-            [{ text: 'OK' }]
-          );
-        } else if (response.checkup?.syncStatus === 'pending') {
-          Alert.alert(
-            '📱 Salvo Localmente',
-            'Verificação salva no dispositivo. Será sincronizada quando houver conexão.',
-            [{ text: 'OK' }]
-          );
-        } else if (response.checkup?.syncStatus === 'error') {
-          Alert.alert(
-            '⚠️ Salvo com Aviso',
-            response.message || 'Salvo localmente, mas houve erro na sincronização.',
-            [{ text: 'OK' }]
-          );
-        }
+        Alert.alert(
+          '✅ Verificação Salva',
+          'Sua verificação foi salva com sucesso!',
+          [{ text: 'OK' }]
+        );
       }
       
     } catch (error) {
@@ -251,6 +236,11 @@ const CheckupTab: React.FC = () => {
   };
 
   const editCheckupRecord = (record: CheckupRecord) => {
+    console.log('📝 editCheckupRecord: Iniciando edição');
+    console.log('  - Record ID:', record.id);
+    console.log('  - Timestamp:', record.timestamp);
+    console.log('  - Sintomas:', record.symptoms);
+    
     Alert.alert(
       'Editar Verificação',
       `Esta verificação contém ${record.symptoms.length} sintoma${record.symptoms.length > 1 ? 's' : ''}: ${record.symptoms.join(', ')}`,
@@ -260,6 +250,7 @@ const CheckupTab: React.FC = () => {
           text: 'Reexecutar (Criar Nova)',
           style: 'default',
           onPress: () => {
+            console.log('🔄 Usuário escolheu: Reexecutar (criar nova)');
             // Simular nova análise com os mesmos sintomas (cria novo registro)
             const simulateNewResults = () => {
               const baseResults = record.results;
@@ -284,7 +275,11 @@ const CheckupTab: React.FC = () => {
           text: 'Editar Esta Verificação',
           style: 'default',
           onPress: () => {
+            console.log('✏️ Usuário escolheu: Editar esta verificação');
+            console.log('  - Setando editingRecord com ID:', record.id);
+            
             setEditingRecord(record);
+            
             Alert.alert(
               '✏️ Modo de Edição Ativado',
               'Os sintomas desta verificação aparecerão pré-selecionados no formulário acima.\n\n• Você pode adicionar novos sintomas\n• Você pode remover sintomas existentes\n• Ao concluir, esta verificação será ATUALIZADA (não criará uma nova)',
@@ -357,8 +352,8 @@ const CheckupTab: React.FC = () => {
           {loading && (
             <View style={styles.loadingOverlay}>
               <View style={styles.loadingCard}>
-                <MaterialIcons name="sync" size={32} color={Colors.primary} />
-                <Text style={styles.loadingText}>Sincronizando com Supabase...</Text>
+                <MaterialIcons name="hourglass-empty" size={32} color={Colors.primary} />
+                <Text style={styles.loadingText}>Carregando...</Text>
               </View>
             </View>
           )}
