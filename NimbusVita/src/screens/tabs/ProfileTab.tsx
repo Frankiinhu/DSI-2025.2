@@ -219,7 +219,7 @@ const ProfileTab: React.FC = () => {
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.optionItem, styles.logoutOption]} onPress={handleLogout}>
-              <MaterialIcons name="logout" size={24} color={Colors.primary} style={styles.optionIcon} />
+              <MaterialIcons name="logout" size={24} color={Colors.danger} style={styles.optionIcon} />
               <Text style={[styles.optionText, styles.logoutText]}>Sair</Text>
             </TouchableOpacity>
           </View>
