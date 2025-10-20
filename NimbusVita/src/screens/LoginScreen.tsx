@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius } from '../styles';
+import { BottomTabBar, BottomTabView } from '@react-navigation/bottom-tabs';
 
 const logo = require('../../assets/logo.png');
 
@@ -139,7 +140,7 @@ const styles = StyleSheet.create({
   subtitle: {
     ...Typography.body,
     color: Colors.textWhite,
-    paddingHorizontal: Spacing.xl4,
+    paddingHorizontal: Spacing.lg,
     marginBottom: Spacing.lg,
     textAlign: 'center',
   },

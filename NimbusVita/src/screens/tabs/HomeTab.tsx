@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Image } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import WeatherCard from '../../components/WeatherCard';
@@ -359,7 +360,7 @@ const HomeTab: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <StatusBar style='light' backgroundColor={Colors.primary} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -381,17 +382,18 @@ const HomeTab: React.FC = () => {
 
         <View style={styles.container}>
           {/* Status Card */}
-          <StatusCard
-            location={statusData.location}
-            riskLevel={statusData.riskLevel}
-            riskPercentage={statusData.riskPercentage}
-            description={statusData.description}
-            lastUpdate={statusData.lastUpdate}
-            weatherCondition={weatherData.condition}
-          />
+          <View style={{ marginBottom: 16 }}>
+            <StatusCard
+              location={statusData.location}
+              riskLevel={statusData.riskLevel}
+              riskPercentage={statusData.riskPercentage}
+              description={statusData.description}
+              lastUpdate={statusData.lastUpdate}
+              weatherCondition={weatherData.condition}
+            />
+          </View>
 
           {/* Weather Cards Grid */}
-          <Text style={styles.sectionTitle}>Condições Atuais</Text>
           <View style={styles.weatherGrid}>
             <WeatherCard
               title="Temperatura"
@@ -507,12 +509,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.sm,
   },
   headerLeft: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'center'
   },
   headerTextContainer: {
     flex: 1,

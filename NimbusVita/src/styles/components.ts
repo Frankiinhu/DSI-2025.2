@@ -142,7 +142,8 @@ export const ComponentStyles = {
   
   listItemText: {
     ...Typography.body,
-    color: Colors.textPrimary,
+    fontWeight: '500',
+    color: Colors.primary,
     flex: 1,
   } as TextStyle,
   

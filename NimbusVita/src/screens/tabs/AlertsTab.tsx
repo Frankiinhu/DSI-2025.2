@@ -44,6 +44,7 @@ const styles = StyleSheet.create({
   container: {
     padding: Spacing.lg,
     paddingTop: Spacing.xl2,
+    marginBottom: Spacing.md
   },
   statsContainer: {
     flexDirection: 'row',

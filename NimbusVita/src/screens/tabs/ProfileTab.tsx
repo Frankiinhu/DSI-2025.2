@@ -156,7 +156,7 @@ const ProfileTab: React.FC = () => {
                 value={age}
                 onChangeText={handleAgeChange}
                 keyboardType="numeric"
-                placeholder="Digite sua idade"
+                placeholder="---"
                 placeholderTextColor="#999"
                 maxLength={3}
               />
@@ -257,10 +257,11 @@ const styles = StyleSheet.create({
   },
   profileCard: {
     ...ComponentStyles.card,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl2,
   },
   sectionTitle: {
     ...Typography.h5,
+    fontWeight: '700',
     color: Colors.primary,
     marginBottom: Spacing.base,
   },
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
   infoLabel: {
     ...Typography.body,
     fontWeight: '500',
-    color: Colors.textPrimary,
+    color: Colors.primary,
   },
   infoValue: {
     ...Typography.body,
@@ -304,10 +305,9 @@ const styles = StyleSheet.create({
   },
   ageInput: {
     ...ComponentStyles.input,
-    marginLeft: Spacing.md,
-    width: 80,
-    textAlign: 'right',
-    paddingVertical: Spacing.sm,
+    width: 55,
+    textAlign: 'center',
+    paddingVertical: 0,
   },
   genderButtons: {
     flexDirection: 'row',
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     ...ComponentStyles.card,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
     padding: 0,
   },
   optionItem: {
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
-    marginTop: Spacing.lg,
+    marginTop: Spacing.xs,
   },
   versionText: {
     ...Typography.body,
@@ -358,7 +358,8 @@ const styles = StyleSheet.create({
   },
   buildText: {
     ...Typography.caption,
-    color: Colors.textTertiary,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
   },
 });
 

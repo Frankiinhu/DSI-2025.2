@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import MainTabs from './src/screens/tabs/MainTabs';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Splash } from './src/screens/Splash';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { Colors } from './src/styles';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -23,8 +26,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  * Gerencia a navegação condicional baseada no estado de autenticação
  */
 function Navigation() {
-  const { user, loading } = useAuth();
 
+  
+  const { user, loading } = useAuth();
   // Enquanto verifica a sessão, mostra a splash screen
   if (loading) {
     return <Splash />;
@@ -69,10 +73,11 @@ function Navigation() {
  */
 export default function App() {
   return (
-    <SafeAreaProvider>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.primary }}>
+      <StatusBar style="light" />
       <AuthProvider>
         <Navigation />
       </AuthProvider>
-    </SafeAreaProvider>
+    </SafeAreaView>
   );
 }

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StatusBar, StyleSheet, Alert, Image } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors, Typography, Spacing, BorderRadius } from '../styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const logo = require('../../assets/logo.png');
 
@@ -74,7 +75,8 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
       <Image source={logo} style={styles.logo} resizeMode="contain" />
       <Text style={styles.title}>
         <Text style={styles.nimbus}>Nimbus</Text>
@@ -132,7 +134,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.note}>
         Dados protegidos com Supabase. Senha criptografada com bcrypt.
       </Text>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -144,8 +146,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 180,
+    height: 180,
     marginBottom: Spacing.base,
     alignSelf: 'center',
   },
@@ -163,7 +165,6 @@ const styles = StyleSheet.create({
   subtitle: {
     ...Typography.body,
     color: Colors.textWhite,
-    paddingHorizontal: Spacing.xl4,
     marginBottom: Spacing.lg,
     textAlign: 'center',
   },

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, FlatList, ScrollView } from 'react-native';
-import { Colors } from '../styles';
+import { Colors, Spacing } from '../styles';
 
 const SYMPTOMS = {
   // Sintomas Gerais
@@ -391,29 +391,29 @@ const styles = StyleSheet.create({
     borderColor: '#e1dbeb',
   },
   cardTitle: { 
-    fontSize: 20, 
+    fontSize: 22, 
     fontWeight: '700',
     color: Colors.primary,
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   cardSubtitle: { 
     color: '#666', 
-    marginBottom: 16,
+    marginBottom: Spacing.md,
     fontSize: 14,
     lineHeight: 20,
   },
   searchContainer: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: Colors.accentLight,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background,
   },
   clearSearchBtn: {
     position: 'absolute',
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
   quickTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: Colors.textSecondary,
     marginBottom: 10,
   },
   quickSymptoms: {
@@ -625,12 +625,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickChip: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: Colors.accentLight,
   },
   quickChipText: {
     fontSize: 13,

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert } from 'react-native';
-import { Colors } from '../styles';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../styles';
 
 const AlertCard: React.FC = () => {
   const [enabled, setEnabled] = useState(false);
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', 
     padding: 20, 
     borderRadius: 16, 
-    marginBottom: 20,
+    marginBottom: 28,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,

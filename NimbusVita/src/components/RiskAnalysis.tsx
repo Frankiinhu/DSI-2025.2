@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Colors } from '../styles';
+import { Colors, Spacing } from '../styles';
 
 interface RiskFactor {
   name: string;
@@ -64,8 +64,8 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
       {/* Risk Analysis Card */}
       <View style={styles.card}>
         <View style={styles.header}>
-          <MaterialIcons name="warning" size={20} color={getRiskColor(riskPercentage)} />
-          <Text style={styles.cardTitle}>Análise de Risco</Text>
+          <MaterialIcons name="warning" size={24} color={getRiskColor(riskPercentage)} />
+          <Text style={[styles.cardTitle, { color: getRiskColor(riskPercentage) }]}>Análise de Risco</Text>
           <View style={[styles.riskBadge, { backgroundColor: getRiskColor(riskPercentage) + '20' }]}>
             <Text style={[styles.riskLevel, { color: getRiskColor(riskPercentage) }]}>
               Risco {getRiskLevelText(riskPercentage)}
@@ -114,7 +114,7 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
       {/* Recommendations Card */}
       <View style={styles.card}>
         <View style={styles.header}>
-          <MaterialIcons name="lightbulb" size={20} color="#7b7fff" />
+          <MaterialIcons name="lightbulb" size={24} color={Colors.primary} />
           <Text style={styles.cardTitle}>Recomendações</Text>
         </View>
 
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 32,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -171,9 +171,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#333',
+    color: Colors.primary,
     flex: 1,
     marginLeft: 8,
   },
@@ -247,14 +247,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     lineHeight: 16,
-    marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#f1f1f1',
   },
   recommendationItem: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: Spacing.base,
   },
   recommendationContent: {
     flex: 1,
@@ -273,12 +272,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   priorityBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   priorityText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
   },
   recommendationDescription: {

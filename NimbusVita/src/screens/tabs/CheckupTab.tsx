@@ -348,6 +348,10 @@ const CheckupTab: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Checkup</Text>
+          <Text style={styles.headerSubtitle}>Prognósticos baseados nos sintomas observados</Text>
+        </View>
         <View style={styles.container}>
           {/* Loading Indicator */}
           {loading && (
@@ -509,13 +513,13 @@ const CheckupTab: React.FC = () => {
                             style={styles.editButton}
                             onPress={() => editCheckupRecord(record)}
                           >
-                            <MaterialIcons name="edit" size={16} color={Colors.primary} />
+                            <MaterialIcons name="edit" size={24} color={Colors.primary} />
                           </TouchableOpacity>
                           <TouchableOpacity 
                             style={styles.deleteButton}
                             onPress={() => deleteCheckupRecord(record.id)}
                           >
-                            <MaterialIcons name="delete" size={16} color="#d4572a" />
+                            <MaterialIcons name="delete" size={24} color="#d4572a" />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -550,6 +554,15 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  header: {
+    ...ComponentStyles.header,
+  },
+  headerTitle: {
+    ...ComponentStyles.headerTitle,
+  },
+  headerSubtitle: {
+    ...ComponentStyles.headerSubtitle,
+  },
   container: {
     padding: Spacing.lg,
     paddingTop: Spacing.xl2,
@@ -558,7 +571,8 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: Spacing.md,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.base,
     gap: Spacing.md,
   },
   statCard: {
@@ -581,7 +595,7 @@ const styles = StyleSheet.create({
   },
   historyContainer: {
     marginTop: Spacing.md,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   historyHeader: {
     backgroundColor: Colors.surface,
@@ -596,7 +610,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.base,
   },
   historyTitle: {
-    ...Typography.h4,
+    ...Typography.h5,
+    fontSize: 22,
+    fontWeight: '700',
     color: Colors.primary,
     marginLeft: Spacing.sm,
   },
@@ -673,12 +689,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   symptomsBadge: {
-    ...ComponentStyles.badge,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.inputBackground,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
+    backgroundColor: Colors.surfaceLight,
     alignSelf: 'flex-start',
   },
   symptomsCount: {
@@ -710,21 +723,21 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: Spacing.sm,
-    backgroundColor: Colors.inputBackground,
+    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.full,
-    width: 36,
-    height: 36,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: Colors.borderLight,
+    borderColor: Colors.primary,
   },
   deleteButton: {
     padding: Spacing.sm,
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.full,
-    width: 36,
-    height: 36,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -738,7 +751,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   footer: {
-    marginTop: Spacing.base,
     marginBottom: Spacing.lg,
     alignItems: 'center',
   },
