@@ -1,9 +1,10 @@
-import React, { act, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { loginUser } from '../services/auth';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius } from '../styles';
+import { BottomTabBar, BottomTabView } from '@react-navigation/bottom-tabs';
 
 const logo = require('../../assets/logo.png');
 
@@ -16,34 +17,40 @@ type RootStackParamList = {
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
-  // Estado genérico para username ou email
+  const { signIn } = useAuth();
+  
+  // Estado para campos do formulário
   const [loginInput, setLoginInput] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    // Validação básica
     if (!loginInput || !password) {
       return Alert.alert('Erro', 'Preencha todos os campos');
     }
+
     setLoading(true);
     
-    // Processa o input. Se for email, converte para minúsculas.
-    const isEmail = loginInput.includes('@');
-    const processedInput = isEmail ? loginInput.trim().toLowerCase() : loginInput.trim();
-    
-    const res = await loginUser(processedInput, password);
-    setLoading(false);
-    
-    if (!res.ok) {
-      return Alert.alert('Erro', res.message || 'Não foi possível logar');
+    try {
+      // Usa o AuthContext para fazer login
+      const result = await signIn(loginInput, password);
+      
+      if (!result.ok) {
+        Alert.alert('Erro', result.error || 'Não foi possível fazer login');
+      }
+      // Se login bem-sucedido, a navegação acontece automaticamente
+      // O AuthContext detecta a mudança e atualiza a navegação
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Erro desconhecido ao fazer login');
+    } finally {
+      setLoading(false);
     }
-    
-    navigation.replace('Home');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.background.brand} />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -68,7 +75,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Nome de usuário ou E-mail"
-            placeholderTextColor={theme.text.brand}
+            placeholderTextColor={Colors.primary}
             value={loginInput}
             onChangeText={setLoginInput}
             autoCapitalize="none"
@@ -78,7 +85,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.input}
             placeholder="Senha"
-            placeholderTextColor={theme.text.brand}
+            placeholderTextColor={Colors.primary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -95,7 +102,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           <Text style={styles.note}>
-            Autenticação simulada. Dados salvos localmente, senhas protegidas com hash (SHA-256).
+            Autenticação via Supabase. Dados protegidos com JWT e Row Level Security (RLS).
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -106,85 +113,81 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background.brand,
+    backgroundColor: Colors.primary,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 30,
+    padding: Spacing.xl2,
     justifyContent: 'center',
   },
   logo: {
     width: 180,
     height: 180,
-    marginBottom: 16,
+    marginBottom: Spacing.base,
     alignSelf: 'center',
   },
   title: {
-    fontSize: 36,
-    fontWeight: '700',
-    marginBottom: 8,
+    ...Typography.h1,
+    marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   nimbus: {
-    color: theme.text.inverse,
+    color: Colors.textWhite,
   },
   vita: {
-    color: theme.text.highlight,
+    color: Colors.secondary,
   },
   subtitle: {
-    fontSize: 14,
-    color: theme.text.inverse,
-    paddingHorizontal: 40,
-    marginBottom: 20,
+    ...Typography.body,
+    color: Colors.textWhite,
+    paddingHorizontal: Spacing.lg,
+    marginBottom: Spacing.lg,
     textAlign: 'center',
   },
   input: {
-    color: theme.text.brand,
-    borderWidth: 2,
-    borderColor: theme.surface.primary,
-    backgroundColor: theme.surface.primary,
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: theme.shadow.opacity,
-    shadowRadius: 6,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  row: {
-    color: theme.text.inverse,
-    flexDirection: 'row',
-    marginTop: 16,
-    justifyContent: 'center',
-  },
-  link: {
-    color: theme.text.highlight,
-  },
-  note: {
-    marginTop: 24,
-    fontSize: 12,
-    paddingHorizontal: 40,
-    color: theme.colors.accent.main,
-    textAlign: 'center',
+    backgroundColor: Colors.textWhite,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.base,
+    fontSize: 16,
+    color: Colors.primary,
+    marginBottom: Spacing.md,
   },
   loginButton: {
-    backgroundColor: theme.interactive.secondary,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: Colors.secondary,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     alignItems: 'center',
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: theme.shadow.opacity,
-    shadowRadius: 6,
+    justifyContent: 'center',
   },
   loginButtonText: {
-    color: theme.text.inverse,
-    fontSize: 20,
-    fontWeight: 'bold',
+    ...Typography.button,
+    color: Colors.textWhite,
+  },
+  row: {
+    flexDirection: 'row',
+    marginTop: Spacing.base,
+    justifyContent: 'center',
   },
   account: {
-    color: theme.text.inverse,
-  }
+    ...Typography.body,
+    color: Colors.textWhite,
+  },
+  link: {
+    ...Typography.body,
+    color: Colors.secondary,
+    fontWeight: '600',
+  },
+  note: {
+    ...Typography.caption,
+    marginTop: Spacing.xl2,
+    paddingHorizontal: Spacing.xl4,
+    color: Colors.accentLight,
+    textAlign: 'center',
+  },
 });
 
 export default LoginScreen;

@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import SymptomChecker from '../../components/SymptomChecker';
-import { theme } from '../../theme';
+import { useAuth } from '../../contexts/AuthContext';
+import { 
+  createCheckupOfflineFirst, 
+  getCheckupsOfflineFirst, 
+  deleteCheckupOfflineFirst,
+  updateCheckupOfflineFirst
+} from '../../services/supabase/checkup.storage.service';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 
 interface CheckupRecord {
   id: string;
@@ -21,10 +28,12 @@ interface CheckupStats {
 }
 
 const CheckupTab: React.FC = () => {
+  const { user } = useAuth();
   const [checkupHistory, setCheckupHistory] = useState<CheckupRecord[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<CheckupRecord[]>([]);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<'today' | '7days' | '30days'>('30days');
   const [editingRecord, setEditingRecord] = useState<CheckupRecord | null>(null);
+  const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<CheckupStats>({
     totalCheckups: 0,
     checkupsToday: 0,
@@ -32,19 +41,55 @@ const CheckupTab: React.FC = () => {
   });
 
   useEffect(() => {
-    loadCheckupHistory();
-  }, []);
+    if (user) {
+      loadCheckupHistory();
+    }
+  }, [user]);
+
+  // Recarregar histórico sempre que a aba receber foco
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadCheckupHistory();
+      }
+    }, [user])
+  );
 
   const loadCheckupHistory = async () => {
+    if (!user) return;
+    
     try {
-      const historyData = await AsyncStorage.getItem('checkupHistory');
-      if (historyData) {
-        const history: CheckupRecord[] = JSON.parse(historyData);
-        setCheckupHistory(history);
-        calculateStats(history);
+      setLoading(true);
+      console.log('🔄 loadCheckupHistory: Carregando checkups para userId:', user.id);
+      
+      const response = await getCheckupsOfflineFirst(user.id);
+      
+      if (!response.ok || !response.checkups) {
+        throw new Error(response.message || 'Erro ao carregar checkups');
       }
+      
+      console.log(`✅ Carregados ${response.checkups.length} checkups`);
+      
+      // Converter formato local para formato do componente
+      const history: CheckupRecord[] = response.checkups.map((checkup) => {
+        console.log(`  - Checkup ID: ${checkup.id}, Sintomas: ${checkup.symptoms.length}, Timestamp: ${checkup.timestamp}`);
+        return {
+          id: checkup.id,
+          date: checkup.date,
+          symptoms: checkup.symptoms,
+          results: checkup.results,
+          timestamp: checkup.timestamp,
+        };
+      });
+      
+      setCheckupHistory(history);
+      calculateStats(history);
+      
     } catch (error) {
-      console.log('Erro ao carregar histórico:', error);
+      console.error('Erro ao carregar histórico:', error);
+      Alert.alert('Erro', 'Não foi possível carregar o histórico de verificações');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -121,52 +166,92 @@ const CheckupTab: React.FC = () => {
   };
 
   const addCheckupRecord = async (symptoms: string[], results: Record<string, number>) => {
-    const newRecord: CheckupRecord = {
-      id: Date.now().toString(),
-      date: new Date().toLocaleString('pt-BR'),
-      symptoms,
-      results,
-      timestamp: Date.now(),
-    };
+    if (!user) {
+      Alert.alert('Erro', 'Você precisa estar logado para salvar verificações');
+      return;
+    }
 
     try {
-      let updatedHistory: CheckupRecord[];
+      setLoading(true);
       
+      // Se está editando um checkup existente, atualiza em vez de criar
       if (editingRecord) {
-        // Se está editando, remove o registro antigo e adiciona o novo no topo
-        updatedHistory = [newRecord, ...checkupHistory.filter(record => record.id !== editingRecord.id)];
-        setEditingRecord(null);
+        console.log('✏️ MODO DE EDIÇÃO DETECTADO');
+        console.log('  - Editando checkup ID:', editingRecord.id);
+        console.log('  - Timestamp original:', editingRecord.timestamp);
+        console.log('  - Sintomas novos:', symptoms);
+        
+        const response = await updateCheckupOfflineFirst(
+          editingRecord.id,
+          user.id,
+          symptoms,
+          results
+        );
+        
+        if (!response.ok) {
+          console.error('❌ Erro ao atualizar:', response.message);
+          throw new Error(response.message || 'Erro ao atualizar verificação');
+        }
+        
+        console.log('✅ Checkup atualizado com sucesso!');
+        
+        // Recarregar histórico
+        await loadCheckupHistory();
         
         Alert.alert(
-          'Verificação Atualizada',
-          'A verificação foi editada e movida para o topo do histórico.',
+          '✅ Verificação Atualizada',
+          'Sua verificação foi atualizada com sucesso!',
           [{ text: 'OK' }]
         );
+        
+        setEditingRecord(null);
       } else {
-        // Nova verificação normal
-        updatedHistory = [newRecord, ...checkupHistory];
+        // Criar novo checkup
+        const response = await createCheckupOfflineFirst(
+          user.id,
+          symptoms,
+          results
+        );
+        
+        if (!response.ok) {
+          throw new Error(response.message || 'Erro ao salvar verificação');
+        }
+        
+        // Recarregar histórico
+        await loadCheckupHistory();
+        
+        Alert.alert(
+          '✅ Verificação Salva',
+          'Sua verificação foi salva com sucesso!',
+          [{ text: 'OK' }]
+        );
       }
       
-      await AsyncStorage.setItem('checkupHistory', JSON.stringify(updatedHistory));
-      setCheckupHistory(updatedHistory);
-      calculateStats(updatedHistory);
-      filterHistoryByTime(updatedHistory, selectedTimeFilter);
     } catch (error) {
-      console.log('Erro ao salvar verificação:', error);
+      console.error('Erro ao salvar verificação:', error);
+      Alert.alert('Erro', 'Não foi possível salvar a verificação');
+    } finally {
+      setLoading(false);
     }
   };
 
   const editCheckupRecord = (record: CheckupRecord) => {
+    console.log('📝 editCheckupRecord: Iniciando edição');
+    console.log('  - Record ID:', record.id);
+    console.log('  - Timestamp:', record.timestamp);
+    console.log('  - Sintomas:', record.symptoms);
+    
     Alert.alert(
       'Editar Verificação',
       `Esta verificação contém ${record.symptoms.length} sintoma${record.symptoms.length > 1 ? 's' : ''}: ${record.symptoms.join(', ')}`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Reexecutar Mesmos Sintomas',
+          text: 'Reexecutar (Criar Nova)',
           style: 'default',
           onPress: () => {
-            // Simular nova análise com os mesmos sintomas
+            console.log('🔄 Usuário escolheu: Reexecutar (criar nova)');
+            // Simular nova análise com os mesmos sintomas (cria novo registro)
             const simulateNewResults = () => {
               const baseResults = record.results;
               const newResults: Record<string, number> = {};
@@ -181,21 +266,24 @@ const CheckupTab: React.FC = () => {
               return newResults;
             };
 
-            // Criar novo registro
+            // Criar novo registro (não está em modo de edição)
             const newResults = simulateNewResults();
-            setEditingRecord(record);
             addCheckupRecord(record.symptoms, newResults);
           }
         },
         {
-          text: 'Editar Verificação',
+          text: 'Editar Esta Verificação',
           style: 'default',
           onPress: () => {
+            console.log('✏️ Usuário escolheu: Editar esta verificação');
+            console.log('  - Setando editingRecord com ID:', record.id);
+            
             setEditingRecord(record);
+            
             Alert.alert(
-              'Modo de Edição Ativado',
-              'Os sintomas desta verificação aparecerão pré-selecionados no formulário acima. Você pode adicionar novos sintomas ou remover os existentes.',
-              [{ text: 'OK' }]
+              '✏️ Modo de Edição Ativado',
+              'Os sintomas desta verificação aparecerão pré-selecionados no formulário acima.\n\n• Você pode adicionar novos sintomas\n• Você pode remover sintomas existentes\n• Ao concluir, esta verificação será ATUALIZADA (não criará uma nova)',
+              [{ text: 'Entendido' }]
             );
           }
         }
@@ -204,6 +292,8 @@ const CheckupTab: React.FC = () => {
   };
 
   const deleteCheckupRecord = async (id: string) => {
+    if (!user) return;
+    
     Alert.alert(
       'Excluir Verificação',
       'Tem certeza que deseja excluir esta verificação?',
@@ -214,13 +304,21 @@ const CheckupTab: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updatedHistory = checkupHistory.filter(record => record.id !== id);
-              await AsyncStorage.setItem('checkupHistory', JSON.stringify(updatedHistory));
-              setCheckupHistory(updatedHistory);
-              calculateStats(updatedHistory);
-              filterHistoryByTime(updatedHistory, selectedTimeFilter);
+              setLoading(true);
+              const response = await deleteCheckupOfflineFirst(id, user.id);
+              
+              if (!response.ok) {
+                throw new Error(response.message || 'Erro ao excluir verificação');
+              }
+              
+              // Recarregar histórico
+              await loadCheckupHistory();
+              Alert.alert('✅ Sucesso', 'Verificação excluída com sucesso');
             } catch (error) {
-              console.log('Erro ao excluir verificação:', error);
+              console.error('Erro ao excluir verificação:', error);
+              Alert.alert('❌ Erro', 'Não foi possível excluir a verificação');
+            } finally {
+              setLoading(false);
             }
           }
         }
@@ -245,28 +343,55 @@ const CheckupTab: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Checkup</Text>
+          <Text style={styles.headerSubtitle}>Prognósticos baseados nos sintomas observados</Text>
+        </View>
         <View style={styles.container}>
+          {/* Loading Indicator */}
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <View style={styles.loadingCard}>
+                <MaterialIcons name="hourglass-empty" size={32} color={Colors.primary} />
+                <Text style={styles.loadingText}>Carregando...</Text>
+              </View>
+            </View>
+          )}
+          
           {/* Symptom Checker */}
           <SymptomChecker 
             onCheckupComplete={addCheckupRecord} 
             preSelectedSymptoms={editingRecord?.symptoms}
           />
 
-          {/* Botão Cancelar Edição */}
+          {/* Indicador de Modo de Edição */}
           {editingRecord && (
-            <TouchableOpacity 
-              style={styles.cancelEditButton}
-              onPress={() => {
-                setEditingRecord(null);
-                Alert.alert(
-                  'Edição Cancelada',
-                  'O modo de edição foi cancelado.',
-                  [{ text: 'OK' }]
-                );
-              }}
-            >
-              <Text style={styles.cancelEditText}>Cancelar Edição</Text>
-            </TouchableOpacity>
+            <View style={styles.editModeCard}>
+              <View style={styles.editModeHeader}>
+                <MaterialIcons name="edit" size={20} color={Colors.primary} />
+                <Text style={styles.editModeTitle}>Modo de Edição Ativo</Text>
+              </View>
+              <Text style={styles.editModeText}>
+                Editando verificação de {editingRecord.date}
+              </Text>
+              <Text style={styles.editModeSubtext}>
+                {editingRecord.symptoms.length} sintoma{editingRecord.symptoms.length > 1 ? 's' : ''} pré-selecionado{editingRecord.symptoms.length > 1 ? 's' : ''}
+              </Text>
+              <TouchableOpacity 
+                style={styles.cancelEditButton}
+                onPress={() => {
+                  setEditingRecord(null);
+                  Alert.alert(
+                    '❌ Edição Cancelada',
+                    'O modo de edição foi cancelado.',
+                    [{ text: 'OK' }]
+                  );
+                }}
+              >
+                <MaterialIcons name="close" size={16} color="#721c24" />
+                <Text style={styles.cancelEditText}>Cancelar Edição</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* Quick Stats Cards */}
@@ -290,7 +415,7 @@ const CheckupTab: React.FC = () => {
             {/* Header com Título e Filtro Unificados */}
             <View style={styles.historyHeader}>
               <View style={styles.historyTitleContainer}>
-                <MaterialIcons name="history" size={24} color="#5559ff" />
+                <MaterialIcons name="history" size={24} color={Colors.primary} />
                 <Text style={styles.historyTitle}>Histórico de Verificações</Text>
               </View>
               
@@ -362,7 +487,7 @@ const CheckupTab: React.FC = () => {
                         </View>
                         <View style={styles.symptomsBadgeContainer}>
                           <View style={styles.symptomsBadge}>
-                            <MaterialIcons name="medical-information" size={16} color="#5559ff" />
+                            <MaterialIcons name="medical-information" size={16} color={Colors.primary} />
                             <Text style={styles.symptomsCount}>{record.symptoms.length}</Text>
                             <Text style={styles.symptomsLabel}>sintoma{record.symptoms.length > 1 ? 's' : ''}</Text>
                           </View>
@@ -383,13 +508,13 @@ const CheckupTab: React.FC = () => {
                             style={styles.editButton}
                             onPress={() => editCheckupRecord(record)}
                           >
-                            <MaterialIcons name="edit" size={16} color="#5559ff" />
+                            <MaterialIcons name="edit" size={24} color={Colors.primary} />
                           </TouchableOpacity>
                           <TouchableOpacity 
                             style={styles.deleteButton}
                             onPress={() => deleteCheckupRecord(record.id)}
                           >
-                            <MaterialIcons name="delete" size={16} color="#d4572a" />
+                            <MaterialIcons name="delete" size={24} color="#d4572a" />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -419,160 +544,127 @@ const CheckupTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.background.accent,
+    backgroundColor: Colors.accent,
   },
   scrollView: {
     flex: 1,
   },
+  header: {
+    ...ComponentStyles.header,
+  },
+  headerTitle: {
+    ...ComponentStyles.headerTitle,
+  },
+  headerSubtitle: {
+    ...ComponentStyles.headerSubtitle,
+  },
   container: {
-    padding: 20,
-    paddingTop: 30,
-    backgroundColor: theme.background.accent,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl2,
+    backgroundColor: Colors.accent,
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
-    gap: 10,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.base,
+    gap: Spacing.md,
   },
   statCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.base,
     flex: 1,
-    backgroundColor: theme.surface.primary,
-    padding: 16,
-    borderRadius: 16,
     alignItems: 'center',
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: theme.border.light
+    ...Shadows.md,
   },
   statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: theme.text.brand,
-    marginBottom: 4,
+    ...Typography.h3,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
   },
   statLabel: {
-    fontSize: 11,
-    color: theme.text.secondary,
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
     textAlign: 'center',
-    fontWeight: '500',
   },
   historyContainer: {
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.md,
   },
   historyHeader: {
-    backgroundColor: theme.surface.primary,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: theme.border.light,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.base,
+    ...Shadows.md,
   },
   historyTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: Spacing.base,
   },
   historyTitle: {
-    fontSize: 20,
+    ...Typography.h5,
+    fontSize: 22,
     fontWeight: '700',
-    color: theme.text.brand,
-    marginLeft: 8,
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
   },
   headerDivider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginVertical: 12,
-    marginHorizontal: -20,
+    ...ComponentStyles.divider,
+    marginHorizontal: -Spacing.lg,
   },
   timeFilterContainer: {
     flexDirection: 'row',
-    backgroundColor: theme.surface.secondary,
-    borderRadius: 12,
-    padding: 4,
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.base,
+    padding: Spacing.xs,
+    ...Shadows.sm,
   },
   timeFilterButton: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.base,
+    borderRadius: BorderRadius.base,
     alignItems: 'center',
     backgroundColor: 'transparent',
   },
   timeFilterButtonActive: {
-    backgroundColor: theme.interactive.primary,
-    shadowColor: theme.interactive.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: Colors.primary,
+    ...Shadows.md,
   },
   timeFilterText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: theme.text.secondary,
+    ...Typography.labelSmall,
+    color: Colors.textSecondary,
   },
   timeFilterTextActive: {
-    color: theme.text.inverse,
+    ...Typography.labelSmall,
+    color: Colors.textWhite,
     fontWeight: '600',
-  },
-  emptyHistoryCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#f0f0f0',
   },
   emptyHistory: {
-    padding: 30,
-    alignItems: 'center',
+    ...ComponentStyles.emptyState,
   },
   emptyHistoryText: {
-    fontSize: 16,
-    color: theme.text.secondary,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 16,
-    textAlign: 'center',
+    ...ComponentStyles.emptyStateText,
   },
   emptyHistorySubtext: {
-    fontSize: 14,
-    color: theme.text.muted,
-    textAlign: 'center',
+    ...ComponentStyles.emptyStateSubtext,
   },
   historyList: {
-    gap: 4,
+    gap: Spacing.xs,
   },
   historyItemCard: {
-    backgroundColor: theme.surface.secondary,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.base,
+    marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.accent.light,
+    borderColor: Colors.borderLight,
     overflow: 'hidden',
   },
   historyItem: {
-    padding: 16,
+    padding: Spacing.base,
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
@@ -583,124 +675,156 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   historyItemDate: {
-    fontSize: 13,
-    color: theme.text.secondary,
+    ...Typography.caption,
+    color: Colors.textSecondary,
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: Spacing.sm,
   },
   symptomsBadgeContainer: {
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   symptomsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.surface.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.colors.accent.main,
+    backgroundColor: Colors.surfaceLight,
     alignSelf: 'flex-start',
   },
   symptomsCount: {
-    fontSize: 12,
-    color: theme.text.brand,
-    fontWeight: '700',
-    marginLeft: 4,
-    marginRight: 4,
+    ...Typography.captionBold,
+    color: Colors.primary,
+    marginLeft: Spacing.xs,
+    marginRight: Spacing.xs,
   },
   symptomsLabel: {
-    fontSize: 12,
-    color: theme.text.brand,
+    ...Typography.caption,
+    color: Colors.primary,
     fontWeight: '500',
   },
-  historyItemStats: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  historyItemSymptoms: {
-    fontSize: 11,
-    color: '#5559ff',
-    fontWeight: '600',
-  },
   historyItemResults: {
-    gap: 6,
-    marginTop: 4,
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
   },
   historyItemResult: {
-    fontSize: 14,
-    color: theme.text.primary,
+    ...Typography.body,
+    color: Colors.textPrimary,
     fontWeight: '500',
     lineHeight: 20,
   },
   actionButtons: {
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 8,
-    marginLeft: 16,
+    gap: Spacing.sm,
+    marginLeft: Spacing.base,
   },
   editButton: {
-    padding: 8,
-    backgroundColor: theme.surface.accent,
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    padding: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.full,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.accent.main,
+    borderColor: Colors.primary,
   },
   deleteButton: {
-    padding: 8,
-    backgroundColor: theme.colors.neutral.light,
-    borderRadius: 20,
-    width: 36,
-    height: 36,
+    padding: Spacing.sm,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.full,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.error,
-  },
-  deleteButtonText: {
-    fontSize: 16,
-    color: '#d4572a',
-    fontWeight: 'bold',
+    borderColor: Colors.danger,
   },
   moreRecordsText: {
+    ...Typography.caption,
     textAlign: 'center',
-    color: theme.text.muted,
-    fontSize: 12,
-    marginTop: 12,
+    color: Colors.textTertiary,
+    marginTop: Spacing.md,
     fontStyle: 'italic',
   },
   footer: {
-    marginTop: 16,
-    marginBottom: 20,
+    marginBottom: Spacing.lg,
     alignItems: 'center',
   },
   footerNote: {
+    ...Typography.bodySmall,
     textAlign: 'center',
-    color: theme.colors.primary.dark,
-    fontSize: 14,
+    color: Colors.primaryDark,
     lineHeight: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: Spacing.lg,
+  },
+  editModeCard: {
+    backgroundColor: Colors.secondaryLight,
+    borderRadius: BorderRadius.base,
+    padding: Spacing.base,
+    marginTop: -Spacing.md,
+    marginBottom: Spacing.md,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    ...Shadows.md,
+  },
+  editModeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  editModeTitle: {
+    ...Typography.body,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
+  },
+  editModeText: {
+    ...Typography.bodySmall,
+    color: Colors.textPrimary,
+    fontWeight: '500',
+    marginBottom: Spacing.xs,
+  },
+  editModeSubtext: {
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.md,
   },
   cancelEditButton: {
-    backgroundColor: theme.colors.neutral.light,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.base,
+    borderRadius: BorderRadius.base,
     alignItems: 'center',
-    marginTop: -10,
-    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.xs,
     borderWidth: 1,
-    borderColor: theme.colors.error,
+    borderColor: Colors.borderLight,
   },
   cancelEditText: {
-    color: theme.colors.error,
-    fontSize: 14,
+    ...Typography.labelSmall,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: Colors.overlayLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingCard: {
+    ...ComponentStyles.card,
+    alignItems: 'center',
+    ...Shadows.xl,
+  },
+  loadingText: {
+    ...Typography.body,
+    marginTop: Spacing.md,
+    color: Colors.primary,
     fontWeight: '600',
   },
 });

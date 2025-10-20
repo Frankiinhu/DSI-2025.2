@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { View, Text, TextInput, TouchableOpacity, StatusBar, StyleSheet, Alert, Image } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { registerUser, UserRegistration } from '../services/auth';
 import { MaterialIcons } from '@expo/vector-icons';
-import { theme } from '../theme';
+import { useAuth } from '../contexts/AuthContext';
+import { Colors, Typography, Spacing, BorderRadius } from '../styles';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const logo = require('../../assets/logo.png');
+
+
 
 type RootStackParamList = {
   Login: undefined;
@@ -13,84 +17,79 @@ type RootStackParamList = {
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Signup'>;
 
-type RegisterResponse = { ok: boolean; message?: string };
-
 const SignupScreen: React.FC<Props> = ({ navigation }) => {
-  const [fullName, setFullName] = useState('');
+  const { signUp } = useAuth();
+  
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [birthdate, setBirthdate] = useState<Date | undefined>(undefined);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [gender, setGender] = useState<'masculino' | 'feminino' | 'outro' | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!fullName || !username || !email || !password) {
-      return Alert.alert('Erro', 'Preencha os campos obrigatórios');
+    // Validações
+    if (!username || !email || !password) {
+      return Alert.alert('Erro', 'Preencha nome de usuário, email e senha');
     }
+    
     if (password !== confirm) {
       return Alert.alert('Erro', 'As senhas não coincidem');
     }
     
-    // Validação de email básica
+    // Validação de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
       return Alert.alert('Erro', 'Por favor, insira um email válido');
     }
 
+    if (password.length < 6) {
+      return Alert.alert('Erro', 'A senha deve ter no mínimo 6 caracteres');
+    }
+
+    setLoading(true);
+
     try {
-      // Basic birthdate sanity check (not in the future)
-      if (birthdate && birthdate > new Date()) {
-        return Alert.alert('Erro', 'Data de nascimento inválida');
+      // Usa o AuthContext para registrar
+      const result = await signUp(
+        username.trim(),
+        email.trim().toLowerCase(),
+        password
+      );
+      
+      if (!result.ok) {
+        Alert.alert('Erro', result.error || 'Não foi possível criar conta');
+      } else {
+        // Sucesso! A navegação acontece automaticamente
+        Alert.alert(
+          'Sucesso', 
+          'Conta criada com sucesso!',
+          [{ text: 'OK' }]
+        );
       }
-      const userToRegister: UserRegistration = {
-        fullName: fullName.trim(),
-        username: username.trim(),
-        email: email.trim().toLowerCase(),
-        password: password,
-        birthdate: birthdate ? birthdate.toISOString() : undefined,
-        gender: gender,
-      };
-      
-      console.log('Tentando registrar usuário:', { 
-        username: userToRegister.username, 
-        email: userToRegister.email, 
-        password: '***' 
-      });
-
-      const res: RegisterResponse = await registerUser(userToRegister);
-      
-      console.log('Resposta do registro:', res);
-      if (!res.ok) {
-        return Alert.alert('Erro', res.message || 'Não foi possível registrar');
-      }
-      
-      Alert.alert('Sucesso', 'Conta registrada. Faça login.');
-      navigation.goBack(); // Volta para a tela de Login
-
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no registro:', error);
-      Alert.alert('Erro', `Erro inesperado: ${error instanceof Error ? error.message : String(error)}`);
+      Alert.alert('Erro', error.message || 'Erro inesperado ao criar conta');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Criar conta</Text>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <Image source={logo} style={styles.logo} resizeMode="contain" />
+      <Text style={styles.title}>
+        <Text style={styles.nimbus}>Nimbus</Text>
+        <Text style={styles.vita}>Vita</Text>
+      </Text>
 
-      <TextInput 
-        style={styles.input} 
-        placeholderTextColor={theme.text.brand} 
-        placeholder="Nome completo" 
-        value={fullName}
-        onChangeText={setFullName}
-        autoCapitalize="none" 
-      />
+      <Text style={styles.subtitle}>
+        Crie sua conta para começar a usar o aplicativo
+      </Text>
       
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={theme.text.brand} 
+        placeholderTextColor={Colors.primary}
         placeholder="Nome de usuário" 
         value={username} 
         onChangeText={setUsername} 
@@ -99,7 +98,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={theme.text.brand} 
+        placeholderTextColor={Colors.primary}
         placeholder="E-mail" 
         value={email} 
         onChangeText={setEmail} 
@@ -108,7 +107,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       />
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={theme.text.brand} 
+        placeholderTextColor={Colors.primary}
         placeholder="Senha" 
         value={password} 
         onChangeText={setPassword} 
@@ -116,167 +115,99 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       />
       <TextInput 
         style={styles.input} 
-        placeholderTextColor={theme.text.brand} 
+        placeholderTextColor={Colors.primary}
         placeholder="Confirmar senha" 
         value={confirm} 
         onChangeText={setConfirm} 
         secureTextEntry 
       />
-      
-      <TouchableOpacity
-        style={[styles.input, { justifyContent: 'center' }]}
-        onPress={() => setShowDatePicker(true)}
-      >
-        <Text style={{ color: birthdate ? theme.text.inverse : theme.text.brand }}>
-          {birthdate ? birthdate.toLocaleDateString() : 'Data de nascimento'}
-        </Text>
-      </TouchableOpacity>
-
-      {showDatePicker && (
-        <DateTimePicker
-          value={birthdate ?? new Date(2000, 0, 1)}
-          mode="date"
-          maximumDate={new Date()}
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={(event: DateTimePickerEvent, selectedDate?: Date) => {
-            // On Android the picker closes after selection; on iOS we keep it open when using spinner
-            if (Platform.OS === 'android') {
-              setShowDatePicker(false);
-            }
-            if (event.type === 'set' && selectedDate) {
-              setBirthdate(selectedDate);
-            }
-            // For iOS when user dismisses without setting
-            if (event.type === 'dismissed') {
-              setShowDatePicker(false);
-            }
-          }}
-        />
-      )}
-
-      {/* Gender selection */}
-      <View style={styles.genderRow}>
-        <TouchableOpacity
-          style={[styles.genderButton, gender === 'masculino' && styles.genderSelected]}
-          onPress={() => setGender('masculino')}
-        >
-          <Text style={[styles.genderText, gender === 'masculino' && styles.genderTextSelected]}>Masculino</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.genderButton, gender === 'feminino' && styles.genderSelected]}
-          onPress={() => setGender('feminino')}
-        >
-          <Text style={[styles.genderText, gender === 'feminino' && styles.genderTextSelected]}>Feminino</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.genderButton, gender === 'outro' && styles.genderSelected]}
-          onPress={() => setGender('outro')}
-        >
-          <Text style={[styles.genderText, gender === 'outro' && styles.genderTextSelected]}>Outro</Text>
-        </TouchableOpacity>
-      </View>
       <TouchableOpacity style={styles.back} onPress={() => navigation.navigate('Login')}>
-        <MaterialIcons name="arrow-back-ios-new" size={24} color={theme.text.inverse}/>
+        <MaterialIcons name="arrow-back-ios-new" size={24} color={Colors.textWhite}/>
       </TouchableOpacity>      
       
       <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-        <Text style={styles.registerButtonText}>{'Cadastrar'}</Text>
+        <Text style={styles.registerButtonText}>
+          {loading ? 'Criando conta...' : 'Cadastrar'}
+        </Text>
       </TouchableOpacity>
       
       <Text style={styles.note}>
-        Modo de Demonstração: Os dados são salvos apenas neste dispositivo.
+        Dados protegidos com Supabase. Senha criptografada com bcrypt.
       </Text>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 30, 
-    justifyContent: 'center', 
-    backgroundColor: '#5559ff',
+  container: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    padding: Spacing.xl2,
+    justifyContent: 'center',
   },
-  title: { 
-    fontSize: 36,
-    alignContent: 'center',
-    textAlign: 'center', 
-    color: "#fff", 
-    fontWeight: '600', 
-    marginBottom: 50
+  logo: {
+    width: 180,
+    height: 180,
+    marginBottom: Spacing.base,
+    alignSelf: 'center',
   },
-  input: { 
-    borderWidth: 2, 
-    borderColor: theme.surface.primary,
-    backgroundColor: theme.surface.primary, 
-    padding: 12, 
-    borderRadius: 8, 
-    marginBottom: 12,
-    color: theme.text.brand,
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: theme.shadow.opacity,
-    shadowRadius: 6, 
+  title: {
+    ...Typography.h1,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
   },
-  note: { 
-    marginTop: 12, 
-    fontSize: 12, 
-    color: theme.colors.accent.main, 
-    textAlign: 'center' 
+  nimbus: {
+    color: Colors.textWhite,
   },
-  registerButton: { 
-    backgroundColor: theme.interactive.secondary, 
-    paddingVertical: 12, 
-    borderRadius: 8, 
-    alignItems: 'center', 
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: theme.shadow.opacity,
-    shadowRadius: 6,  
+  vita: {
+    color: Colors.secondary,
   },
-  registerButtonText: { 
-    color: theme.text.inverse, 
-    fontSize: 20, 
-    fontWeight: 'bold' 
+  subtitle: {
+    ...Typography.body,
+    color: Colors.textWhite,
+    marginBottom: Spacing.lg,
+    textAlign: 'center',
+  },
+  input: {
+    backgroundColor: Colors.textWhite,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.base,
+    fontSize: 16,
+    color: Colors.primary,
+    marginBottom: Spacing.md,
+  },
+  registerButton: {
+    backgroundColor: Colors.secondary,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  registerButtonText: {
+    ...Typography.button,
+    color: Colors.textWhite,
+  },
+  note: {
+    ...Typography.caption,
+    marginTop: Spacing.xl2,
+    paddingHorizontal: Spacing.xl4,
+    color: Colors.accentLight,
+    textAlign: 'center',
   },
   back: {
-    color: theme.text.inverse,
+    color: Colors.textWhite,
     position: 'absolute', 
-    padding: 8,
-    borderRadius: 5,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.sm,
     top: 40,
+    left: Spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-  }
-  ,
-  genderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
   },
-  genderButton: {
-    flex: 1,
-    paddingVertical: 10,
-    marginHorizontal: 4,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.surface.primary,
-    borderWidth: 1,
-    borderColor: theme.surface.primary,
-  },
-  genderSelected: {
-    backgroundColor: theme.interactive.secondary,
-    borderColor: theme.interactive.secondary,
-  },
-  genderText: {
-    color: theme.text.brand,
-    fontSize: 14,
-  },
-  genderTextSelected: {
-    color: theme.text.inverse,
-    fontWeight: '600',
-  }
 });
 
 export default SignupScreen;

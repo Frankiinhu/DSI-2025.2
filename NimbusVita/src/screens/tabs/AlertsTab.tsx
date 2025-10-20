@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AlertCard from '../../components/AlertCard';
 import ExplanationCard from '../../components/ExplanationCard';
-import { theme } from '../../theme';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 
 const AlertsTab: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.background.brand} />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Alertas de Saúde</Text>
@@ -27,33 +27,83 @@ const AlertsTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.background.accent,
+    backgroundColor: Colors.accent,
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    backgroundColor: theme.background.brand,
-    paddingTop: 20,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
+    ...ComponentStyles.header,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: theme.text.inverse,
-    marginBottom: 4,
+    ...ComponentStyles.headerTitle,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: theme.text.inverse,
-    opacity: 0.9,
+    ...ComponentStyles.headerSubtitle,
   },
   container: {
-    padding: 20,
-    paddingTop: 30,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl2,
+    marginBottom: Spacing.md
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.lg,
+    gap: Spacing.md,
+  },
+  statCard: {
+    ...ComponentStyles.cardSmall,
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    ...Typography.h3,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
+  },
+  statLabel: {
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.base,
+    padding: Spacing.xs,
+    marginBottom: Spacing.lg,
+    ...Shadows.sm,
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.base,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  filterButtonActive: {
+    backgroundColor: Colors.primary,
+    ...Shadows.md,
+  },
+  filterText: {
+    ...Typography.labelSmall,
+    color: Colors.textSecondary,
+  },
+  filterTextActive: {
+    ...Typography.labelSmall,
+    color: Colors.textWhite,
+    fontWeight: '600',
+  },
+  emptyState: {
+    ...ComponentStyles.emptyState,
+  },
+  emptyStateText: {
+    ...ComponentStyles.emptyStateText,
+  },
+  emptyStateSubtext: {
+    ...ComponentStyles.emptyStateSubtext,
   },
 });
 

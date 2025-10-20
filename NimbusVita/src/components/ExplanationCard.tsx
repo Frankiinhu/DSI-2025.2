@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Colors } from '../styles';
 
 const ExplanationCard: React.FC = () => {
   return (
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
     fontSize: 18, 
     fontWeight: '700', 
     marginBottom: 12,
-    color: '#5559ff',
+    color: Colors.primary,
   },
   paragraph: { 
     color: '#444', 

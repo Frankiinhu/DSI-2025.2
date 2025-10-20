@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, FlatList, ScrollView } from 'react-native';
+import { Colors, Spacing } from '../styles';
 
 const SYMPTOMS = {
   // Sintomas Gerais
@@ -207,6 +208,12 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete, preS
       const symptomsArray = Array.from(selectedSymptoms);
       const symptomsNames = symptomsArray.map(key => SYMPTOMS[key as keyof typeof SYMPTOMS]);
       onCheckupComplete(symptomsNames, res);
+      
+      // Limpar sintomas após completar o checkup (sempre, incluindo modo de edição)
+      setTimeout(() => {
+        setSelectedSymptoms(new Set());
+        setPredictions(null);
+      }, 500); // Pequeno delay para feedback visual
     }
   };
 
@@ -384,29 +391,29 @@ const styles = StyleSheet.create({
     borderColor: '#e1dbeb',
   },
   cardTitle: { 
-    fontSize: 20, 
+    fontSize: 22, 
     fontWeight: '700',
-    color: '#5559ff',
-    marginBottom: 4,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
   },
   cardSubtitle: { 
     color: '#666', 
-    marginBottom: 16,
+    marginBottom: Spacing.md,
     fontSize: 14,
     lineHeight: 20,
   },
   searchContainer: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: Spacing.md,
   },
   searchInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: Colors.accentLight,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background,
   },
   clearSearchBtn: {
     position: 'absolute',
@@ -453,7 +460,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   dropdownItemTextSelected: {
-    color: '#5559ff',
+    color: Colors.primary,
     fontWeight: '600',
   },
   moreResultsText: {
@@ -505,7 +512,7 @@ const styles = StyleSheet.create({
   },
   symptomChipText: {
     fontSize: 14,
-    color: '#5559ff',
+    color: Colors.primary,
     fontWeight: '500',
   },
   symptomChipRemove: {
@@ -516,7 +523,7 @@ const styles = StyleSheet.create({
   },
   predictBtn: {
     color: "#fff",
-    backgroundColor: '#5559ff',
+    backgroundColor: Colors.primary,
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
@@ -548,7 +555,7 @@ const styles = StyleSheet.create({
   resultsTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#5559ff',
+    color: Colors.primary,
     marginBottom: 4,
   },
   resultsSubtitle: {
@@ -573,7 +580,7 @@ const styles = StyleSheet.create({
   resultPercentage: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#5559ff',
+    color: Colors.primary,
   },
   barBg: { 
     height: 12, 
@@ -599,7 +606,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   explainBtnText: {
-    color: '#5559ff',
+    color: Colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -609,7 +616,7 @@ const styles = StyleSheet.create({
   quickTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#666',
+    color: Colors.textSecondary,
     marginBottom: 10,
   },
   quickSymptoms: {
@@ -618,12 +625,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickChip: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.background,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderColor: Colors.accentLight,
   },
   quickChipText: {
     fontSize: 13,

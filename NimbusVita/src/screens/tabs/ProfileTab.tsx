@@ -3,25 +3,17 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { signOut, getCurrentUser, PublicUser } from '../../services/auth';
-import { useNavigation } from '@react-navigation/native';
-import { theme } from '../../theme';
+import { useAuth } from '../../contexts/AuthContext';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 
 const ProfileTab: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
+  const { user: currentUser, signOut } = useAuth();
   const [age, setAge] = useState<string>('');
   const [gender, setGender] = useState<string>('');
-  const navigation = useNavigation();
 
   useEffect(() => {
-    loadUserData();
     loadProfileData();
   }, []);
-
-  const loadUserData = async () => {
-    const user = await getCurrentUser();
-    setCurrentUser(user);
-  };
 
   const loadProfileData = async () => {
     try {
@@ -128,9 +120,6 @@ const ProfileTab: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            Alert.alert('Logout', 'Você saiu da conta com sucesso.', [
-              { text: 'OK', onPress: () => navigation.navigate('Login' as never) }
-            ]);
           }
         }
       ]
@@ -139,7 +128,7 @@ const ProfileTab: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.background.brand} />
+      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Perfil</Text>
@@ -167,7 +156,7 @@ const ProfileTab: React.FC = () => {
                 value={age}
                 onChangeText={handleAgeChange}
                 keyboardType="numeric"
-                placeholder="Digite sua idade"
+                placeholder="---"
                 placeholderTextColor="#999"
                 maxLength={3}
               />
@@ -202,7 +191,7 @@ const ProfileTab: React.FC = () => {
                 <Text style={styles.infoLabel}>Gênero:</Text>
                 <TouchableOpacity style={styles.editButton} onPress={handleEditGender}>
                   <Text style={styles.editButtonText}>{gender}</Text>
-                  <MaterialIcons name="edit" size={16} color={theme.text.brand} style={styles.editIcon} />
+                  <MaterialIcons name="edit" size={16} color={Colors.primary} style={styles.editIcon} />
                 </TouchableOpacity>
               </View>
             )}
@@ -210,27 +199,27 @@ const ProfileTab: React.FC = () => {
 
           <View style={styles.optionsContainer}>
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="settings" size={24} color={theme.text.brand} style={styles.optionIcon} />
+              <MaterialIcons name="settings" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={styles.optionText}>Configurações</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="bar-chart" size={24} color={theme.text.brand} style={styles.optionIcon} />
+              <MaterialIcons name="bar-chart" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={styles.optionText}>Estatísticas de Saúde</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="notifications" size={24} color={theme.text.brand} style={styles.optionIcon} />
+              <MaterialIcons name="notifications" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={styles.optionText}>Notificações</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="info" size={24} color={theme.text.brand} style={styles.optionIcon} />
+              <MaterialIcons name="info" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={styles.optionText}>Sobre o App</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={[styles.optionItem, styles.logoutOption]} onPress={handleLogout}>
-              <MaterialIcons name="logout" size={24} color={theme.status.error} style={styles.optionIcon} />
+              <MaterialIcons name="logout" size={24} color={Colors.primary} style={styles.optionIcon} />
               <Text style={[styles.optionText, styles.logoutText]}>Sair</Text>
             </TouchableOpacity>
           </View>
@@ -248,172 +237,129 @@ const ProfileTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.background.accent,
+    backgroundColor: Colors.accent,
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    backgroundColor: theme.background.brand,
-    paddingTop: 20,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
+    ...ComponentStyles.header,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: theme.text.inverse,
-    marginBottom: 4,
+    ...ComponentStyles.headerTitle,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: theme.text.inverse,
-    opacity: 0.9,
+    ...ComponentStyles.headerSubtitle,
   },
   container: {
-    padding: 20,
-    paddingTop: 30,
+    padding: Spacing.lg,
+    paddingTop: Spacing.xl2,
   },
   profileCard: {
-    backgroundColor: theme.surface.primary,
-    padding: 24,
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
+    ...ComponentStyles.card,
+    marginBottom: Spacing.xl2,
   },
   sectionTitle: {
-    fontSize: 18,
+    ...Typography.h5,
     fontWeight: '700',
-    color: theme.text.brand,
-    marginBottom: 16,
+    color: Colors.primary,
+    marginBottom: Spacing.base,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.borderLight,
   },
   infoLabel: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '500',
-    color: theme.text.primary,
+    color: Colors.primary,
   },
   infoValue: {
-    fontSize: 16,
-    color: theme.text.secondary,
+    ...Typography.body,
+    color: Colors.textSecondary,
   },
   editButton: {
-    backgroundColor: theme.surface.accent,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: Colors.inputBackground,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.base,
     flexDirection: 'row',
     alignItems: 'center',
   },
   editIcon: {
-    marginLeft: 6,
+    marginLeft: Spacing.xs,
   },
   editButtonText: {
-    fontSize: 14,
-    color: theme.text.brand,
+    ...Typography.labelSmall,
+    color: Colors.primary,
     fontWeight: '500',
   },
-  placeholderText: {
-    color: '#999',
-    fontStyle: 'italic',
-  },
   infoRowColumn: {
-    paddingVertical: 12,
+    paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.borderLight,
   },
   ageInput: {
-    backgroundColor: theme.surface.accent,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    fontSize: 14,
-    color: theme.text.primary,
-    borderWidth: 1,
-    borderColor: theme.border.light,
-    marginLeft: 10,
-    width: 80,
-    textAlign: 'right',
+    ...ComponentStyles.input,
+    width: 55,
+    textAlign: 'center',
+    paddingVertical: 0,
   },
   genderButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
-    gap: 8,
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
   },
   genderButton: {
+    ...ComponentStyles.chip,
     flex: 1,
-    backgroundColor: theme.surface.accent,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border.light,
   },
   genderButtonText: {
-    fontSize: 12,
-    color: theme.text.brand,
+    ...ComponentStyles.chipText,
+    color: Colors.primary,
     fontWeight: '600',
   },
   optionsContainer: {
-    backgroundColor: theme.surface.primary,
-    borderRadius: 16,
-    shadowColor: theme.shadow.color,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
-    marginBottom: 20,
+    ...ComponentStyles.card,
+    marginBottom: Spacing.xl,
+    padding: 0,
   },
   optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border.light,
+    ...ComponentStyles.listItem,
   },
   optionIcon: {
-    marginRight: 12,
+    marginRight: Spacing.md,
     width: 24,
   },
   optionText: {
-    fontSize: 16,
-    color: theme.text.primary,
-    fontWeight: '500',
+    ...ComponentStyles.listItemText,
   },
   logoutOption: {
     borderBottomWidth: 0,
   },
   logoutText: {
-    color: theme.status.error,
+    color: Colors.danger,
   },
   footer: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: Spacing.xs,
   },
   versionText: {
-    fontSize: 16,
+    ...Typography.body,
     fontWeight: '600',
-    color: theme.text.brand,
-    marginBottom: 4,
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
   },
   buildText: {
-    fontSize: 12,
-    color: theme.text.muted,
+    ...Typography.caption,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
   },
 });
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { Colors } from '../styles';
 
 interface StatusCardProps {
   location: string;
@@ -51,7 +52,7 @@ const StatusCard: React.FC<StatusCardProps> = ({
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={styles.locationContainer}>
-          <MaterialIcons name="location-on" size={16} color="#5559ff" />
+          <MaterialIcons name="location-on" size={20} color={Colors.primaryLight} />
           <Text style={styles.location}>{location}</Text>
         </View>
       </View>
@@ -79,8 +80,8 @@ const StatusCard: React.FC<StatusCardProps> = ({
         <View style={styles.conditionContainer}>
           <MaterialIcons 
             name={getWeatherIcon(weatherCondition) as any} 
-            size={20} 
-            color="#5559ff" 
+            size={22} 
+            color={Colors.primary}
           />
           <Text style={styles.weatherCondition}>{weatherCondition}</Text>
         </View>
@@ -114,13 +115,13 @@ const styles = StyleSheet.create({
   location: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: Colors.primaryLight,
     marginLeft: 4,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#333',
+    color: Colors.primary,
     marginBottom: 8,
   },
   statusHeader: {
@@ -135,14 +136,12 @@ const styles = StyleSheet.create({
   riskBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#f8f9fa',
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    borderRadius: 8,
   },
   riskText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
   description: {
@@ -167,7 +166,7 @@ const styles = StyleSheet.create({
   },
   weatherCondition: {
     fontSize: 16,
-    color: '#333',
+    color: Colors.primary,
     marginLeft: 8,
     fontWeight: '500',
   },
