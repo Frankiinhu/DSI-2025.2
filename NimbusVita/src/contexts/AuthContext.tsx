@@ -22,6 +22,7 @@ type AuthContextType = {
   signIn: (emailOrUsername: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   signUp: (username: string, email: string, password: string, fullName?: string, birthdateIso?: string, gender?: 'masculino' | 'feminino' | 'outro') => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
+
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 };

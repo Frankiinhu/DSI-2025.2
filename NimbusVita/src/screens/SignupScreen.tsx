@@ -10,7 +10,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 const logo = require('../../assets/logo.png');
 
 
-
 type RootStackParamList = {
   Login: undefined;
   Signup: undefined;
