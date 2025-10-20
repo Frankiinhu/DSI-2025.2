@@ -1,5 +1,5 @@
 import React from 'react';
-import { BottomTabBar, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { View } from 'react-native';
 import { Fontisto, FontAwesome5, FontAwesome6, Octicons } from '@expo/vector-icons';
 import HomeTab from './HomeTab';
@@ -8,13 +8,12 @@ import AlertsTab from './AlertsTab';
 import ProfileTab from './ProfileTab';
 import { Colors, Spacing, Shadows, BorderRadius } from '../../styles';
 
-const Tab = createBottomTabNavigator();
+const Tab = createMaterialTopTabNavigator();
 
 const TabIcon = ({ 
   IconComponent, 
   name, 
   color, 
-  size, 
   focused 
 }: { 
   IconComponent: any;
@@ -23,101 +22,96 @@ const TabIcon = ({
   size: number;
   focused: boolean;
 }) => (
-  <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-    <IconComponent name={name} size={size} color={color} />
+  <View style={{ alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+    <IconComponent name={name} size={28} color={color} />
     {focused && (
       <View
         style={{
+          position: 'absolute',
+          bottom: -10,
           width: 12,
           height: 6,
           borderRadius: 3,
           backgroundColor: Colors.textWhite,
-          marginTop: 4,
         }}
       />
     )}
   </View>
 );
 
+// Configuração centralizada dos tabs
+const TABS_CONFIG = [
+  {
+    name: 'HomeTab',
+    component: HomeTab,
+    IconComponent: FontAwesome6,
+    iconName: 'house',
+  },
+  {
+    name: 'CheckupTab',
+    component: CheckupTab,
+    IconComponent: Fontisto,
+    iconName: 'pulse',
+  },
+  {
+    name: 'AlertsTab',
+    component: AlertsTab,
+    IconComponent: Octicons,
+    iconName: 'bell-fill',
+  },
+  {
+    name: 'ProfileTab',
+    component: ProfileTab,
+    IconComponent: FontAwesome5,
+    iconName: 'user-alt',
+  },
+];
+
+// Configurações comuns de ícones
+const ICON_SIZE = 24;
+
+// Função para criar as opções do tab
+const createTabOptions = (IconComponent: any, iconName: string) => ({
+  tabBarIcon: ({ color, focused }: { color: string; focused: boolean }) => (
+    <TabIcon 
+      IconComponent={IconComponent}
+      name={iconName}
+      color={color}
+      size={ICON_SIZE}
+      focused={focused}
+    />
+  ),
+});
+
 const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator
+      tabBarPosition="bottom"
       screenOptions={{
-        headerShown: false,
-          tabBarStyle: {
-            marginBlockStart: -20,
-            backgroundColor: Colors.primary,
-            borderTopLeftRadius: BorderRadius.xl2,
-            borderTopRightRadius: BorderRadius.xl2,
-            paddingTop: Spacing.xl,
-            height: 90,
-          },
-          tabBarActiveTintColor: Colors.textWhite,
-          tabBarInactiveTintColor: Colors.accentLight,
-          tabBarShowLabel: false,
-        }}
-      >
-        <Tab.Screen 
-          name="HomeTab" 
-          component={HomeTab}
-          options={{
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabIcon 
-                IconComponent={FontAwesome6}
-                name="house"
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
+        swipeEnabled: true,
+        tabBarStyle: {
+          marginBlockStart: -20,
+          backgroundColor: Colors.primary,
+          borderTopLeftRadius: BorderRadius.xl2,
+          borderTopRightRadius: BorderRadius.xl2,
+          paddingTop: Spacing.lg,
+          height: 96,
+        },
+        tabBarActiveTintColor: Colors.textWhite,
+        tabBarInactiveTintColor: Colors.accentLight,
+        tabBarShowLabel: false,
+        tabBarIndicatorStyle: { height: 0 },
+      }}
+    >
+      {TABS_CONFIG.map((tab) => (
+        <Tab.Screen
+          key={tab.name}
+          name={tab.name}
+          component={tab.component}
+          options={createTabOptions(tab.IconComponent, tab.iconName)}
         />
-        <Tab.Screen 
-          name="CheckupTab" 
-          component={CheckupTab}
-          options={{
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabIcon 
-                IconComponent={Fontisto}
-                name="pulse"
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen 
-          name="AlertsTab" 
-          component={AlertsTab}
-          options={{
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabIcon 
-                IconComponent={Octicons}
-                name="bell-fill"
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen 
-          name="ProfileTab" 
-          component={ProfileTab}
-          options={{
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabIcon 
-                IconComponent={FontAwesome5}
-                name="user-alt"
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
-        />
-      </Tab.Navigator>
+      ))}
+    </Tab.Navigator>
   );
 };
 

@@ -4,7 +4,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius } from '../styles';
-import { BottomTabBar, BottomTabView } from '@react-navigation/bottom-tabs';
 
 const logo = require('../../assets/logo.png');
 

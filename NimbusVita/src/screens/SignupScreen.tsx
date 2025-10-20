@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StatusBar, StyleSheet, Alert, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StatusBar, StyleSheet, Alert, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -85,95 +85,102 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
-      <Image source={logo} style={styles.logo} resizeMode="contain" />
-      <Text style={styles.title}>
-        <Text style={styles.nimbus}>Nimbus</Text>
-        <Text style={styles.vita}>Vita</Text>
-      </Text>
-
-      <Text style={styles.subtitle}>
-        Crie sua conta para começar a usar o aplicativo
-      </Text>
-      
-      <TextInput 
-        style={styles.input} 
-        placeholderTextColor={Colors.primary}
-        placeholder="Nome de usuário" 
-        value={username} 
-        onChangeText={setUsername} 
-        autoCapitalize="none" 
-      />
-      <TextInput 
-        style={styles.input} 
-        placeholderTextColor={Colors.primary}
-        placeholder="Nome completo" 
-        value={fullName} 
-        onChangeText={setFullName} 
-        autoCapitalize="words" 
-      />
-      
-      <TextInput 
-        style={styles.input} 
-        placeholderTextColor={Colors.primary}
-        placeholder="E-mail" 
-        value={email} 
-        onChangeText={setEmail} 
-        autoCapitalize="none" 
-        keyboardType="email-address" 
-      />
-      <TextInput 
-        style={styles.input} 
-        placeholderTextColor={Colors.primary}
-        placeholder="Senha" 
-        value={password} 
-        onChangeText={setPassword} 
-        secureTextEntry 
-      />
-      <TextInput 
-        style={styles.input} 
-        placeholderTextColor={Colors.primary}
-        placeholder="Confirmar senha" 
-        value={confirm} 
-        onChangeText={setConfirm} 
-        secureTextEntry 
-      />
-      <TouchableOpacity style={[styles.input, styles.datePickerButton]} onPress={() => setShowDatePicker(true)}>
-        <Text style={{ color: Colors.primary }}>{birthdate ? birthdate.toLocaleDateString() : 'Data de nascimento'}</Text>
-      </TouchableOpacity>
-      {showDatePicker && (
-        <DateTimePicker
-          value={birthdate ?? new Date(1990, 0, 1)}
-          mode="date"
-          display="default"
-          maximumDate={new Date()}
-          onChange={(_, selected) => { setShowDatePicker(false); if (selected) setBirthdate(selected); }}
-        />
-      )}
-
-      <View style={styles.genderRow}>
-        <TouchableOpacity style={[styles.genderButton, gender === 'masculino' ? styles.genderButtonActive : undefined]} onPress={() => setGender('masculino')}>
-          <Text style={styles.genderText}>Masculino</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.genderButton, gender === 'feminino' ? styles.genderButtonActive : undefined]} onPress={() => setGender('feminino')}>
-          <Text style={styles.genderText}>Feminino</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.genderButton, gender === 'outro' ? styles.genderButtonActive : undefined]} onPress={() => setGender('outro')}>
-          <Text style={styles.genderText}>Outro</Text>
-        </TouchableOpacity>
-      </View>
       <TouchableOpacity style={styles.back} onPress={() => navigation.navigate('Login')}>
-        <MaterialIcons name="arrow-back-ios-new" size={24} color={Colors.textWhite}/>
-      </TouchableOpacity>      
-      
-      <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-        <Text style={styles.registerButtonText}>
-          {loading ? 'Criando conta...' : 'Cadastrar'}
-        </Text>
+        <MaterialIcons name="arrow-back-ios-new" size={32} color={Colors.textWhite}/>
       </TouchableOpacity>
-      
-      <Text style={styles.note}>
-        Dados protegidos com Supabase. Senha criptografada com bcrypt.
-      </Text>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          {/*<Image source={logo} style={styles.logo} resizeMode="contain" />*/}
+          <Text style={styles.title}>
+            <Text style={styles.nimbus}>Nimbus</Text>
+            <Text style={styles.vita}>Vita</Text>
+          </Text>
+
+          <Text style={styles.subtitle}>
+            Crie sua conta para começar a usar o aplicativo
+          </Text>
+          
+          <TextInput 
+            style={styles.input} 
+            placeholderTextColor={Colors.primary}
+            placeholder="Nome de usuário" 
+            value={username} 
+            onChangeText={setUsername} 
+            autoCapitalize="none" 
+          />
+          <TextInput 
+            style={styles.input} 
+            placeholderTextColor={Colors.primary}
+            placeholder="Nome completo" 
+            value={fullName} 
+            onChangeText={setFullName} 
+            autoCapitalize="words" 
+          />
+          
+          <TextInput 
+            style={styles.input} 
+            placeholderTextColor={Colors.primary}
+            placeholder="E-mail" 
+            value={email} 
+            onChangeText={setEmail} 
+            autoCapitalize="none" 
+            keyboardType="email-address" 
+          />
+          <TextInput 
+            style={styles.input} 
+            placeholderTextColor={Colors.primary}
+            placeholder="Senha" 
+            value={password} 
+            onChangeText={setPassword} 
+            secureTextEntry 
+          />
+          <TextInput 
+            style={styles.input} 
+            placeholderTextColor={Colors.primary}
+            placeholder="Confirmar senha" 
+            value={confirm} 
+            onChangeText={setConfirm} 
+            secureTextEntry 
+          />
+          <TouchableOpacity style={[styles.input, styles.datePickerButton]} onPress={() => setShowDatePicker(true)}>
+            <Text style={{ color: Colors.primary, fontSize: 16 }}>{birthdate ? birthdate.toLocaleDateString() : 'Data de nascimento'}</Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={birthdate ?? new Date(1990, 0, 1)}
+              mode="date"
+              display="default"
+              maximumDate={new Date()}
+              onChange={(_, selected) => { setShowDatePicker(false); if (selected) setBirthdate(selected); }}
+            />
+          )}
+
+          <View style={styles.genderRow}>
+            <TouchableOpacity style={[styles.genderButton, gender === 'masculino' ? styles.genderButtonActive : undefined]} onPress={() => setGender('masculino')}>
+              <Text style={styles.genderText}>Masculino</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.genderButton, gender === 'feminino' ? styles.genderButtonActive : undefined]} onPress={() => setGender('feminino')}>
+              <Text style={styles.genderText}>Feminino</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.genderButton, gender === 'outro' ? styles.genderButtonActive : undefined]} onPress={() => setGender('outro')}>
+              <Text style={styles.genderText}>Outro</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
+            <Text style={styles.registerButtonText}>
+              {loading ? 'Criando conta...' : 'Cadastrar'}
+            </Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.note}>
+            Dados protegidos com Supabase. Senha criptografada com bcrypt.
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -182,12 +189,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.primary,
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: Spacing.xl2,
     justifyContent: 'center',
   },
   logo: {
-    width: 180,
-    height: 180,
+    width: 0,
+    height: 0,
     marginBottom: Spacing.base,
     alignSelf: 'center',
   },
@@ -239,14 +249,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   back: {
-    color: Colors.textWhite,
-    position: 'absolute', 
+    position: 'absolute',
+    top: Spacing.base,
+    left: Spacing.base,
     padding: Spacing.sm,
     borderRadius: BorderRadius.sm,
-    top: 40,
-    left: Spacing.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    zIndex: 10,
   },
   datePickerButton: {
     backgroundColor: Colors.textWhite,
@@ -257,8 +265,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.base,
     marginBottom: Spacing.md,
   },
-  genderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.md },
-  genderButton: { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: BorderRadius.base, borderWidth: 1, borderColor: Colors.inputBorder, marginHorizontal: Spacing.xs, backgroundColor: Colors.textWhite },
+  genderRow: { 
+    flexDirection: 'row', 
+    gap: Spacing.sm, 
+    marginBottom: Spacing.md
+  },
+  genderButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: BorderRadius.base,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    backgroundColor: Colors.textWhite
+  },
   genderButtonActive: { backgroundColor: Colors.secondary },
   genderText: { ...Typography.body, color: Colors.primary },
 });
