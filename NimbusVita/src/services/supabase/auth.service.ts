@@ -181,13 +181,24 @@ export const signOut = async (): Promise<void> => {
 export const getCurrentUser = async (): Promise<Profile | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
+
     if (!user) return null;
-    const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
     if (error) {
       console.error('getCurrentUser profile error:', error);
       return null;
     }
+
+    // Se 'profile' for null (0 linhas encontradas), ele retorna null.
+    // Se 'profile' for o objeto (1 linha encontrada), ele retorna o perfil.
     return profile;
+    
   } catch (error) {
     console.error('getCurrentUser error:', error);
     return null;
