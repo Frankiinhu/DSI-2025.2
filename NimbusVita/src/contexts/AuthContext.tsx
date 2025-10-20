@@ -72,22 +72,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Verificar sessão inicial
    */
   const checkSession = async () => {
+    console.log('🔍 Iniciando verificação de sessão...');
+    
     try {
       setLoading(true);
-      const profile = await getCurrentUser();
+      
+      console.log('📡 Buscando usuário atual...');
+      const profile = await Promise.race([
+        getCurrentUser(),
+        new Promise<null>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout ao buscar usuário')), 10000)
+        )
+      ]);
+      
+      console.log('✅ Usuário obtido:', profile ? `ID: ${profile.id}` : 'Nenhum usuário');
       setUser(profile);
       
       // Se há usuário autenticado, sincronizar dados do Supabase
       if (profile) {
         console.log('🔄 Usuário autenticado - iniciando sincronização...');
         syncCheckupsOnStartup(profile.id).catch(err => 
-          console.error('Erro na sincronização inicial:', err)
+          console.error('⚠️ Erro na sincronização inicial:', err)
         );
       }
     } catch (error) {
-      console.error('Erro ao verificar sessão:', error);
+      console.error('❌ Erro ao verificar sessão:', error);
       setUser(null);
     } finally {
+      console.log('✅ Verificação de sessão finalizada. Loading = false');
       setLoading(false);
     }
   };
