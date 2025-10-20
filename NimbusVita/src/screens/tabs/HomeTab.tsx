@@ -171,8 +171,10 @@ const HomeTab: React.FC = () => {
   };
 
   const getUserFirstName = () => {
-    if (!currentUser?.username) return 'Usuário';
-    return currentUser.username;
+    const full = currentUser?.full_name;
+    if (full) return full.split(' ')[0];
+    if (currentUser?.username) return currentUser.username;
+    return 'Usuário';
   };
 
   const getRiskFactors = () => {

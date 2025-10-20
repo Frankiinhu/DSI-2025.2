@@ -5,9 +5,9 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors, Typography, Spacing, BorderRadius } from '../styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const logo = require('../../assets/logo.png');
-
 
 
 type RootStackParamList = {
@@ -21,9 +21,13 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const { signUp } = useAuth();
   
   const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [birthdate, setBirthdate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [gender, setGender] = useState<'masculino' | 'feminino' | 'outro' | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
@@ -50,10 +54,14 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
     try {
       // Usa o AuthContext para registrar
+      const birthIso = birthdate ? birthdate.toISOString().split('T')[0] : undefined;
       const result = await signUp(
         username.trim(),
         email.trim().toLowerCase(),
-        password
+        password,
+        fullName.trim() || undefined,
+        birthIso,
+        gender
       );
       
       if (!result.ok) {
@@ -95,6 +103,14 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         onChangeText={setUsername} 
         autoCapitalize="none" 
       />
+      <TextInput 
+        style={styles.input} 
+        placeholderTextColor={Colors.primary}
+        placeholder="Nome completo" 
+        value={fullName} 
+        onChangeText={setFullName} 
+        autoCapitalize="words" 
+      />
       
       <TextInput 
         style={styles.input} 
@@ -121,6 +137,30 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         onChangeText={setConfirm} 
         secureTextEntry 
       />
+      <TouchableOpacity style={[styles.input, styles.datePickerButton]} onPress={() => setShowDatePicker(true)}>
+        <Text style={{ color: Colors.primary }}>{birthdate ? birthdate.toLocaleDateString() : 'Data de nascimento'}</Text>
+      </TouchableOpacity>
+      {showDatePicker && (
+        <DateTimePicker
+          value={birthdate ?? new Date(1990, 0, 1)}
+          mode="date"
+          display="default"
+          maximumDate={new Date()}
+          onChange={(_, selected) => { setShowDatePicker(false); if (selected) setBirthdate(selected); }}
+        />
+      )}
+
+      <View style={styles.genderRow}>
+        <TouchableOpacity style={[styles.genderButton, gender === 'masculino' ? styles.genderButtonActive : undefined]} onPress={() => setGender('masculino')}>
+          <Text style={styles.genderText}>Masculino</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.genderButton, gender === 'feminino' ? styles.genderButtonActive : undefined]} onPress={() => setGender('feminino')}>
+          <Text style={styles.genderText}>Feminino</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.genderButton, gender === 'outro' ? styles.genderButtonActive : undefined]} onPress={() => setGender('outro')}>
+          <Text style={styles.genderText}>Outro</Text>
+        </TouchableOpacity>
+      </View>
       <TouchableOpacity style={styles.back} onPress={() => navigation.navigate('Login')}>
         <MaterialIcons name="arrow-back-ios-new" size={24} color={Colors.textWhite}/>
       </TouchableOpacity>      
@@ -208,6 +248,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  datePickerButton: {
+    backgroundColor: Colors.textWhite,
+    borderWidth: 1,
+    borderColor: Colors.inputBorder,
+    borderRadius: BorderRadius.base,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.base,
+    marginBottom: Spacing.md,
+  },
+  genderRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.md },
+  genderButton: { flex: 1, paddingVertical: Spacing.sm, alignItems: 'center', borderRadius: BorderRadius.base, borderWidth: 1, borderColor: Colors.inputBorder, marginHorizontal: Spacing.xs, backgroundColor: Colors.textWhite },
+  genderButtonActive: { backgroundColor: Colors.secondary },
+  genderText: { ...Typography.body, color: Colors.primary },
 });
 
 export default SignupScreen;

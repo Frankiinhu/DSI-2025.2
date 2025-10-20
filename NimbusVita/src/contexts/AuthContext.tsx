@@ -20,8 +20,9 @@ type AuthContextType = {
   user: Profile | null;
   loading: boolean;
   signIn: (emailOrUsername: string, password: string) => Promise<{ ok: boolean; error?: string }>;
-  signUp: (username: string, email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  signUp: (username: string, email: string, password: string, fullName?: string, birthdateIso?: string, gender?: 'masculino' | 'feminino' | 'outro') => Promise<{ ok: boolean; error?: string }>;
   signOut: () => Promise<void>;
+
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 };
@@ -153,11 +154,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signUp = async (
     username: string,
     email: string,
-    password: string
+    password: string,
+    fullName?: string,
+    birthdateIso?: string,
+    gender?: 'masculino' | 'feminino' | 'outro'
   ): Promise<{ ok: boolean; error?: string }> => {
     try {
-      const result = await registerUser(username, email, password);
-      
+      const result = await registerUser(username, email, password, fullName, birthdateIso, gender);
+
       if (result.ok && result.user) {
         setUser(result.user);
         return { ok: true };
