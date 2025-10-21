@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,6 +7,7 @@ import WeatherCard from '../../components/WeatherCard';
 import StatusCard from '../../components/StatusCard';
 import RiskAnalysis from '../../components/RiskAnalysis';
 import { Colors, Typography, Spacing, ComponentStyles } from '../../styles';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { getCurrentWeather, loadWeatherCache, saveWeatherCache } from '../../services/weather.service';
 
 const logo = require('../../../assets/logo.png');
@@ -33,6 +34,7 @@ interface StatusData {
 const HomeTab: React.FC = () => {
   const { user: currentUser, signOut } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData>({
     temperature: 28,
     humidity: 79,
@@ -240,18 +242,7 @@ const HomeTab: React.FC = () => {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Confirmação',
-      'Tem certeza que deseja sair da sua conta?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: () => signOut(),
-        },
-      ]
-    );
+    setShowLogoutDialog(true);
   };
 
   const getGreeting = () => {
@@ -616,6 +607,18 @@ const HomeTab: React.FC = () => {
           />
         </View>
       </ScrollView>
+
+      {/* Logout Confirmation Dialog */}
+      <ConfirmDialog
+        visible={showLogoutDialog}
+        title="Confirmação"
+        message="Tem certeza que deseja sair da sua conta?"
+        confirmText="Sair"
+        cancelText="Cancelar"
+        confirmColor={Colors.danger}
+        onConfirm={signOut}
+        onCancel={() => setShowLogoutDialog(false)}
+      />
     </SafeAreaView>
   );
 };

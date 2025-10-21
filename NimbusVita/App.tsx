@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Splash } from './src/screens/Splash';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { Colors } from './src/styles';
+import { ToastComponent } from './src/config/notifications';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -78,6 +79,7 @@ export default function App() {
       <AuthProvider>
         <Navigation />
       </AuthProvider>
+      <ToastComponent />
     </SafeAreaView>
   );
 }

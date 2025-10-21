@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput, FlatList, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ScrollView, Modal } from 'react-native';
 import { Colors, Spacing } from '../styles';
+import { useNotifications } from '../config/notifications';
 
 const SYMPTOMS = {
   // Sintomas Gerais
@@ -87,10 +88,12 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
   onClearRequest 
 }) => {
 
+  const { notify } = useNotifications();
   const [searchText, setSearchText] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState<Set<string>>(new Set());
   const [predictions, setPredictions] = useState<Record<string, number> | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showInfoDialog, setShowInfoDialog] = useState(false);
 
   // Effect para definir sintomas pré-selecionados
   React.useEffect(() => {
@@ -128,7 +131,15 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
 
   const mockPredict = () => {
     const count = selectedSymptoms.size;
-    if (count === 0) return Alert.alert('Atenção', 'Selecione pelo menos um sintoma para prever.');
+    if (count === 0) {
+      notify('warning', {
+        params: {
+          title: 'Atenção',
+          description: 'Selecione pelo menos um sintoma para prever.',
+        },
+      });
+      return;
+    }
 
     const res: Record<string, number> = {};
     let sum = 0;
@@ -372,15 +383,37 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
 
           <TouchableOpacity 
             style={styles.explainBtn} 
-            onPress={() => Alert.alert(
-              'Como funciona a análise?', 
-              `Esta análise considera ${selectedSymptoms.size} sintoma${selectedSymptoms.size > 1 ? 's' : ''} selecionado${selectedSymptoms.size > 1 ? 's' : ''} e utiliza um algoritmo que pondera a frequência de cada sintoma em diferentes condições médicas.\n\nIMPORTANTE: Este é um protótipo educacional. As probabilidades são simuladas e não substituem consulta médica profissional.`
-            )}
+            onPress={() => setShowInfoDialog(true)}
           >
             <Text style={styles.explainBtnText}>ⓘ Como foi calculado</Text>
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Info Dialog */}
+      <Modal
+        visible={showInfoDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowInfoDialog(false)}
+      >
+        <View style={styles.infoDialogOverlay}>
+          <View style={styles.infoDialogContainer}>
+            <Text style={styles.infoDialogTitle}>Como funciona a análise?</Text>
+            <Text style={styles.infoDialogMessage}>
+              Esta análise considera {selectedSymptoms.size} sintoma{selectedSymptoms.size > 1 ? 's' : ''} selecionado{selectedSymptoms.size > 1 ? 's' : ''} e utiliza um algoritmo que pondera a frequência de cada sintoma em diferentes condições médicas.
+              {'\n\n'}
+              IMPORTANTE: Este é um protótipo educacional. As probabilidades são simuladas e não substituem consulta médica profissional.
+            </Text>
+            <TouchableOpacity
+              style={styles.infoDialogButton}
+              onPress={() => setShowInfoDialog(false)}
+            >
+              <Text style={styles.infoDialogButtonText}>Entendi</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -645,6 +678,49 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#495057',
     fontWeight: '500',
+  },
+  infoDialogOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  infoDialogContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  infoDialogTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginBottom: 16,
+  },
+  infoDialogMessage: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  infoDialogButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  infoDialogButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

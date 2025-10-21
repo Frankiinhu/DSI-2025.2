@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import {
   updateCheckupOfflineFirst
 } from '../../services/supabase/checkup.storage.service';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
+import { useNotifications } from '../../config/notifications';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 interface CheckupRecord {
   id: string;
@@ -29,6 +31,7 @@ interface CheckupStats {
 
 const CheckupTab: React.FC = () => {
   const { user } = useAuth();
+  const { notify } = useNotifications();
   const [checkupHistory, setCheckupHistory] = useState<CheckupRecord[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<CheckupRecord[]>([]);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<'today' | '7days' | '30days'>('30days');
@@ -39,6 +42,12 @@ const CheckupTab: React.FC = () => {
     checkupsToday: 0,
     consecutiveDays: 0,
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [recordToEdit, setRecordToEdit] = useState<CheckupRecord | null>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [recordToView, setRecordToView] = useState<CheckupRecord | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -87,7 +96,12 @@ const CheckupTab: React.FC = () => {
       
     } catch (error) {
       console.error('Erro ao carregar histórico:', error);
-      Alert.alert('Erro', 'Não foi possível carregar o histórico de verificações');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'Não foi possível carregar o histórico de verificações',
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -167,7 +181,12 @@ const CheckupTab: React.FC = () => {
 
   const addCheckupRecord = async (symptoms: string[], results: Record<string, number>) => {
     if (!user) {
-      Alert.alert('Erro', 'Você precisa estar logado para salvar verificações');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'Você precisa estar logado para salvar verificações',
+        },
+      });
       return;
     }
 
@@ -198,11 +217,12 @@ const CheckupTab: React.FC = () => {
         // Recarregar histórico
         await loadCheckupHistory();
         
-        Alert.alert(
-          '✅ Verificação Atualizada',
-          'Sua verificação foi atualizada com sucesso!',
-          [{ text: 'OK' }]
-        );
+        notify('success', {
+          params: {
+            title: '✅ Verificação Atualizada',
+            description: 'Sua verificação foi atualizada com sucesso!',
+          },
+        });
         
         setEditingRecord(null);
       } else {
@@ -220,16 +240,22 @@ const CheckupTab: React.FC = () => {
         // Recarregar histórico
         await loadCheckupHistory();
         
-        Alert.alert(
-          '✅ Verificação Salva',
-          'Sua verificação foi salva com sucesso!',
-          [{ text: 'OK' }]
-        );
+        notify('success', {
+          params: {
+            title: '✅ Verificação Salva',
+            description: 'Sua verificação foi salva com sucesso!',
+          },
+        });
       }
       
     } catch (error) {
       console.error('Erro ao salvar verificação:', error);
-      Alert.alert('Erro', 'Não foi possível salvar a verificação');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'Não foi possível salvar a verificação',
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -248,103 +274,51 @@ const CheckupTab: React.FC = () => {
     console.log('  - Timestamp:', record.timestamp);
     console.log('  - Sintomas:', record.symptoms);
     
-    Alert.alert(
-      'Editar Verificação',
-      `Esta verificação contém ${record.symptoms.length} sintoma${record.symptoms.length > 1 ? 's' : ''}: ${record.symptoms.join(', ')}`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Reexecutar (Criar Nova)',
-          style: 'default',
-          onPress: () => {
-            console.log('🔄 Usuário escolheu: Reexecutar (criar nova)');
-            // Simular nova análise com os mesmos sintomas (cria novo registro)
-            const simulateNewResults = () => {
-              const baseResults = record.results;
-              const newResults: Record<string, number> = {};
-              
-              // Adicionar pequena variação nos resultados (±3%)
-              Object.entries(baseResults).forEach(([condition, percentage]) => {
-                const variation = (Math.random() - 0.5) * 6; // -3% a +3%
-                const newPercentage = Math.max(0, Math.min(100, percentage + variation));
-                newResults[condition] = Math.round(newPercentage);
-              });
-              
-              return newResults;
-            };
-
-            // Criar novo registro (não está em modo de edição)
-            const newResults = simulateNewResults();
-            addCheckupRecord(record.symptoms, newResults);
-          }
-        },
-        {
-          text: 'Editar Esta Verificação',
-          style: 'default',
-          onPress: () => {
-            console.log('✏️ Usuário escolheu: Editar esta verificação');
-            console.log('  - Setando editingRecord com ID:', record.id);
-            
-            setEditingRecord(record);
-            
-            Alert.alert(
-              '✏️ Modo de Edição Ativado',
-              'Os sintomas desta verificação aparecerão pré-selecionados no formulário acima.\n\n• Você pode adicionar novos sintomas\n• Você pode remover sintomas existentes\n• Ao concluir, esta verificação será ATUALIZADA (não criará uma nova)',
-              [{ text: 'Entendido' }]
-            );
-          }
-        }
-      ]
-    );
+    setRecordToEdit(record);
+    setShowEditDialog(true);
   };
 
   const deleteCheckupRecord = async (id: string) => {
-    if (!user) return;
+    setRecordToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!user || !recordToDelete) return;
     
-    Alert.alert(
-      'Excluir Verificação',
-      'Tem certeza que deseja excluir esta verificação?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              const response = await deleteCheckupOfflineFirst(id, user.id);
-              
-              if (!response.ok) {
-                throw new Error(response.message || 'Erro ao excluir verificação');
-              }
-              
-              // Recarregar histórico
-              await loadCheckupHistory();
-              Alert.alert('✅ Sucesso', 'Verificação excluída com sucesso');
-            } catch (error) {
-              console.error('Erro ao excluir verificação:', error);
-              Alert.alert('❌ Erro', 'Não foi possível excluir a verificação');
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      setLoading(true);
+      const response = await deleteCheckupOfflineFirst(recordToDelete, user.id);
+      
+      if (!response.ok) {
+        throw new Error(response.message || 'Erro ao excluir verificação');
+      }
+      
+      // Recarregar histórico
+      await loadCheckupHistory();
+      notify('success', {
+        params: {
+          title: '✅ Sucesso',
+          description: 'Verificação excluída com sucesso',
+        },
+      });
+    } catch (error) {
+      console.error('Erro ao excluir verificação:', error);
+      notify('error', {
+        params: {
+          title: '❌ Erro',
+          description: 'Não foi possível excluir a verificação',
+        },
+      });
+    } finally {
+      setLoading(false);
+      setRecordToDelete(null);
+    }
   };
 
   const viewCheckupDetails = (record: CheckupRecord) => {
-    const symptomsText = record.symptoms.join(', ');
-    const resultsText = Object.entries(record.results)
-      .sort(([,a], [,b]) => b - a)
-      .map(([condition, percentage]) => `${condition}: ${percentage}%`)
-      .join('\n');
-
-    Alert.alert(
-      'Detalhes da Verificação',
-      `Data: ${record.date}\n\nSintomas: ${symptomsText}\n\nResultados:\n${resultsText}`,
-      [{ text: 'OK' }]
-    );
+    setRecordToView(record);
+    setShowDetailDialog(true);
   };
 
   return (
@@ -389,11 +363,12 @@ const CheckupTab: React.FC = () => {
                 style={styles.cancelEditButton}
                 onPress={() => {
                   setEditingRecord(null);
-                  Alert.alert(
-                    '❌ Edição Cancelada',
-                    'O modo de edição foi cancelado.',
-                    [{ text: 'OK' }]
-                  );
+                  notify('info', {
+                    params: {
+                      title: '❌ Edição Cancelada',
+                      description: 'O modo de edição foi cancelado.',
+                    },
+                  });
                 }}
               >
                 <MaterialIcons name="close" size={16} color="#721c24" />
@@ -545,6 +520,141 @@ const CheckupTab: React.FC = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        visible={showDeleteDialog}
+        title="Excluir Verificação"
+        message="Tem certeza que deseja excluir esta verificação?"
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        confirmColor="#d4572a"
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setShowDeleteDialog(false);
+          setRecordToDelete(null);
+        }}
+      />
+
+      {/* Edit Options Dialog */}
+      <Modal
+        visible={showEditDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditDialog(false)}
+      >
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogContainer}>
+            <Text style={styles.dialogTitle}>Editar Verificação</Text>
+            <Text style={styles.dialogMessage}>
+              {recordToEdit && `Esta verificação contém ${recordToEdit.symptoms.length} sintoma${recordToEdit.symptoms.length > 1 ? 's' : ''}: ${recordToEdit.symptoms.join(', ')}`}
+            </Text>
+            
+            <TouchableOpacity
+              style={styles.dialogButton}
+              onPress={() => {
+                if (recordToEdit) {
+                  console.log('🔄 Usuário escolheu: Reexecutar (criar nova)');
+                  const simulateNewResults = () => {
+                    const baseResults = recordToEdit.results;
+                    const newResults: Record<string, number> = {};
+                    
+                    Object.entries(baseResults).forEach(([condition, percentage]) => {
+                      const variation = (Math.random() - 0.5) * 6;
+                      const newPercentage = Math.max(0, Math.min(100, percentage + variation));
+                      newResults[condition] = Math.round(newPercentage);
+                    });
+                    
+                    return newResults;
+                  };
+
+                  const newResults = simulateNewResults();
+                  addCheckupRecord(recordToEdit.symptoms, newResults);
+                  setShowEditDialog(false);
+                  setRecordToEdit(null);
+                }
+              }}
+            >
+              <Text style={styles.dialogButtonText}>Reexecutar (Criar Nova)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.dialogButton, styles.dialogButtonPrimary]}
+              onPress={() => {
+                if (recordToEdit) {
+                  console.log('✏️ Usuário escolheu: Editar esta verificação');
+                  console.log('  - Setando editingRecord com ID:', recordToEdit.id);
+                  
+                  setEditingRecord(recordToEdit);
+                  setShowEditDialog(false);
+                  setRecordToEdit(null);
+                  
+                  notify('info', {
+                    params: {
+                      title: '✏️ Modo de Edição Ativado',
+                      description: 'Os sintomas aparecerão pré-selecionados. Você pode adicionar ou remover sintomas.',
+                    },
+                  });
+                }
+              }}
+            >
+              <Text style={[styles.dialogButtonText, styles.dialogButtonTextPrimary]}>Editar Esta Verificação</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.dialogButton, styles.dialogButtonCancel]}
+              onPress={() => {
+                setShowEditDialog(false);
+                setRecordToEdit(null);
+              }}
+            >
+              <Text style={styles.dialogButtonTextCancel}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Details Dialog */}
+      <Modal
+        visible={showDetailDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDetailDialog(false)}
+      >
+        <View style={styles.dialogOverlay}>
+          <View style={styles.dialogContainer}>
+            <Text style={styles.dialogTitle}>Detalhes da Verificação</Text>
+            {recordToView && (
+              <View>
+                <Text style={styles.detailLabel}>Data:</Text>
+                <Text style={styles.detailValue}>{recordToView.date}</Text>
+                
+                <Text style={[styles.detailLabel, { marginTop: Spacing.md }]}>Sintomas:</Text>
+                <Text style={styles.detailValue}>{recordToView.symptoms.join(', ')}</Text>
+                
+                <Text style={[styles.detailLabel, { marginTop: Spacing.md }]}>Resultados:</Text>
+                {Object.entries(recordToView.results)
+                  .sort(([,a], [,b]) => b - a)
+                  .map(([condition, percentage]) => (
+                    <Text key={condition} style={styles.detailResultItem}>
+                      {condition}: {percentage}%
+                    </Text>
+                  ))}
+              </View>
+            )}
+            
+            <TouchableOpacity
+              style={[styles.dialogButton, styles.dialogButtonPrimary]}
+              onPress={() => {
+                setShowDetailDialog(false);
+                setRecordToView(null);
+              }}
+            >
+              <Text style={[styles.dialogButtonText, styles.dialogButtonTextPrimary]}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -834,6 +944,77 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     color: Colors.primary,
     fontWeight: '600',
+  },
+  dialogOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  dialogContainer: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    ...Shadows.xl,
+  },
+  dialogTitle: {
+    ...Typography.h3,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.md,
+  },
+  dialogMessage: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
+    lineHeight: 22,
+  },
+  dialogButton: {
+    backgroundColor: Colors.surfaceLight,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.base,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  },
+  dialogButtonPrimary: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  dialogButtonCancel: {
+    backgroundColor: 'transparent',
+    borderColor: Colors.borderLight,
+  },
+  dialogButtonText: {
+    ...Typography.button,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+  },
+  dialogButtonTextPrimary: {
+    color: Colors.textWhite,
+  },
+  dialogButtonTextCancel: {
+    ...Typography.button,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  detailLabel: {
+    ...Typography.captionBold,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+  },
+  detailValue: {
+    ...Typography.body,
+    color: Colors.textPrimary,
+    lineHeight: 22,
+  },
+  detailResultItem: {
+    ...Typography.body,
+    color: Colors.textPrimary,
+    marginTop: Spacing.xs,
+    lineHeight: 20,
   },
 });
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,13 +7,19 @@ import { Typography, Spacing, ComponentStyles, BorderRadius } from '../../styles
 import { theme } from '../../theme';
 import { updateProfile } from '../../services/supabase/auth.service';
 import type { Database } from '../../types/database.types';
+import { useNotifications } from '../../config/notifications';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 
 const ProfileTab = () => {
   const { user: currentUser, signOut, refreshUser } = useAuth();
+  const { notify } = useNotifications();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showGenderDialog, setShowGenderDialog] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showLogoutDialog2, setShowLogoutDialog2] = useState(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -39,12 +45,27 @@ const ProfileTab = () => {
       if (ok) {
         await refreshUser();
         setIsEditMode(false);
-        Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
+        notify('success', {
+          params: {
+            title: 'Sucesso',
+            description: 'Perfil atualizado com sucesso!',
+          },
+        });
       } else {
-        Alert.alert('Erro', message || 'Erro ao atualizar perfil');
+        notify('error', {
+          params: {
+            title: 'Erro',
+            description: message || 'Erro ao atualizar perfil',
+          },
+        });
       }
     } catch (error) {
-      Alert.alert('Erro', 'Ocorreu um erro ao atualizar o perfil');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'Ocorreu um erro ao atualizar o perfil',
+        },
+      });
     }
   };
 
@@ -70,40 +91,11 @@ const ProfileTab = () => {
   };
 
   const handleEditGender = () => {
-    Alert.alert(
-      'Selecionar Gênero',
-      'Escolha seu gênero:',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Masculino',
-          onPress: () => setEditForm(prev => ({ ...prev, gender: 'masculino' }))
-        },
-        {
-          text: 'Feminino',
-          onPress: () => setEditForm(prev => ({ ...prev, gender: 'feminino' }))
-        },
-        {
-          text: 'Outro',
-          onPress: () => setEditForm(prev => ({ ...prev, gender: 'outro' }))
-        }
-      ]
-    );
+    setShowGenderDialog(true);
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Confirmar Logout',
-      'Tem certeza que deseja sair da sua conta?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: signOut
-        }
-      ]
-    );
+    setShowLogoutDialog(true);
   };
 
   return (
@@ -176,20 +168,7 @@ const ProfileTab = () => {
           <View style={styles.optionsContainer}>
             <TouchableOpacity 
               style={[styles.optionItem, styles.logoutOption]} 
-              onPress={() => {
-                Alert.alert(
-                  'Confirmação',
-                  'Tem certeza que deseja sair da sua conta?',
-                  [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                      text: 'Sair',
-                      style: 'destructive',
-                      onPress: signOut
-                    }
-                  ]
-                );
-              }}
+              onPress={() => setShowLogoutDialog2(true)}
             >
               <MaterialIcons name="logout" size={24} color={theme.interactive.danger} />
               <Text style={[styles.optionText, styles.logoutText]}>
@@ -199,6 +178,81 @@ const ProfileTab = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Confirm Dialogs */}
+      <ConfirmDialog
+        visible={showLogoutDialog}
+        title="Confirmar Logout"
+        message="Tem certeza que deseja sair da sua conta?"
+        confirmText="Sair"
+        cancelText="Cancelar"
+        confirmColor={theme.interactive.danger}
+        onConfirm={signOut}
+        onCancel={() => setShowLogoutDialog(false)}
+      />
+
+      <ConfirmDialog
+        visible={showLogoutDialog2}
+        title="Confirmação"
+        message="Tem certeza que deseja sair da sua conta?"
+        confirmText="Sair"
+        cancelText="Cancelar"
+        confirmColor={theme.interactive.danger}
+        onConfirm={signOut}
+        onCancel={() => setShowLogoutDialog2(false)}
+      />
+
+      {/* Gender Selection Modal */}
+      <Modal
+        visible={showGenderDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGenderDialog(false)}
+      >
+        <View style={styles.genderDialogOverlay}>
+          <View style={styles.genderDialog}>
+            <Text style={styles.genderDialogTitle}>Selecionar Gênero</Text>
+            <Text style={styles.genderDialogSubtitle}>Escolha seu gênero:</Text>
+            
+            <TouchableOpacity
+              style={styles.genderOptionButton}
+              onPress={() => {
+                setEditForm(prev => ({ ...prev, gender: 'masculino' }));
+                setShowGenderDialog(false);
+              }}
+            >
+              <Text style={styles.genderOptionText}>Masculino</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.genderOptionButton}
+              onPress={() => {
+                setEditForm(prev => ({ ...prev, gender: 'feminino' }));
+                setShowGenderDialog(false);
+              }}
+            >
+              <Text style={styles.genderOptionText}>Feminino</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.genderOptionButton}
+              onPress={() => {
+                setEditForm(prev => ({ ...prev, gender: 'outro' }));
+                setShowGenderDialog(false);
+              }}
+            >
+              <Text style={styles.genderOptionText}>Outro</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.genderOptionButton, styles.genderCancelButton]}
+              onPress={() => setShowGenderDialog(false)}
+            >
+              <Text style={styles.genderCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Profile Modal */}
       <Modal
@@ -442,6 +496,52 @@ const styles = StyleSheet.create({
   saveButtonText: {
     ...Typography.button,
     color: theme.text.inverse,
+  },
+  genderDialogOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  genderDialog: {
+    backgroundColor: theme.surface.primary,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+  },
+  genderDialogTitle: {
+    ...Typography.h3,
+    color: theme.text.primary,
+    marginBottom: Spacing.sm,
+  },
+  genderDialogSubtitle: {
+    ...Typography.body,
+    color: theme.text.secondary,
+    marginBottom: Spacing.lg,
+  },
+  genderOptionButton: {
+    backgroundColor: theme.background.primary,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.base,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.border.default,
+  },
+  genderOptionText: {
+    ...Typography.button,
+    color: theme.text.primary,
+    textAlign: 'center',
+  },
+  genderCancelButton: {
+    backgroundColor: theme.surface.secondary,
+    marginTop: Spacing.md,
+  },
+  genderCancelText: {
+    ...Typography.button,
+    color: theme.text.secondary,
+    textAlign: 'center',
   },
 });
 
