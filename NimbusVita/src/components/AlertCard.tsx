@@ -1,23 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../styles';
+import { useNotifications } from '../config/notifications';
 
 const AlertCard: React.FC = () => {
+  const { notify } = useNotifications();
   const [enabled, setEnabled] = useState(false);
-  const [mockNearbyRisk, setMockNearbyRisk] = useState<'low' | 'medium' | 'high'>('low');
+  const [mockNearbyRisk, setMockNearbyRisk] = useState<'Baixo' | 'Médio' | 'Alto'>('Baixo');
 
   const toggleEnable = () => {
     const newVal = !enabled;
     setEnabled(newVal);
     if (newVal) {
       // simulate subscription to push/location alerts
-      Alert.alert('Alertas ativados (simulado)', 'Você receberá alertas preventivos de acordo com sua localização (mock).');
+      notify('success', {
+        params: {
+          title: 'Alertas ativados (simulado)',
+          description: 'Você receberá alertas preventivos de acordo com sua localização (mock).',
+        },
+      });
     }
   };
 
   const sendTestPush = () => {
     // Here we mock a push notification flow: simple alert
-    Alert.alert('Push (simulado)', `Alerta preventivo: risco ${mockNearbyRisk} na sua localidade.`);
+    notify('info', {
+      params: {
+        title: 'Push (simulado)',
+        description: `Alerta preventivo: risco ${mockNearbyRisk} na sua localidade.`,
+      },
+    });
   };
 
   return (
@@ -33,9 +45,9 @@ const AlertCard: React.FC = () => {
       <View style={{ marginTop: 8 }}>
         <Text>Risco atual (mock): <Text style={{ fontWeight: '700' }}>{mockNearbyRisk.toUpperCase()}</Text></Text>
         <View style={{ flexDirection: 'row', marginTop: 8, justifyContent: 'space-between' }}>
-          <TouchableOpacity onPress={() => setMockNearbyRisk('low')} style={styles.smallBtn}><Text>Baixo</Text></TouchableOpacity>
-          <TouchableOpacity onPress={() => setMockNearbyRisk('medium')} style={styles.smallBtn}><Text>Médio</Text></TouchableOpacity>
-          <TouchableOpacity onPress={() => setMockNearbyRisk('high')} style={styles.smallBtn}><Text>Alto</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => setMockNearbyRisk('Baixo')} style={styles.smallBtn}><Text>Baixo</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => setMockNearbyRisk('Médio')} style={styles.smallBtn}><Text>Médio</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => setMockNearbyRisk('Alto')} style={styles.smallBtn}><Text>Alto</Text></TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={sendTestPush} style={styles.pushBtn}>

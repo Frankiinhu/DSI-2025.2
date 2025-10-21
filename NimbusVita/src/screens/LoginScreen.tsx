@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, Image, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, ScrollView, StatusBar, KeyboardAvoidingView, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius } from '../styles';
+import { useNotifications } from '../config/notifications';
 
 const logo = require('../../assets/logo.png');
 
@@ -17,6 +18,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { signIn } = useAuth();
+  const { notify } = useNotifications();
   
   // Estado para campos do formulário
   const [loginInput, setLoginInput] = useState('');
@@ -26,7 +28,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const handleLogin = async () => {
     // Validação básica
     if (!loginInput || !password) {
-      return Alert.alert('Erro', 'Preencha todos os campos');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'Preencha todos os campos',
+        },
+      });
+      return;
     }
 
     setLoading(true);
@@ -36,12 +44,22 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       const result = await signIn(loginInput, password);
       
       if (!result.ok) {
-        Alert.alert('Erro', result.error || 'Não foi possível fazer login');
+        notify('error', {
+          params: {
+            title: 'Erro',
+            description: result.error || 'Não foi possível fazer login',
+          },
+        });
       }
       // Se login bem-sucedido, a navegação acontece automaticamente
       // O AuthContext detecta a mudança e atualiza a navegação
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Erro desconhecido ao fazer login');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: error.message || 'Erro desconhecido ao fazer login',
+        },
+      });
     } finally {
       setLoading(false);
     }
