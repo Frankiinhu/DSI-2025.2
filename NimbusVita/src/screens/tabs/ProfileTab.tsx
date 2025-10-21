@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, TextInput, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
-import { Typography, Spacing, ComponentStyles, BorderRadius } from '../../styles';
+import { Typography, Colors, Spacing, ComponentStyles, BorderRadius } from '../../styles';
 import { theme } from '../../theme';
 import { updateProfile } from '../../services/supabase/auth.service';
+import { uploadProfilePicture, updateProfilePictureUrl, deleteProfilePicture } from '../../services/supabase/profile.storage.service';
 import type { Database } from '../../types/database.types';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
@@ -14,6 +16,7 @@ type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 const ProfileTab = () => {
   const { user: currentUser, signOut, refreshUser } = useAuth();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -106,6 +109,122 @@ const ProfileTab = () => {
     );
   };
 
+  const requestPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar suas fotos');
+      return false;
+    }
+    return true;
+  };
+
+  const handlePickImage = async (source: 'camera' | 'gallery') => {
+    if (!currentUser?.id) return;
+
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    try {
+      let result;
+
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permissão necessária', 'Precisamos de permissão para usar a câmera');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      }
+
+      if (!result.canceled && result.assets[0]) {
+        setUploadingImage(true);
+
+        // Deletar foto antiga se existir
+        if (currentUser.avatar_url) {
+          await deleteProfilePicture(currentUser.id, currentUser.avatar_url);
+        }
+
+        // Upload nova foto
+        const uploadResult = await uploadProfilePicture(currentUser.id, result.assets[0].uri);
+        
+        if (uploadResult.ok && uploadResult.url) {
+          // Atualizar URL no banco
+          const updateResult = await updateProfilePictureUrl(currentUser.id, uploadResult.url);
+          
+          if (updateResult.ok) {
+            await refreshUser();
+            Alert.alert('Sucesso', 'Foto de perfil atualizada!');
+          } else {
+            Alert.alert('Erro', updateResult.error || 'Erro ao atualizar perfil');
+          }
+        } else {
+          Alert.alert('Erro', uploadResult.error || 'Erro ao fazer upload da imagem');
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Erro ao processar imagem');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleChangeProfilePicture = () => {
+    Alert.alert(
+      'Foto de Perfil',
+      'Escolha uma opção',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Câmera',
+          onPress: () => handlePickImage('camera')
+        },
+        {
+          text: 'Galeria',
+          onPress: () => handlePickImage('gallery')
+        },
+        ...(currentUser?.avatar_url ? [{
+          text: 'Remover Foto',
+          style: 'destructive' as const,
+          onPress: handleRemoveProfilePicture
+        }] : [])
+      ]
+    );
+  };
+
+  const handleRemoveProfilePicture = async () => {
+    if (!currentUser?.id || !currentUser.avatar_url) return;
+
+    try {
+      setUploadingImage(true);
+      
+      await deleteProfilePicture(currentUser.id, currentUser.avatar_url);
+      const updateResult = await updateProfilePictureUrl(currentUser.id, null);
+      
+      if (updateResult.ok) {
+        await refreshUser();
+        Alert.alert('Sucesso', 'Foto de perfil removida');
+      } else {
+        Alert.alert('Erro', updateResult.error || 'Erro ao remover foto');
+      }
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Erro ao remover foto');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={theme.interactive.primary} />
@@ -116,6 +235,34 @@ const ProfileTab = () => {
         </View>
 
         <View style={styles.container}>
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarContainer}>
+              {uploadingImage ? (
+                <View style={styles.avatarPlaceholder}>
+                  <ActivityIndicator size="large" color={theme.interactive.primary} />
+                </View>
+              ) : currentUser?.avatar_url ? (
+                <Image 
+                  source={{ uri: currentUser.avatar_url }} 
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <MaterialIcons name="person" size={60} color={theme.text.muted} />
+                </View>
+              )}
+              <TouchableOpacity 
+                style={styles.avatarEditButton}
+                onPress={handleChangeProfilePicture}
+                disabled={uploadingImage}
+              >
+                <MaterialIcons name="camera-alt" size={20} color={Colors.textWhite} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.avatarName}>{currentUser?.full_name || currentUser?.username || 'Usuário'}</Text>
+          </View>
+
           <View style={styles.profileCard}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Informações Pessoais</Text>
@@ -123,7 +270,7 @@ const ProfileTab = () => {
                 style={styles.editButton}
                 onPress={() => setIsEditMode(true)}
               >
-                <MaterialIcons name="edit" size={20} color={theme.interactive.primary} />
+                <MaterialIcons name="edit" size={24} color={theme.interactive.primary} />
               </TouchableOpacity>
             </View>
             
@@ -191,7 +338,7 @@ const ProfileTab = () => {
                 );
               }}
             >
-              <MaterialIcons name="logout" size={24} color={theme.interactive.danger} />
+              <MaterialIcons name="logout" size={24} color={Colors.danger} />
               <Text style={[styles.optionText, styles.logoutText]}>
                 Sair da Conta
               </Text>
@@ -213,7 +360,7 @@ const ProfileTab = () => {
               style={styles.closeButton}
               onPress={() => setIsEditMode(false)}
             >
-              <MaterialIcons name="close" size={24} color={theme.text.primary} />
+              <MaterialIcons name="close" size={32} color={Colors.textWhite} />
             </TouchableOpacity>
           </View>
 
@@ -297,26 +444,71 @@ const ProfileTab = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.background.primary,
+    backgroundColor: Colors.accent
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    backgroundColor: theme.interactive.primary,
-    padding: Spacing.lg,
+    ...ComponentStyles.header,
   },
   headerTitle: {
-    ...Typography.h1,
-    color: theme.text.inverse,
+    ...ComponentStyles.headerTitle,
   },
   headerSubtitle: {
-    ...Typography.body,
-    color: theme.text.inverse,
-    opacity: 0.8,
+    ...ComponentStyles.headerSubtitle,
   },
   container: {
     padding: Spacing.lg,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.surface.primary,
+    borderWidth: 4,
+    borderColor: theme.interactive.primary,
+  },
+  avatarPlaceholder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.surface.primary,
+    borderWidth: 4,
+    borderColor: theme.border.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarEditButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: theme.interactive.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: Colors.textWhite,
+  },
+  avatarName: {
+    ...Typography.h2,
+    color: Colors.textWhite,
+    textAlign: 'center',
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    letterSpacing: 0.5,
+    marginTop: Spacing.xs,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -329,33 +521,47 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   sectionTitle: {
-    ...Typography.h3,
-    color: theme.text.primary,
+    fontSize: 22, 
+    fontWeight: '700',
+    color: Colors.primary,
+    marginBottom: Spacing.xs,
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border.light,
+    borderBottomColor: Colors.surfaceDark,
   },
   lastRow: {
     borderBottomWidth: 0,
+    marginBottom: -Spacing.sm,
   },
   infoLabel: {
     ...Typography.body,
-    color: theme.text.muted,
-    flex: 1,
+    fontSize: 14,
+    color: Colors.textTertiary,
+    flex: 1.5,
   },
   infoValue: {
     ...Typography.body,
-    color: theme.text.secondary,
-    flex: 2,
+    color: Colors.textPrimary,
+    flex: 1.5,
     textAlign: 'right',
   },
   editButton: {
     padding: Spacing.xs,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.full,
+    width: 48,
+    height: 48,
+    marginTop: -Spacing.xs,
+    marginBottom: -Spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: Colors.primary,
   },
   optionsContainer: {
     marginBottom: Spacing.xl,
@@ -373,27 +579,29 @@ const styles = StyleSheet.create({
     marginLeft: Spacing.sm,
   },
   logoutOption: {
+    ...ComponentStyles.card,
+    backgroundColor: Colors.surface,
     borderBottomWidth: 0,
   },
   logoutText: {
-    color: theme.interactive.danger,
+    color: Colors.danger,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: theme.background.primary,
+    backgroundColor: Colors.accent,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: Spacing.lg,
-    backgroundColor: theme.surface.primary,
+    backgroundColor: Colors.primary,
     borderBottomWidth: 1,
-    borderBottomColor: theme.border.default,
+    borderBottomColor: Colors.primaryLight,
   },
   modalTitle: {
     ...Typography.h2,
-    color: theme.text.primary,
+    color: Colors.textWhite
   },
   closeButton: {
     padding: Spacing.xs,
@@ -402,7 +610,7 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
   },
   inputGroup: {
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   inputLabel: {
     ...Typography.body,
