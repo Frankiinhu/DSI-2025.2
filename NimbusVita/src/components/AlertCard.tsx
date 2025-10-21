@@ -6,7 +6,7 @@ import { useNotifications } from '../config/notifications';
 const AlertCard: React.FC = () => {
   const { notify } = useNotifications();
   const [enabled, setEnabled] = useState(false);
-  const [mockNearbyRisk, setMockNearbyRisk] = useState<'low' | 'medium' | 'high'>('low');
+  const [mockNearbyRisk, setMockNearbyRisk] = useState<'Baixo' | 'Médio' | 'Alto'>('Baixo');
 
   const toggleEnable = () => {
     const newVal = !enabled;
@@ -45,9 +45,9 @@ const AlertCard: React.FC = () => {
       <View style={{ marginTop: 8 }}>
         <Text>Risco atual (mock): <Text style={{ fontWeight: '700' }}>{mockNearbyRisk.toUpperCase()}</Text></Text>
         <View style={{ flexDirection: 'row', marginTop: 8, justifyContent: 'space-between' }}>
-          <TouchableOpacity onPress={() => setMockNearbyRisk('low')} style={styles.smallBtn}><Text>Baixo</Text></TouchableOpacity>
-          <TouchableOpacity onPress={() => setMockNearbyRisk('medium')} style={styles.smallBtn}><Text>Médio</Text></TouchableOpacity>
-          <TouchableOpacity onPress={() => setMockNearbyRisk('high')} style={styles.smallBtn}><Text>Alto</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => setMockNearbyRisk('baixo')} style={styles.smallBtn}><Text>Baixo</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => setMockNearbyRisk('médio')} style={styles.smallBtn}><Text>Médio</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => setMockNearbyRisk('alto')} style={styles.smallBtn}><Text>Alto</Text></TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={sendTestPush} style={styles.pushBtn}>
