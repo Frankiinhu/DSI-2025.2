@@ -57,23 +57,29 @@ const HomeTab: React.FC = () => {
   const generateStatusDescription = (data: WeatherData) => {
     const factors: string[] = [];
 
-    if (data.temperature > 28) factors.push('calor intenso');
-    else if (data.temperature < 18) factors.push('frio intenso');
+    const temp = data.temperature ?? 25;
+    const humidity = data.humidity ?? 60;
+    const pressure = data.pressure ?? 1013;
+    const airQuality = data.airQuality ?? 50;
+    const windSpeed = data.windSpeed ?? 10;
 
-    if (data.humidity > 70) factors.push('umidade alta');
-    else if (data.humidity < 40) factors.push('umidade baixa');
+    if (temp > 28) factors.push('calor intenso');
+    else if (temp < 18) factors.push('frio intenso');
 
-    if (data.pressure < 1000) factors.push('pressão muito baixa');
-    else if (data.pressure < 1010) factors.push('pressão baixa');
+    if (humidity > 70) factors.push('umidade alta');
+    else if (humidity < 40) factors.push('umidade baixa');
+
+    if (pressure < 1000) factors.push('pressão muito baixa');
+    else if (pressure < 1010) factors.push('pressão baixa');
 
     if (data.uvFromApi && data.uvIndex > 8) factors.push('UV muito alto');
     else if (data.uvFromApi && data.uvIndex > 6) factors.push('UV alto');
 
-    if (data.airQuality > 150) factors.push('ar muito poluído');
-    else if (data.airQuality > 100) factors.push('ar poluído');
+    if (airQuality > 150) factors.push('ar muito poluído');
+    else if (airQuality > 100) factors.push('ar poluído');
 
-    if (data.windSpeed > 30) factors.push('vento muito forte');
-    else if (data.windSpeed > 20) factors.push('vento forte');
+    if (windSpeed > 30) factors.push('vento muito forte');
+    else if (windSpeed > 20) factors.push('vento forte');
 
     if (factors.length === 0) {
       return 'Condições meteorológicas favoráveis';
@@ -95,27 +101,33 @@ const HomeTab: React.FC = () => {
   const updateStatus = (data: WeatherData) => {
     let riskScore = 0;
 
+    const temp = data.temperature ?? 25;
+    const humidity = data.humidity ?? 60;
+    const pressure = data.pressure ?? 1013;
+    const airQuality = data.airQuality ?? 50;
+    const windSpeed = data.windSpeed ?? 10;
+
     // Temperatura
-    if (data.temperature > 28) riskScore += 25;
-    else if (data.temperature < 18) riskScore += 20;
+    if (temp > 28) riskScore += 25;
+    else if (temp < 18) riskScore += 20;
 
     // Umidade
-    if (data.humidity > 70) riskScore += 15;
+    if (humidity > 70) riskScore += 15;
 
     // Qualidade do ar
-    if (data.airQuality > 150) riskScore += 40;
-    else if (data.airQuality > 100) riskScore += 30;
+    if (airQuality > 150) riskScore += 40;
+    else if (airQuality > 100) riskScore += 30;
 
     // UV
     if (data.uvFromApi && data.uvIndex > 7) riskScore += 20;
 
     // Pressão
-    if (data.pressure < 1000) riskScore += 20;
-    else if (data.pressure < 1010) riskScore += 15;
+    if (pressure < 1000) riskScore += 20;
+    else if (pressure < 1010) riskScore += 15;
 
     // Vento
-    if (data.windSpeed > 30) riskScore += 15;
-    else if (data.windSpeed > 20) riskScore += 10;
+    if (windSpeed > 30) riskScore += 15;
+    else if (windSpeed > 20) riskScore += 10;
 
     const riskPercentage = Math.min(riskScore, 90);
     const riskLevel = riskPercentage < 30 ? 'Baixo' : 
@@ -156,7 +168,7 @@ const HomeTab: React.FC = () => {
         const cached = await loadWeatherCache();
         if (cached) {
           const cachedWeatherData = {
-            temperature: Math.round(cached.temperature),
+            temperature: cached.temperature !== null ? Math.round(cached.temperature) : null,
             humidity: cached.humidity,
             pressure: cached.pressure,
             windSpeed: cached.windSpeed,
@@ -172,7 +184,7 @@ const HomeTab: React.FC = () => {
 
         const real = await getCurrentWeather('Recife', 'BR');
         const newWeatherData = {
-          temperature: Math.round(real.temperature),
+          temperature: real.temperature !== null ? Math.round(real.temperature) : null,
           humidity: real.humidity,
           pressure: real.pressure,
           windSpeed: real.windSpeed,
@@ -205,7 +217,7 @@ const HomeTab: React.FC = () => {
     try {
       const real = await getCurrentWeather('Recife', 'BR');
       const newWeatherData = {
-        temperature: Math.round(real.temperature),
+        temperature: real.temperature !== null ? Math.round(real.temperature) : null,
         humidity: real.humidity,
         pressure: real.pressure,
         windSpeed: real.windSpeed,
@@ -259,17 +271,22 @@ const HomeTab: React.FC = () => {
   const getRiskFactors = () => {
     const factors = [];
 
+    const temp = weatherData.temperature ?? 25;
+    const pressure = weatherData.pressure ?? 1013;
+    const airQuality = weatherData.airQuality ?? 50;
+    const humidity = weatherData.humidity ?? 60;
+
     // Fator Cardiovascular
     let cardiovascularImpact = 'Baixo';
     let cardiovascularReason = 'Condições normais';
     
-    if (weatherData.temperature > 28) {
+    if (temp > 28) {
       cardiovascularImpact = 'Alto';
       cardiovascularReason = 'Calor excessivo';
-    } else if (weatherData.temperature < 18) {
+    } else if (temp < 18) {
       cardiovascularImpact = 'Alto';
       cardiovascularReason = 'Frio intenso';
-    } else if (weatherData.pressure < 1010) {
+    } else if (pressure < 1010) {
       cardiovascularImpact = 'Moderado';
       cardiovascularReason = 'Pressão baixa';
     }
@@ -285,13 +302,13 @@ const HomeTab: React.FC = () => {
     let respiratoryImpact = 'Baixo';
     let respiratoryReason = 'Ar limpo';
     
-    if (weatherData.airQuality > 150) {
+    if (airQuality > 150) {
       respiratoryImpact = 'Alto';
       respiratoryReason = 'Ar muito poluído';
-    } else if (weatherData.airQuality > 100) {
+    } else if (airQuality > 100) {
       respiratoryImpact = 'Alto';
       respiratoryReason = 'Ar poluído';
-    } else if (weatherData.humidity > 70) {
+    } else if (humidity > 70) {
       respiratoryImpact = 'Moderado';
       respiratoryReason = 'Umidade alta';
     }
@@ -307,10 +324,10 @@ const HomeTab: React.FC = () => {
     let neurologicalImpact = 'Baixo';
     let neurologicalReason = 'Sem alterações';
     
-    if (weatherData.pressure < 1000) {
+    if (pressure < 1000) {
       neurologicalImpact = 'Alto';
       neurologicalReason = 'Pressão muito baixa';
-    } else if (weatherData.pressure < 1010) {
+    } else if (pressure < 1010) {
       neurologicalImpact = 'Moderado';
       neurologicalReason = 'Pressão baixa';
     } else if (weatherData.uvIndex > 8) {
@@ -331,15 +348,21 @@ const HomeTab: React.FC = () => {
   const getRecommendations = () => {
     const recommendations = [];
 
+    const temp = weatherData.temperature ?? 25;
+    const humidity = weatherData.humidity ?? 60;
+    const airQuality = weatherData.airQuality ?? 50;
+    const pressure = weatherData.pressure ?? 1013;
+    const windSpeed = weatherData.windSpeed ?? 10;
+
     // Recomendações baseadas na temperatura
-    if (weatherData.temperature > 28) {
+    if (temp > 28) {
       recommendations.push({
         title: 'Calor Intenso',
         description: 'Hidrate-se frequentemente e evite exposição prolongada ao sol',
         priority: 'Alto',
         icon: 'wb-sunny'
       });
-    } else if (weatherData.temperature < 18) {
+    } else if (temp < 18) {
       recommendations.push({
         title: 'Frio Intenso',
         description: 'Vista roupas adequadas e proteja extremidades do corpo',
@@ -349,7 +372,7 @@ const HomeTab: React.FC = () => {
     }
 
     // Recomendações baseadas na umidade
-    if (weatherData.humidity > 70) {
+    if (humidity > 70) {
       recommendations.push({
         title: 'Umidade Alta',
         description: 'Monitore sintomas respiratórios e use desumidificador se possível',
@@ -359,14 +382,14 @@ const HomeTab: React.FC = () => {
     }
 
     // Recomendações baseadas na qualidade do ar
-    if (weatherData.airQuality > 150) {
+    if (airQuality > 150) {
       recommendations.push({
         title: 'Ar Muito Poluído',
         description: 'Evite atividades ao ar livre e use máscara N95',
         priority: 'Alto',
         icon: 'masks'
       });
-    } else if (weatherData.airQuality > 100) {
+    } else if (airQuality > 100) {
       recommendations.push({
         title: 'Ar Poluído',
         description: 'Evite exercícios intensos ao ar livre e use máscara se necessário',
@@ -393,14 +416,14 @@ const HomeTab: React.FC = () => {
     }
 
     // Recomendações baseadas na pressão
-    if (weatherData.pressure < 1000) {
+    if (pressure < 1000) {
       recommendations.push({
         title: 'Pressão Muito Baixa',
         description: 'Pessoas sensíveis podem ter enxaquecas fortes - procure ajuda médica se necessário',
         priority: 'Alto',
         icon: 'local-hospital'
       });
-    } else if (weatherData.pressure < 1010) {
+    } else if (pressure < 1010) {
       recommendations.push({
         title: 'Pressão Baixa',
         description: 'Pessoas sensíveis podem sentir dores de cabeça - monitore sintomas',
@@ -410,14 +433,14 @@ const HomeTab: React.FC = () => {
     }
 
     // Recomendações baseadas no vento
-    if (weatherData.windSpeed > 30) {
+    if (windSpeed > 30) {
       recommendations.push({
         title: 'Vento Muito Forte',
         description: 'Cuidado com objetos soltos. Evite áreas com árvores',
         priority: 'Alto',
         icon: 'warning'
       });
-    } else if (weatherData.windSpeed > 20) {
+    } else if (windSpeed > 20) {
       recommendations.push({
         title: 'Vento Forte',
         description: 'Cuidado ao andar na rua e com objetos leves',
