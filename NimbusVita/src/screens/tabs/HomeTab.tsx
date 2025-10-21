@@ -9,6 +9,7 @@ import RiskAnalysis from '../../components/RiskAnalysis';
 import { Colors, Typography, Spacing, ComponentStyles } from '../../styles';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { getCurrentWeather, loadWeatherCache, saveWeatherCache } from '../../services/weather.service';
+import { useNotifications } from '../../config/notifications';
 
 const logo = require('../../../assets/logo.png');
 
@@ -33,6 +34,7 @@ interface StatusData {
 
 const HomeTab: React.FC = () => {
   const { user: currentUser, signOut } = useAuth();
+  const { notify } = useNotifications();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData>({
@@ -232,10 +234,26 @@ const HomeTab: React.FC = () => {
       setWeatherSource('api');
       updateStatus(newWeatherData);
       await saveWeatherCache(real);
+      
+      // Toast de sucesso
+      notify('success', {
+        params: {
+          title: 'Clima Atualizado',
+          description: 'Dados meteorológicos atualizados com sucesso'
+        }
+      });
     } catch (e) {
       console.warn('reloadWeather: falhou', e);
       generateRandomWeatherData();
       setWeatherSource('simulado');
+      
+      // Toast de erro
+      notify('error', {
+        params: {
+          title: 'Erro ao Atualizar',
+          description: 'Não foi possível obter dados reais. Usando dados simulados.'
+        }
+      });
     } finally {
       setLoadingWeather(false);
     }
