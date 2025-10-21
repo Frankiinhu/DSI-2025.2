@@ -77,11 +77,15 @@ const randomFactor = () => Math.random() * 0.4 + 0.8; // 0.8 - 1.2
 
 interface SymptomCheckerProps {
   onCheckupComplete?: (symptoms: string[], results: Record<string, number>) => void;
-
   preSelectedSymptoms?: string[];
+  onClearRequest?: () => void; // Callback para quando limpar é solicitado
 }
 
-const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete, preSelectedSymptoms }) => {
+const SymptomChecker: React.FC<SymptomCheckerProps> = ({ 
+  onCheckupComplete, 
+  preSelectedSymptoms,
+  onClearRequest 
+}) => {
 
   const [searchText, setSearchText] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState<Set<string>>(new Set());
@@ -209,11 +213,11 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete, preS
       const symptomsNames = symptomsArray.map(key => SYMPTOMS[key as keyof typeof SYMPTOMS]);
       onCheckupComplete(symptomsNames, res);
       
-      // Limpar sintomas após completar o checkup (sempre, incluindo modo de edição)
-      setTimeout(() => {
-        setSelectedSymptoms(new Set());
-        setPredictions(null);
-      }, 500); // Pequeno delay para feedback visual
+      // NÃO limpar automaticamente - deixar o usuário ver os resultados
+      // A limpeza será feita quando:
+      // 1. Usuário clicar em "Limpar todos"
+      // 2. Iniciar uma nova análise
+      // 3. CheckupTab gerenciar após salvar (se necessário)
     }
   };
 
@@ -221,6 +225,11 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({ onCheckupComplete, preS
     setSelectedSymptoms(new Set());
     setPredictions(null);
     setSearchText('');
+    
+    // Notificar pai que limpeza foi solicitada (útil para resetar modo de edição)
+    if (onClearRequest) {
+      onClearRequest();
+    }
   };
 
   return (
