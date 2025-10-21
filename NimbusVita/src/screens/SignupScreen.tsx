@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StatusBar, StyleSheet, Alert, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StatusBar, StyleSheet, Image, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { Colors, Typography, Spacing, BorderRadius } from '../styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNotifications } from '../config/notifications';
 
 const logo = require('../../assets/logo.png');
 
@@ -19,6 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Signup'>;
 
 const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const { signUp } = useAuth();
+  const { notify } = useNotifications();
   
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
@@ -33,21 +35,45 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const handleRegister = async () => {
     // Validações
     if (!username || !email || !password) {
-      return Alert.alert('Erro', 'Preencha nome de usuário, email e senha');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'Preencha nome de usuário, email e senha',
+        },
+      });
+      return;
     }
     
     if (password !== confirm) {
-      return Alert.alert('Erro', 'As senhas não coincidem');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'As senhas não coincidem',
+        },
+      });
+      return;
     }
     
     // Validação de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      return Alert.alert('Erro', 'Por favor, insira um email válido');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'Por favor, insira um email válido',
+        },
+      });
+      return;
     }
 
     if (password.length < 6) {
-      return Alert.alert('Erro', 'A senha deve ter no mínimo 6 caracteres');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'A senha deve ter no mínimo 6 caracteres',
+        },
+      });
+      return;
     }
 
     setLoading(true);
@@ -65,18 +91,29 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
       );
       
       if (!result.ok) {
-        Alert.alert('Erro', result.error || 'Não foi possível criar conta');
+        notify('error', {
+          params: {
+            title: 'Erro',
+            description: result.error || 'Não foi possível criar conta',
+          },
+        });
       } else {
         // Sucesso! A navegação acontece automaticamente
-        Alert.alert(
-          'Sucesso', 
-          'Conta criada com sucesso!',
-          [{ text: 'OK' }]
-        );
+        notify('success', {
+          params: {
+            title: 'Sucesso',
+            description: 'Conta criada com sucesso!',
+          },
+        });
       }
     } catch (error: any) {
       console.error('Erro no registro:', error);
-      Alert.alert('Erro', error.message || 'Erro inesperado ao criar conta');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: error.message || 'Erro inesperado ao criar conta',
+        },
+      });
     } finally {
       setLoading(false);
     }

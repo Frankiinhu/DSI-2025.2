@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../styles';
+import { useNotifications } from '../config/notifications';
 
 const AlertCard: React.FC = () => {
+  const { notify } = useNotifications();
   const [enabled, setEnabled] = useState(false);
   const [mockNearbyRisk, setMockNearbyRisk] = useState<'low' | 'medium' | 'high'>('low');
 
@@ -11,13 +13,23 @@ const AlertCard: React.FC = () => {
     setEnabled(newVal);
     if (newVal) {
       // simulate subscription to push/location alerts
-      Alert.alert('Alertas ativados (simulado)', 'Você receberá alertas preventivos de acordo com sua localização (mock).');
+      notify('success', {
+        params: {
+          title: 'Alertas ativados (simulado)',
+          description: 'Você receberá alertas preventivos de acordo com sua localização (mock).',
+        },
+      });
     }
   };
 
   const sendTestPush = () => {
     // Here we mock a push notification flow: simple alert
-    Alert.alert('Push (simulado)', `Alerta preventivo: risco ${mockNearbyRisk} na sua localidade.`);
+    notify('info', {
+      params: {
+        title: 'Push (simulado)',
+        description: `Alerta preventivo: risco ${mockNearbyRisk} na sua localidade.`,
+      },
+    });
   };
 
   return (
