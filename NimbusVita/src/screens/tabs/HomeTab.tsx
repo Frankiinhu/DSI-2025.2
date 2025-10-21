@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,16 +7,18 @@ import WeatherCard from '../../components/WeatherCard';
 import StatusCard from '../../components/StatusCard';
 import RiskAnalysis from '../../components/RiskAnalysis';
 import { Colors, Typography, Spacing, ComponentStyles } from '../../styles';
+import { getCurrentWeather, loadWeatherCache, saveWeatherCache } from '../../services/weather.service';
 
 const logo = require('../../../assets/logo.png');
 
 interface WeatherData {
-  temperature: number;
-  humidity: number;
-  pressure: number;
-  windSpeed: number;
+  temperature: number | null;
+  humidity: number | null;
+  pressure: number | null;
+  windSpeed: number | null;
   uvIndex: number;
-  airQuality: number;
+  uvFromApi: boolean;
+  airQuality: number | null;
   condition: string;
 }
 
@@ -37,24 +39,96 @@ const HomeTab: React.FC = () => {
     pressure: 1007,
     windSpeed: 8,
     uvIndex: 9,
+    uvFromApi: false,
     airQuality: 91,
     condition: 'Nublado'
   });
+  const [loadingWeather, setLoadingWeather] = useState<boolean>(false);
+  const [weatherSource, setWeatherSource] = useState<'api' | 'simulado'>('simulado');
   const [statusData, setStatusData] = useState<StatusData>({
     location: 'Recife-PE, Brasil',
     riskLevel: 'Moderado',
     riskPercentage: 60,
-    description: 'Algumas condições podem afetar pessoas sensíveis. Monitore sintomas.',
-    lastUpdate: '17:15'
+    description: 'Conectando ao serviço meteorológico...',
+    lastUpdate: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   });
 
-  useEffect(() => {
-    generateRandomWeatherData();
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+  // Gera uma descrição do status atual baseado nas condições meteorológicas
+  const generateStatusDescription = (data: WeatherData) => {
+    const factors: string[] = [];
+
+    if (data.temperature > 28) factors.push('calor intenso');
+    else if (data.temperature < 18) factors.push('frio intenso');
+
+    if (data.humidity > 70) factors.push('umidade alta');
+    else if (data.humidity < 40) factors.push('umidade baixa');
+
+    if (data.pressure < 1000) factors.push('pressão muito baixa');
+    else if (data.pressure < 1010) factors.push('pressão baixa');
+
+    if (data.uvFromApi && data.uvIndex > 8) factors.push('UV muito alto');
+    else if (data.uvFromApi && data.uvIndex > 6) factors.push('UV alto');
+
+    if (data.airQuality > 150) factors.push('ar muito poluído');
+    else if (data.airQuality > 100) factors.push('ar poluído');
+
+    if (data.windSpeed > 30) factors.push('vento muito forte');
+    else if (data.windSpeed > 20) factors.push('vento forte');
+
+    if (factors.length === 0) {
+      return 'Condições meteorológicas favoráveis';
+    }
+
+    // Capitaliza primeira letra
+    const firstFactor = factors[0].charAt(0).toUpperCase() + factors[0].slice(1);
+    if (factors.length === 1) {
+      return firstFactor;
+    } else if (factors.length === 2) {
+      return `${firstFactor} e ${factors[1]}`;
+    } else {
+      const last = factors.pop();
+      return `${firstFactor}, ${factors.join(', ')} e ${last}`;
+    }
+  };
+
+  // Atualiza o status com base nos dados meteorológicos
+  const updateStatus = (data: WeatherData) => {
+    let riskScore = 0;
+
+    // Temperatura
+    if (data.temperature > 28) riskScore += 25;
+    else if (data.temperature < 18) riskScore += 20;
+
+    // Umidade
+    if (data.humidity > 70) riskScore += 15;
+
+    // Qualidade do ar
+    if (data.airQuality > 150) riskScore += 40;
+    else if (data.airQuality > 100) riskScore += 30;
+
+    // UV
+    if (data.uvFromApi && data.uvIndex > 7) riskScore += 20;
+
+    // Pressão
+    if (data.pressure < 1000) riskScore += 20;
+    else if (data.pressure < 1010) riskScore += 15;
+
+    // Vento
+    if (data.windSpeed > 30) riskScore += 15;
+    else if (data.windSpeed > 20) riskScore += 10;
+
+    const riskPercentage = Math.min(riskScore, 90);
+    const riskLevel = riskPercentage < 30 ? 'Baixo' : 
+                     riskPercentage < 60 ? 'Moderado' : 'Alto';
+
+    setStatusData({
+      location: 'Recife-PE, Brasil',
+      riskLevel,
+      riskPercentage,
+      description: generateStatusDescription(data),
+      lastUpdate: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    });
+  };
 
   const generateRandomWeatherData = () => {
     const conditions = ['Nublado', 'Ensolarado', 'Parcialmente Nublado', 'Chuvoso', 'Tempestade'];
@@ -66,86 +140,91 @@ const HomeTab: React.FC = () => {
       pressure: Math.floor(Math.random() * 80) + 980, // 980-1060 hPa
       windSpeed: Math.floor(Math.random() * 35) + 5, // 5-40 km/h
       uvIndex: Math.floor(Math.random() * 12) + 1, // 1-12
+      uvFromApi: false, // dados simulados
       airQuality: Math.floor(Math.random() * 150) + 30, // 30-180 AQI
       condition: randomCondition
     };
 
     setWeatherData(newWeatherData);
+    updateStatus(newWeatherData);
+  };
 
-    // Calcular risco baseado nas condições climáticas
-    const calculateRisk = () => {
-      let riskScore = 0;
-      let riskFactors = [];
+  useEffect(() => {
+    const load = async () => {
+      setLoadingWeather(true);
+      try {
+        const cached = await loadWeatherCache();
+        if (cached) {
+          const cachedWeatherData = {
+            temperature: Math.round(cached.temperature),
+            humidity: cached.humidity,
+            pressure: cached.pressure,
+            windSpeed: cached.windSpeed,
+            uvIndex: cached.uvIndex,
+            uvFromApi: cached.uvFromApi,
+            airQuality: cached.airQuality,
+            condition: cached.condition || '—'
+          };
+          setWeatherData(cachedWeatherData);
+          setWeatherSource('api');
+          updateStatus(cachedWeatherData);
+        }
 
-      // Temperatura
-      if (newWeatherData.temperature > 28) {
-        riskScore += 25;
-        riskFactors.push('Calor intenso');
-      } else if (newWeatherData.temperature < 18) {
-        riskScore += 20;
-        riskFactors.push('Frio intenso');
+        const real = await getCurrentWeather('Recife', 'BR');
+        const newWeatherData = {
+          temperature: Math.round(real.temperature),
+          humidity: real.humidity,
+          pressure: real.pressure,
+          windSpeed: real.windSpeed,
+          uvIndex: real.uvIndex,
+          uvFromApi: real.uvFromApi,
+          airQuality: real.airQuality,
+          condition: real.condition || '—'
+        };
+        setWeatherData(newWeatherData);
+        setWeatherSource('api');
+        updateStatus(newWeatherData);
+        await saveWeatherCache(real);
+      } catch (e) {
+        console.warn('getCurrentWeather: falhou, usando dados simulados', e);
+        generateRandomWeatherData();
+        setWeatherSource('simulado');
+      } finally {
+        setLoadingWeather(false);
       }
-
-      // Umidade
-      if (newWeatherData.humidity > 70) {
-        riskScore += 15;
-        riskFactors.push('Umidade alta');
-      }
-
-      // Qualidade do ar
-      if (newWeatherData.airQuality > 100) {
-        riskScore += 30;
-        riskFactors.push('Ar poluído');
-      } else if (newWeatherData.airQuality > 150) {
-        riskScore += 40;
-        riskFactors.push('Ar muito poluído');
-      }
-
-      // UV
-      if (newWeatherData.uvIndex > 7) {
-        riskScore += 20;
-        riskFactors.push('UV elevado');
-      }
-
-      // Pressão
-      if (newWeatherData.pressure < 1010) {
-        riskScore += 15;
-        riskFactors.push('Pressão baixa');
-      }
-
-      // Vento
-      if (newWeatherData.windSpeed > 25) {
-        riskScore += 10;
-        riskFactors.push('Vento forte');
-      }
-
-      const riskPercentage = Math.min(riskScore, 90);
-      let riskLevel;
-      let description;
-
-      if (riskPercentage < 30) {
-        riskLevel = 'Baixo';
-        description = 'Condições favoráveis! Aproveite o dia.';
-      } else if (riskPercentage < 60) {
-        riskLevel = 'Moderado';
-        description = `Atenção para: ${riskFactors.slice(0, 2).join(', ')}.`;
-      } else {
-        riskLevel = 'Alto';
-        description = `Cuidado com: ${riskFactors.slice(0, 3).join(', ')}.`;
-      }
-
-      return { riskLevel, riskPercentage, description };
     };
+    load();
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-    const risk = calculateRisk();
-
-    setStatusData({
-      location: 'Recife-PE, Brasil',
-      riskLevel: risk.riskLevel,
-      riskPercentage: risk.riskPercentage,
-      description: risk.description,
-      lastUpdate: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    });
+  const reloadWeather = async () => {
+    setLoadingWeather(true);
+    try {
+      const real = await getCurrentWeather('Recife', 'BR');
+      const newWeatherData = {
+        temperature: Math.round(real.temperature),
+        humidity: real.humidity,
+        pressure: real.pressure,
+        windSpeed: real.windSpeed,
+        uvIndex: real.uvIndex,
+        uvFromApi: real.uvFromApi,
+        airQuality: real.airQuality,
+        condition: real.condition || '—'
+      };
+      setWeatherData(newWeatherData);
+      setWeatherSource('api');
+      updateStatus(newWeatherData);
+      await saveWeatherCache(real);
+    } catch (e) {
+      console.warn('reloadWeather: falhou', e);
+      generateRandomWeatherData();
+      setWeatherSource('simulado');
+    } finally {
+      setLoadingWeather(false);
+    }
   };
 
   const handleLogout = () => {
@@ -392,93 +471,119 @@ const HomeTab: React.FC = () => {
               description={statusData.description}
               lastUpdate={statusData.lastUpdate}
               weatherCondition={weatherData.condition}
+              onReload={reloadWeather}
+              isLoading={loadingWeather}
             />
           </View>
 
           {/* Weather Cards Grid */}
-          <View style={styles.weatherGrid}>
-            <WeatherCard
-              title="Temperatura"
-              value={weatherData.temperature.toString()}
-              unit="°C"
-              status={weatherData.temperature > 34 ? 'Muito Quente' : 
-                     weatherData.temperature > 28 ? 'Quente' : 
-                     weatherData.temperature < 18 ? 'Frio' : 
-                     weatherData.temperature < 24 ? 'Fresco' : 'Agradável'}
-              icon="thermostat"
-              iconColor={weatherData.temperature > 34 ? Colors.weather.hot : 
-                        weatherData.temperature > 28 ? Colors.weather.warm : 
-                        weatherData.temperature < 18 ? Colors.weather.cool : Colors.primaryLight}
-              statusColor={weatherData.temperature > 28 ? Colors.danger : 
-                          weatherData.temperature > 25 ? Colors.warning : 
-                          weatherData.temperature < 18 ? Colors.primary : Colors.primaryLight}
-            />
-            <WeatherCard
-              title="Umidade"
-              value={weatherData.humidity.toString()}
-              unit="%"
-              status={weatherData.humidity > 70 ? 'Muito Alta' : 
-                     weatherData.humidity > 60 ? 'Alta' : 
-                     weatherData.humidity < 40 ? 'Baixa' : 'Normal'}
-              icon="water-drop"
-              iconColor={weatherData.humidity > 70 ? Colors.danger : 
-                        weatherData.humidity > 60 ? Colors.warning : Colors.primary}
-              statusColor={weatherData.humidity > 70 ? Colors.danger : 
+          {loadingWeather ? (
+            <View style={{ alignItems: 'center', padding: Spacing.md }}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+            </View>
+          ) : (
+            <View style={styles.weatherGrid}>
+              <WeatherCard
+                title="Temperatura"
+                value={weatherData.temperature === null ? '—' : weatherData.temperature.toString()}
+                unit="°C"
+                status={weatherData.temperature === null ? 'Indisponível' :
+                       weatherData.temperature > 34 ? 'Muito Quente' : 
+                       weatherData.temperature > 28 ? 'Quente' : 
+                       weatherData.temperature < 18 ? 'Frio' : 
+                       weatherData.temperature < 24 ? 'Fresco' : 'Agradável'}
+                icon="thermostat"
+                iconColor={weatherData.temperature === null ? Colors.textSecondary :
+                          weatherData.temperature > 34 ? Colors.weather.hot : 
+                          weatherData.temperature > 28 ? Colors.weather.warm : 
+                          weatherData.temperature < 18 ? Colors.weather.cool : Colors.primaryLight}
+                statusColor={weatherData.temperature === null ? Colors.textSecondary :
+                           weatherData.temperature > 28 ? Colors.danger : 
+                           weatherData.temperature > 25 ? Colors.warning : 
+                           weatherData.temperature < 18 ? Colors.primary : Colors.primaryLight}
+              />
+              <WeatherCard
+                title="Umidade"
+                value={weatherData.humidity === null ? '—' : weatherData.humidity.toString()}
+                unit="%"
+                status={weatherData.humidity === null ? 'Indisponível' :
+                       weatherData.humidity > 70 ? 'Muito Alta' : 
+                       weatherData.humidity > 60 ? 'Alta' : 
+                       weatherData.humidity < 40 ? 'Baixa' : 'Normal'}
+                icon="water-drop"
+                iconColor={weatherData.humidity === null ? Colors.textSecondary :
+                          weatherData.humidity > 70 ? Colors.danger : 
                           weatherData.humidity > 60 ? Colors.warning : Colors.primary}
-            />
-            <WeatherCard
-              title="Pressão"
-              value={weatherData.pressure.toString()}
-              unit="hPa"
-              status={weatherData.pressure < 1000 ? 'Muito Baixa' : 
-                     weatherData.pressure < 1013 ? 'Baixa' : 
-                     weatherData.pressure > 1020 ? 'Alta' : 'Normal'}
-              icon="speed"
-              iconColor={weatherData.pressure < 1000 ? Colors.danger : 
-                        weatherData.pressure < 1013 ? Colors.warning : Colors.primaryLight}
-              statusColor={weatherData.pressure < 1000 ? Colors.danger : 
+                statusColor={weatherData.humidity === null ? Colors.textSecondary :
+                           weatherData.humidity > 70 ? Colors.danger : 
+                           weatherData.humidity > 60 ? Colors.warning : Colors.primary}
+              />
+              <WeatherCard
+                title="Pressão"
+                value={weatherData.pressure === null ? '—' : weatherData.pressure.toString()}
+                unit="hPa"
+                status={weatherData.pressure === null ? 'Indisponível' :
+                       weatherData.pressure < 1000 ? 'Muito Baixa' : 
+                       weatherData.pressure < 1013 ? 'Baixa' : 
+                       weatherData.pressure > 1020 ? 'Alta' : 'Normal'}
+                icon="speed"
+                iconColor={weatherData.pressure === null ? Colors.textSecondary :
+                          weatherData.pressure < 1000 ? Colors.danger : 
                           weatherData.pressure < 1013 ? Colors.warning : Colors.primaryLight}
-            />
-            <WeatherCard
-              title="Vento"
-              value={weatherData.windSpeed.toString()}
-              unit="km/h"
-              status={weatherData.windSpeed > 30 ? 'Muito Forte' : 
-                     weatherData.windSpeed > 20 ? 'Forte' : 
-                     weatherData.windSpeed > 10 ? 'Moderado' : 'Fraco'}
-              icon="air"
-              iconColor={weatherData.windSpeed > 30 ? Colors.danger : 
-                        weatherData.windSpeed > 20 ? Colors.warning : Colors.textSecondary}
-              statusColor={weatherData.windSpeed > 30 ? Colors.danger : 
+                statusColor={weatherData.pressure === null ? Colors.textSecondary :
+                           weatherData.pressure < 1000 ? Colors.danger : 
+                           weatherData.pressure < 1013 ? Colors.warning : Colors.primaryLight}
+              />
+              <WeatherCard
+                title="Vento"
+                value={weatherData.windSpeed === null ? '—' : weatherData.windSpeed.toString()}
+                unit="km/h"
+                status={weatherData.windSpeed === null ? 'Indisponível' :
+                       weatherData.windSpeed > 30 ? 'Muito Forte' : 
+                       weatherData.windSpeed > 20 ? 'Forte' : 
+                       weatherData.windSpeed > 10 ? 'Moderado' : 'Fraco'}
+                icon="air"
+                iconColor={weatherData.windSpeed === null ? Colors.textSecondary :
+                          weatherData.windSpeed > 30 ? Colors.danger : 
                           weatherData.windSpeed > 20 ? Colors.warning : Colors.textSecondary}
-            />
-            <WeatherCard
-              title="UV"
-              value={weatherData.uvIndex.toString()}
-              unit=""
-              status={weatherData.uvIndex > 8 ? 'Muito Alto' : 
-                     weatherData.uvIndex > 6 ? 'Alto' : 
-                     weatherData.uvIndex > 3 ? 'Moderado' : 'Baixo'}
-              icon="wb-sunny"
-              iconColor={weatherData.uvIndex > 8 ? Colors.danger : 
-                        weatherData.uvIndex > 6 ? Colors.warning : Colors.secondaryLight}
-              statusColor={weatherData.uvIndex > 8 ? Colors.danger : 
+                statusColor={weatherData.windSpeed === null ? Colors.textSecondary :
+                           weatherData.windSpeed > 30 ? Colors.danger : 
+                           weatherData.windSpeed > 20 ? Colors.warning : Colors.textSecondary}
+              />
+              <WeatherCard
+                title="UV"
+                value={weatherData.uvIndex.toString()}
+                unit=""
+                status={!weatherData.uvFromApi ? 'Indisponível' :
+                       weatherData.uvIndex > 8 ? 'Muito Alto' : 
+                       weatherData.uvIndex > 6 ? 'Alto' : 
+                       weatherData.uvIndex > 3 ? 'Moderado' : 'Baixo'}
+                icon="wb-sunny"
+                iconColor={!weatherData.uvFromApi ? Colors.textSecondary :
+                          weatherData.uvIndex > 8 ? Colors.danger : 
                           weatherData.uvIndex > 6 ? Colors.warning : Colors.secondaryLight}
-            />
-            <WeatherCard
-              title="Qualidade do Ar"
-              value={weatherData.airQuality.toString()}
-              unit="AQI"
-              status={weatherData.airQuality > 150 ? 'Perigosa' : 
-                     weatherData.airQuality > 100 ? 'Insalubre' : 
-                     weatherData.airQuality > 50 ? 'Moderada' : 'Boa'}
-              icon="visibility"
-              iconColor={weatherData.airQuality > 150 ? Colors.danger : 
-                        weatherData.airQuality > 100 ? Colors.warning : Colors.primaryLight}
-              statusColor={weatherData.airQuality > 150 ? Colors.danger : 
+                statusColor={!weatherData.uvFromApi ? Colors.textSecondary :
+                            weatherData.uvIndex > 8 ? Colors.danger : 
+                            weatherData.uvIndex > 6 ? Colors.warning : Colors.secondaryLight}
+              />
+              <WeatherCard
+                title="Qualidade do Ar"
+                value={weatherData.airQuality === null ? '—' : weatherData.airQuality.toString()}
+                unit="AQI"
+                status={weatherData.airQuality === null ? 'Indisponível' :
+                       weatherData.airQuality > 150 ? 'Perigosa' : 
+                       weatherData.airQuality > 100 ? 'Insalubre' : 
+                       weatherData.airQuality > 50 ? 'Moderada' : 'Boa'}
+                icon="visibility"
+                iconColor={weatherData.airQuality === null ? Colors.textSecondary :
+                          weatherData.airQuality > 150 ? Colors.danger : 
                           weatherData.airQuality > 100 ? Colors.warning : Colors.primaryLight}
-            />
-          </View>
+                statusColor={weatherData.airQuality === null ? Colors.textSecondary :
+                           weatherData.airQuality > 150 ? Colors.danger : 
+                           weatherData.airQuality > 100 ? Colors.warning : Colors.primaryLight}
+              />
+            </View>
+          )}
 
           {/* Risk Analysis */}
           <RiskAnalysis

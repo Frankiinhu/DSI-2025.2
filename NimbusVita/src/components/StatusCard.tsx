@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Colors } from '../styles';
+import { Colors, Spacing } from '../styles';
 
 interface StatusCardProps {
   location: string;
@@ -10,6 +10,8 @@ interface StatusCardProps {
   description: string;
   lastUpdate: string;
   weatherCondition: string;
+  onReload: () => void;
+  isLoading?: boolean;
 }
 
 const StatusCard: React.FC<StatusCardProps> = ({
@@ -19,6 +21,8 @@ const StatusCard: React.FC<StatusCardProps> = ({
   description,
   lastUpdate,
   weatherCondition,
+  onReload,
+  isLoading,
 }) => {
   const getRiskColor = (level: string) => {
     switch (level.toLowerCase()) {
@@ -54,6 +58,15 @@ const StatusCard: React.FC<StatusCardProps> = ({
         <View style={styles.locationContainer}>
           <MaterialIcons name="location-on" size={20} color={Colors.primaryLight} />
           <Text style={styles.location}>{location}</Text>
+        </View>
+        <View style={styles.reloadContainer}>
+          {isLoading ? (
+            <ActivityIndicator size="small" color={Colors.primary} style={styles.reloadButton} />
+          ) : (
+            <TouchableOpacity onPress={onReload} style={styles.reloadButton}>
+              <MaterialIcons name="refresh" size={20} color={Colors.primary} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -101,6 +114,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -169,6 +183,13 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginLeft: 8,
     fontWeight: '500',
+  },
+  reloadContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reloadButton: {
+    padding: 4,
   },
 });
 
