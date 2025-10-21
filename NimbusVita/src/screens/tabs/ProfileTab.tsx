@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,6 +20,7 @@ const ProfileTab = () => {
   const [showGenderDialog, setShowGenderDialog] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showLogoutDialog2, setShowLogoutDialog2] = useState(false);
+  const [showPhotoOptionsDialog, setShowPhotoOptionsDialog] = useState(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -101,7 +102,12 @@ const ProfileTab = () => {
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permissão necessária', 'Precisamos de permissão para acessar suas fotos');
+      notify('error', {
+        params: {
+          title: 'Permissão necessária',
+          description: 'Precisamos de permissão para acessar suas fotos',
+        },
+      });
       return false;
     }
     return true;
@@ -119,7 +125,12 @@ const ProfileTab = () => {
       if (source === 'camera') {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permissão necessária', 'Precisamos de permissão para usar a câmera');
+          notify('error', {
+            params: {
+              title: 'Permissão necessária',
+              description: 'Precisamos de permissão para usar a câmera',
+            },
+          });
           return;
         }
         result = await ImagePicker.launchCameraAsync({
@@ -154,42 +165,43 @@ const ProfileTab = () => {
           
           if (updateResult.ok) {
             await refreshUser();
-            Alert.alert('Sucesso', 'Foto de perfil atualizada!');
+            notify('success', {
+              params: {
+                title: 'Sucesso',
+                description: 'Foto de perfil atualizada!',
+              },
+            });
           } else {
-            Alert.alert('Erro', updateResult.error || 'Erro ao atualizar perfil');
+            notify('error', {
+              params: {
+                title: 'Erro',
+                description: updateResult.error || 'Erro ao atualizar perfil',
+              },
+            });
           }
         } else {
-          Alert.alert('Erro', uploadResult.error || 'Erro ao fazer upload da imagem');
+          notify('error', {
+            params: {
+              title: 'Erro',
+              description: uploadResult.error || 'Erro ao fazer upload da imagem',
+            },
+          });
         }
       }
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Erro ao processar imagem');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: error.message || 'Erro ao processar imagem',
+        },
+      });
     } finally {
       setUploadingImage(false);
     }
   };
 
   const handleChangeProfilePicture = () => {
-    Alert.alert(
-      'Foto de Perfil',
-      'Escolha uma opção',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Câmera',
-          onPress: () => handlePickImage('camera')
-        },
-        {
-          text: 'Galeria',
-          onPress: () => handlePickImage('gallery')
-        },
-        ...(currentUser?.avatar_url ? [{
-          text: 'Remover Foto',
-          style: 'destructive' as const,
-          onPress: handleRemoveProfilePicture
-        }] : [])
-      ]
-    );
+    setShowPhotoOptionsDialog(true);
   };
 
   const handleRemoveProfilePicture = async () => {
@@ -203,12 +215,27 @@ const ProfileTab = () => {
       
       if (updateResult.ok) {
         await refreshUser();
-        Alert.alert('Sucesso', 'Foto de perfil removida');
+        notify('success', {
+          params: {
+            title: 'Sucesso',
+            description: 'Foto de perfil removida',
+          },
+        });
       } else {
-        Alert.alert('Erro', updateResult.error || 'Erro ao remover foto');
+        notify('error', {
+          params: {
+            title: 'Erro',
+            description: updateResult.error || 'Erro ao remover foto',
+          },
+        });
       }
     } catch (error: any) {
-      Alert.alert('Erro', error.message || 'Erro ao remover foto');
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: error.message || 'Erro ao remover foto',
+        },
+      });
     } finally {
       setUploadingImage(false);
     }
@@ -391,6 +418,69 @@ const ProfileTab = () => {
             <TouchableOpacity
               style={[styles.genderOptionButton, styles.genderCancelButton]}
               onPress={() => setShowGenderDialog(false)}
+            >
+              <Text style={styles.genderCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Photo Options Modal */}
+      <Modal
+        visible={showPhotoOptionsDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoOptionsDialog(false)}
+      >
+        <View style={styles.genderDialogOverlay}>
+          <View style={styles.genderDialog}>
+            <Text style={styles.genderDialogTitle}>Foto de Perfil</Text>
+            <Text style={styles.genderDialogSubtitle}>Escolha uma opção:</Text>
+            
+            <TouchableOpacity
+              style={styles.genderOptionButton}
+              onPress={() => {
+                setShowPhotoOptionsDialog(false);
+                handlePickImage('camera');
+              }}
+            >
+              <View style={styles.photoOptionContent}>
+                <MaterialIcons name="camera-alt" size={24} color={theme.text.primary} />
+                <Text style={styles.genderOptionText}>Câmera</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.genderOptionButton}
+              onPress={() => {
+                setShowPhotoOptionsDialog(false);
+                handlePickImage('gallery');
+              }}
+            >
+              <View style={styles.photoOptionContent}>
+                <MaterialIcons name="photo-library" size={24} color={theme.text.primary} />
+                <Text style={styles.genderOptionText}>Galeria</Text>
+              </View>
+            </TouchableOpacity>
+
+            {currentUser?.avatar_url && (
+              <TouchableOpacity
+                style={[styles.genderOptionButton, styles.deletePhotoButton]}
+                onPress={() => {
+                  setShowPhotoOptionsDialog(false);
+                  handleRemoveProfilePicture();
+                }}
+              >
+                <View style={styles.photoOptionContent}>
+                  <MaterialIcons name="delete" size={24} color={Colors.danger} />
+                  <Text style={[styles.genderOptionText, styles.deletePhotoText]}>Remover Foto</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.genderOptionButton, styles.genderCancelButton]}
+              onPress={() => setShowPhotoOptionsDialog(false)}
             >
               <Text style={styles.genderCancelText}>Cancelar</Text>
             </TouchableOpacity>
@@ -747,6 +837,19 @@ const styles = StyleSheet.create({
     ...Typography.button,
     color: theme.text.secondary,
     textAlign: 'center',
+  },
+  photoOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  deletePhotoButton: {
+    borderColor: Colors.danger,
+    borderWidth: 1,
+  },
+  deletePhotoText: {
+    color: Colors.danger,
   },
 });
 
