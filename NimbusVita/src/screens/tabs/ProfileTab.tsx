@@ -1,57 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, TextInput } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, StatusBar, TextInput, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../contexts/AuthContext';
-import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
+import { Typography, Spacing, ComponentStyles, BorderRadius } from '../../styles';
+import { theme } from '../../theme';
+import { updateProfile } from '../../services/supabase/auth.service';
+import type { Database } from '../../types/database.types';
 
-const ProfileTab: React.FC = () => {
-  const { user: currentUser, signOut } = useAuth();
-  const [age, setAge] = useState<string>('');
-  const [gender, setGender] = useState<string>('');
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
 
-  useEffect(() => {
-    loadProfileData();
-  }, []);
+const ProfileTab = () => {
+  const { user: currentUser, signOut, refreshUser } = useAuth();
+  const [isEditMode, setIsEditMode] = useState(false);
+  
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    fullName: currentUser?.full_name || '',
+    age: currentUser?.age || 0,
+    gender: currentUser?.gender || '',
+    height: currentUser?.height || 0,
+    weight: currentUser?.weight || 0
+  });
 
-  const loadProfileData = async () => {
+  const handleSaveProfile = async () => {
+    if (!currentUser?.id) return;
+
     try {
-      const savedAge = await AsyncStorage.getItem('userAge');
-      const savedGender = await AsyncStorage.getItem('userGender');
-      
-      if (savedAge) setAge(savedAge);
-      if (savedGender) setGender(savedGender);
-    } catch (error) {
-      console.error('Erro ao carregar dados do perfil:', error);
-    }
-  };
+      const { ok, message } = await updateProfile(currentUser.id, {
+        full_name: editForm.fullName,
+        gender: editForm.gender as 'masculino' | 'feminino' | 'outro',
+        age: editForm.age,
+        height: editForm.height,
+        weight: editForm.weight
+      });
 
-  const handleAgeChange = async (text: string) => {
-    if (!text || (!isNaN(Number(text)) && Number(text) >= 0 && Number(text) < 150)) {
-      setAge(text);
-      if (text) {
-        try {
-          await AsyncStorage.setItem('userAge', text);
-        } catch (error) {
-          console.error('Erro ao salvar idade:', error);
-        }
+      if (ok) {
+        await refreshUser();
+        setIsEditMode(false);
+        Alert.alert('Sucesso', 'Perfil atualizado com sucesso!');
       } else {
-        try {
-          await AsyncStorage.removeItem('userAge');
-        } catch (error) {
-          console.error('Erro ao remover idade:', error);
-        }
+        Alert.alert('Erro', message || 'Erro ao atualizar perfil');
       }
+    } catch (error) {
+      Alert.alert('Erro', 'Ocorreu um erro ao atualizar o perfil');
     }
   };
 
-  const handleSelectGender = async (selectedGender: string) => {
-    try {
-      await AsyncStorage.setItem('userGender', selectedGender);
-      setGender(selectedGender);
-    } catch (error) {
-      Alert.alert('Erro', 'Não foi possível salvar o gênero.');
+  const handleAgeChange = (text: string) => {
+    const age = parseInt(text);
+    if (!text || (age >= 0 && age < 150)) {
+      setEditForm(prev => ({ ...prev, age: age || 0 }));
+    }
+  };
+
+  const handleHeightChange = (text: string) => {
+    const height = parseFloat(text);
+    if (!text || (height >= 0 && height < 300)) {
+      setEditForm(prev => ({ ...prev, height: height || 0 }));
+    }
+  };
+
+  const handleWeightChange = (text: string) => {
+    const weight = parseFloat(text);
+    if (!text || (weight >= 0 && weight < 500)) {
+      setEditForm(prev => ({ ...prev, weight: weight || 0 }));
     }
   };
 
@@ -63,53 +77,21 @@ const ProfileTab: React.FC = () => {
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Masculino',
-          onPress: async () => {
-            try {
-              await AsyncStorage.setItem('userGender', 'Masculino');
-              setGender('Masculino');
-            } catch (error) {
-              Alert.alert('Erro', 'Não foi possível salvar o gênero.');
-            }
-          }
+          onPress: () => setEditForm(prev => ({ ...prev, gender: 'masculino' }))
         },
         {
           text: 'Feminino',
-          onPress: async () => {
-            try {
-              await AsyncStorage.setItem('userGender', 'Feminino');
-              setGender('Feminino');
-            } catch (error) {
-              Alert.alert('Erro', 'Não foi possível salvar o gênero.');
-            }
-          }
+          onPress: () => setEditForm(prev => ({ ...prev, gender: 'feminino' }))
         },
         {
           text: 'Outro',
-          onPress: async () => {
-            try {
-              await AsyncStorage.setItem('userGender', 'Outro');
-              setGender('Outro');
-            } catch (error) {
-              Alert.alert('Erro', 'Não foi possível salvar o gênero.');
-            }
-          }
-        },
-        {
-          text: 'Prefiro não informar',
-          onPress: async () => {
-            try {
-              await AsyncStorage.setItem('userGender', 'Prefiro não informar');
-              setGender('Prefiro não informar');
-            } catch (error) {
-              Alert.alert('Erro', 'Não foi possível salvar o gênero.');
-            }
-          }
+          onPress: () => setEditForm(prev => ({ ...prev, gender: 'outro' }))
         }
       ]
     );
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       'Confirmar Logout',
       'Tem certeza que deseja sair da sua conta?',
@@ -118,9 +100,7 @@ const ProfileTab: React.FC = () => {
         {
           text: 'Sair',
           style: 'destructive',
-          onPress: async () => {
-            await signOut();
-          }
+          onPress: signOut
         }
       ]
     );
@@ -128,7 +108,7 @@ const ProfileTab: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={theme.interactive.primary} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Perfil</Text>
@@ -137,99 +117,179 @@ const ProfileTab: React.FC = () => {
 
         <View style={styles.container}>
           <View style={styles.profileCard}>
-            <Text style={styles.sectionTitle}>Informações Pessoais</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Informações Pessoais</Text>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setIsEditMode(true)}
+              >
+                <MaterialIcons name="edit" size={20} color={theme.interactive.primary} />
+              </TouchableOpacity>
+            </View>
             
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Nome:</Text>
-              <Text style={styles.infoValue}>{currentUser?.username || 'Usuário'}</Text>
+              <Text style={styles.infoLabel}>Nome Completo:</Text>
+              <Text style={styles.infoValue}>{currentUser?.full_name || '-'}</Text>
+            </View>
+            
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Nome de usuário:</Text>
+              <Text style={styles.infoValue}>{currentUser?.username || '-'}</Text>
             </View>
             
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Email:</Text>
-              <Text style={styles.infoValue}>{currentUser?.email || 'email@exemplo.com'}</Text>
+              <Text style={styles.infoValue}>{currentUser?.email || '-'}</Text>
             </View>
             
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Idade:</Text>
-              <TextInput
-                style={styles.ageInput}
-                value={age}
-                onChangeText={handleAgeChange}
-                keyboardType="numeric"
-                placeholder="---"
-                placeholderTextColor="#999"
-                maxLength={3}
-              />
+              <Text style={styles.infoValue}>{currentUser?.age || '-'}</Text>
             </View>
             
-            {!gender ? (
-              <View style={styles.infoRowColumn}>
-                <Text style={styles.infoLabel}>Gênero:</Text>
-                <View style={styles.genderButtons}>
-                  <TouchableOpacity
-                    style={styles.genderButton}
-                    onPress={() => handleSelectGender('Masculino')}
-                  >
-                    <Text style={styles.genderButtonText}>Masculino</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.genderButton}
-                    onPress={() => handleSelectGender('Feminino')}
-                  >
-                    <Text style={styles.genderButtonText}>Feminino</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.genderButton}
-                    onPress={() => handleEditGender()}
-                  >
-                    <Text style={styles.genderButtonText}>Outro</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ) : (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Gênero:</Text>
-                <TouchableOpacity style={styles.editButton} onPress={handleEditGender}>
-                  <Text style={styles.editButtonText}>{gender}</Text>
-                  <MaterialIcons name="edit" size={16} color={Colors.primary} style={styles.editIcon} />
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Gênero:</Text>
+              <Text style={styles.infoValue}>{currentUser?.gender || '-'}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Altura (cm):</Text>
+              <Text style={styles.infoValue}>{currentUser?.height ? `${currentUser.height} cm` : '-'}</Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Peso (kg):</Text>
+              <Text style={styles.infoValue}>{currentUser?.weight ? `${currentUser.weight} kg` : '-'}</Text>
+            </View>
+            
+            <View style={[styles.infoRow, styles.lastRow]}>
+              <Text style={styles.infoLabel}>Cadastrado em:</Text>
+              <Text style={styles.infoValue}>
+                {currentUser?.created_at 
+                  ? new Date(currentUser.created_at).toLocaleDateString('pt-BR')
+                  : '-'
+                }
+              </Text>
+            </View>
           </View>
 
           <View style={styles.optionsContainer}>
-            <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="settings" size={24} color={Colors.primary} style={styles.optionIcon} />
-              <Text style={styles.optionText}>Configurações</Text>
+            <TouchableOpacity 
+              style={[styles.optionItem, styles.logoutOption]} 
+              onPress={() => {
+                Alert.alert(
+                  'Confirmação',
+                  'Tem certeza que deseja sair da sua conta?',
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Sair',
+                      style: 'destructive',
+                      onPress: signOut
+                    }
+                  ]
+                );
+              }}
+            >
+              <MaterialIcons name="logout" size={24} color={theme.interactive.danger} />
+              <Text style={[styles.optionText, styles.logoutText]}>
+                Sair da Conta
+              </Text>
             </TouchableOpacity>
-
-            <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="bar-chart" size={24} color={Colors.primary} style={styles.optionIcon} />
-              <Text style={styles.optionText}>Estatísticas de Saúde</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="notifications" size={24} color={Colors.primary} style={styles.optionIcon} />
-              <Text style={styles.optionText}>Notificações</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.optionItem}>
-              <MaterialIcons name="info" size={24} color={Colors.primary} style={styles.optionIcon} />
-              <Text style={styles.optionText}>Sobre o App</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.optionItem, styles.logoutOption]} onPress={handleLogout}>
-              <MaterialIcons name="logout" size={24} color={Colors.danger} style={styles.optionIcon} />
-              <Text style={[styles.optionText, styles.logoutText]}>Sair</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.versionText}>NimbusVita v1.0.0</Text>
-            <Text style={styles.buildText}>Build 2025.2</Text>
           </View>
         </View>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={isEditMode}
+        animationType="slide"
+        onRequestClose={() => setIsEditMode(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Editar Perfil</Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setIsEditMode(false)}
+            >
+              <MaterialIcons name="close" size={24} color={theme.text.primary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Nome Completo</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editForm.fullName}
+                onChangeText={(text) => setEditForm(prev => ({ ...prev, fullName: text }))}
+                placeholder="Seu nome completo"
+                placeholderTextColor={theme.text.muted}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Idade</Text>
+              <TextInput
+                style={styles.textInput}
+                value={String(editForm.age)}
+                onChangeText={handleAgeChange}
+                placeholder="Sua idade"
+                placeholderTextColor={theme.text.muted}
+                keyboardType="number-pad"
+                maxLength={3}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Gênero</Text>
+              <TouchableOpacity
+                style={styles.genderButton}
+                onPress={handleEditGender}
+              >
+                <Text style={styles.genderButtonText}>
+                  {editForm.gender || 'Selecionar gênero'}
+                </Text>
+                <MaterialIcons name="arrow-drop-down" size={24} color={theme.text.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Altura (cm)</Text>
+              <TextInput
+                style={styles.textInput}
+                value={String(editForm.height || '')}
+                onChangeText={handleHeightChange}
+                placeholder="Sua altura em centímetros"
+                placeholderTextColor={theme.text.muted}
+                keyboardType="decimal-pad"
+                maxLength={6}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Peso (kg)</Text>
+              <TextInput
+                style={styles.textInput}
+                value={String(editForm.weight || '')}
+                onChangeText={handleWeightChange}
+                placeholder="Seu peso em quilos"
+                placeholderTextColor={theme.text.muted}
+                keyboardType="decimal-pad"
+                maxLength={6}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={handleSaveProfile}
+            >
+              <Text style={styles.saveButtonText}>Salvar Alterações</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -237,33 +297,40 @@ const ProfileTab: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.accent,
+    backgroundColor: theme.background.primary,
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    ...ComponentStyles.header,
+    backgroundColor: theme.interactive.primary,
+    padding: Spacing.lg,
   },
   headerTitle: {
-    ...ComponentStyles.headerTitle,
+    ...Typography.h1,
+    color: theme.text.inverse,
   },
   headerSubtitle: {
-    ...ComponentStyles.headerSubtitle,
+    ...Typography.body,
+    color: theme.text.inverse,
+    opacity: 0.8,
   },
   container: {
     padding: Spacing.lg,
-    paddingTop: Spacing.xl2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
   },
   profileCard: {
     ...ComponentStyles.card,
-    marginBottom: Spacing.xl2,
+    marginBottom: Spacing.xl,
   },
   sectionTitle: {
-    ...Typography.h5,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: Spacing.base,
+    ...Typography.h3,
+    color: theme.text.primary,
   },
   infoRow: {
     flexDirection: 'row',
@@ -271,95 +338,110 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
+    borderBottomColor: theme.border.light,
+  },
+  lastRow: {
+    borderBottomWidth: 0,
   },
   infoLabel: {
     ...Typography.body,
-    fontWeight: '500',
-    color: Colors.primary,
+    color: theme.text.muted,
+    flex: 1,
   },
   infoValue: {
     ...Typography.body,
-    color: Colors.textSecondary,
+    color: theme.text.secondary,
+    flex: 2,
+    textAlign: 'right',
   },
   editButton: {
-    backgroundColor: Colors.inputBackground,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.base,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  editIcon: {
-    marginLeft: Spacing.xs,
-  },
-  editButtonText: {
-    ...Typography.labelSmall,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  infoRowColumn: {
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
-  },
-  ageInput: {
-    ...ComponentStyles.input,
-    width: 55,
-    textAlign: 'center',
-    paddingVertical: 0,
-  },
-  genderButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  genderButton: {
-    ...ComponentStyles.chip,
-    flex: 1,
-    alignItems: 'center',
-  },
-  genderButtonText: {
-    ...ComponentStyles.chipText,
-    color: Colors.primary,
-    fontWeight: '600',
+    padding: Spacing.xs,
   },
   optionsContainer: {
-    ...ComponentStyles.card,
     marginBottom: Spacing.xl,
-    padding: 0,
   },
   optionItem: {
-    ...ComponentStyles.listItem,
-  },
-  optionIcon: {
-    marginRight: Spacing.md,
-    width: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.surface.primary,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.base,
+    marginBottom: Spacing.sm,
   },
   optionText: {
-    ...ComponentStyles.listItemText,
+    ...Typography.button,
+    marginLeft: Spacing.sm,
   },
   logoutOption: {
     borderBottomWidth: 0,
   },
   logoutText: {
-    color: Colors.danger,
+    color: theme.interactive.danger,
   },
-  footer: {
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.background.primary,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: Spacing.xs,
+    padding: Spacing.lg,
+    backgroundColor: theme.surface.primary,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border.default,
   },
-  versionText: {
+  modalTitle: {
+    ...Typography.h2,
+    color: theme.text.primary,
+  },
+  closeButton: {
+    padding: Spacing.xs,
+  },
+  modalContent: {
+    padding: Spacing.lg,
+  },
+  inputGroup: {
+    marginBottom: Spacing.lg,
+  },
+  inputLabel: {
     ...Typography.body,
-    fontWeight: '600',
-    color: Colors.primary,
+    color: theme.text.primary,
     marginBottom: Spacing.xs,
   },
-  buildText: {
-    ...Typography.caption,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
+  textInput: {
+    backgroundColor: theme.surface.primary,
+    borderWidth: 1,
+    borderColor: theme.border.default,
+    borderRadius: BorderRadius.base,
+    padding: Spacing.sm,
+    ...Typography.body,
+    color: theme.text.primary,
+  },
+  genderButton: {
+    backgroundColor: theme.surface.primary,
+    borderWidth: 1,
+    borderColor: theme.border.default,
+    borderRadius: BorderRadius.base,
+    padding: Spacing.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  genderButtonText: {
+    ...Typography.body,
+    color: theme.text.primary,
+  },
+  saveButton: {
+    backgroundColor: theme.interactive.primary,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.base,
+    alignItems: 'center',
+    marginTop: Spacing.xl,
+  },
+  saveButtonText: {
+    ...Typography.button,
+    color: theme.text.inverse,
   },
 });
 
