@@ -6,38 +6,37 @@ import { Colors } from '../styles';
 interface WeatherCardProps {
   title: string;
   value: string;
-  unit: string;
+  unit?: string;
   status?: string;
-  icon: string;
+  icon?: string;
   iconColor?: string;
   statusColor?: string;
 }
 
-const WeatherCard: React.FC<WeatherCardProps> = ({ 
-  title, 
-  value, 
-  unit, 
-  status, 
-  icon, 
+const WeatherCard: React.FC<WeatherCardProps> = ({
+  title,
+  value,
+  unit = '',
+  status,
+  icon = 'wb-sunny',
   iconColor = Colors.primary,
   statusColor = '#666'
 }) => {
-  // Função para determinar a cor de fundo baseada na cor do status
   const getBackgroundColor = () => {
+    // Mantém a lógica original de mapping por cores, mas simplificada
     if (!statusColor) return '#f8f9fa';
-    
     switch (statusColor) {
-      case Colors.weather.hot: // Laranja escuro - Alto risco
+      case Colors.weather.hot:
         return '#fdf2f0';
-      case Colors.weather.warm: // Amarelo dourado - Moderado
+      case Colors.weather.warm:
         return '#fefbf6';
-      case Colors.primary: // Azul principal - Normal/Frio
+      case Colors.primary:
         return '#f0f1ff';
-      case Colors.weather.air.good: // Azul claro - Bom
+      case Colors.weather.air.good:
         return '#f5f6ff';
-      case '#f5d76e': // Amarelo claro - UV baixo
+      case '#f5d76e':
         return '#fefdf4';
-      case '#9999b3': // Cinza azulado - Neutro
+      case '#9999b3':
         return '#f7f8fa';
       default:
         return '#f8f9fa';
@@ -72,6 +71,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: 150,
+  },
+  errorText: {
+    color: 'red',
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 12,
+  },
+  extraInfo: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+    paddingTop: 8,
+  },
+  extraInfoText: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
   },
   cardHeader: {
     flexDirection: 'row',
