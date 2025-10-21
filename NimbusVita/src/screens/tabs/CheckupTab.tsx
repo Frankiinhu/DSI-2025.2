@@ -235,6 +235,13 @@ const CheckupTab: React.FC = () => {
     }
   };
 
+  const handleClearRequest = () => {
+    // Cancelar modo de edição se estiver ativo
+    if (editingRecord) {
+      setEditingRecord(null);
+    }
+  };
+
   const editCheckupRecord = (record: CheckupRecord) => {
     console.log('📝 editCheckupRecord: Iniciando edição');
     console.log('  - Record ID:', record.id);
@@ -362,6 +369,7 @@ const CheckupTab: React.FC = () => {
           <SymptomChecker 
             onCheckupComplete={addCheckupRecord} 
             preSelectedSymptoms={editingRecord?.symptoms}
+            onClearRequest={handleClearRequest}
           />
 
           {/* Indicador de Modo de Edição */}
