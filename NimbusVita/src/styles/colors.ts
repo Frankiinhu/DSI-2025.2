@@ -73,3 +73,53 @@ export const Colors = {
 } as const;
 
 export type ColorPalette = typeof Colors;
+
+/**
+ * Theme-compatible color mappings for backward compatibility
+ * Maps theme.* patterns to Colors.*
+ */
+export const ThemeColors = {
+  interactive: {
+    primary: Colors.primary,
+    secondary: Colors.secondary,
+    danger: Colors.danger,
+    success: Colors.success,
+    warning: Colors.warning,
+  },
+  text: {
+    primary: Colors.textPrimary,
+    secondary: Colors.textSecondary,
+    muted: Colors.textTertiary,
+    inverse: Colors.textWhite,
+    brand: Colors.primary,
+    highlight: Colors.secondary,
+  },
+  surface: {
+    primary: Colors.surface,
+    secondary: Colors.surfaceLight,
+    accent: Colors.inputBackground,
+  },
+  border: {
+    light: Colors.borderLight,
+    default: Colors.border,
+    focus: Colors.primary,
+  },
+  background: {
+    primary: Colors.surface,
+    secondary: Colors.surfaceLight,
+    accent: Colors.accentLight,
+    brand: Colors.primary,
+  },
+  status: {
+    success: Colors.success,
+    error: Colors.danger,
+    warning: Colors.warning,
+    info: Colors.info,
+  },
+  shadow: {
+    color: Colors.textDark,
+    opacity: 0.1,
+  },
+} as const;
+
+export type ThemeColorPalette = typeof ThemeColors;

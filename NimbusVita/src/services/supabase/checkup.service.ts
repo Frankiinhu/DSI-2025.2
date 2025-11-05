@@ -246,7 +246,7 @@ export const getCheckupsByPeriod = async (
 /**
  * Busca o catálogo de sintomas
  */
-export const getSymptomsСatalog = async (): Promise<SymptomCatalogResponse> => {
+export const getSymptomsCatalog = async (): Promise<SymptomCatalogResponse> => {
   try {
     const { data, error } = await supabase
       .from('symptoms_catalog')

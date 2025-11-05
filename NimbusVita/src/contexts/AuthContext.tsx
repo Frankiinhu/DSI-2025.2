@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event);
+        if (__DEV__) console.log('Auth state changed:', event);
         
         if (session?.user) {
           // Usuário logou - buscar perfil completo
@@ -73,12 +73,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Verificar sessão inicial
    */
   const checkSession = async () => {
-    console.log('🔍 Iniciando verificação de sessão...');
+    if (__DEV__) console.log('🔍 Iniciando verificação de sessão...');
     
     try {
       setLoading(true);
       
-      console.log('📡 Buscando usuário atual...');
+      if (__DEV__) console.log('📡 Buscando usuário atual...');
       const profile = await Promise.race([
         getCurrentUser(),
         new Promise<null>((_, reject) => 
@@ -86,12 +86,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         )
       ]);
       
-      console.log('✅ Usuário obtido:', profile ? `ID: ${profile.id}` : 'Nenhum usuário');
+      if (__DEV__) console.log('✅ Usuário obtido:', profile ? `ID: ${profile.id}` : 'Nenhum usuário');
       setUser(profile);
       
       // Se há usuário autenticado, sincronizar dados do Supabase
       if (profile) {
-        console.log('🔄 Usuário autenticado - iniciando sincronização...');
+        if (__DEV__) console.log('🔄 Usuário autenticado - iniciando sincronização...');
         syncCheckupsOnStartup(profile.id).catch(err => 
           console.error('⚠️ Erro na sincronização inicial:', err)
         );
@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('❌ Erro ao verificar sessão:', error);
       setUser(null);
     } finally {
-      console.log('✅ Verificação de sessão finalizada. Loading = false');
+      if (__DEV__) console.log('✅ Verificação de sessão finalizada. Loading = false');
       setLoading(false);
     }
   };
@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       // Sincronizar dados quando o usuário faz login
       if (profile) {
-        console.log('🔄 Login detectado - sincronizando dados...');
+        if (__DEV__) console.log('🔄 Login detectado - sincronizando dados...');
         syncCheckupsOnStartup(profile.id).catch(err => 
           console.error('Erro na sincronização pós-login:', err)
         );
@@ -242,32 +242,4 @@ export const useAuth = () => {
   }
   
   return context;
-};
-
-/**
- * Hook para verificar se o usuário está autenticado
- * 
- * @example
- * ```tsx
- * const isAuthenticated = useIsAuthenticated();
- * if (!isAuthenticated) navigate('Login');
- * ```
- */
-export const useIsAuthenticated = (): boolean => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated;
-};
-
-/**
- * Hook para obter apenas o usuário atual
- * 
- * @example
- * ```tsx
- * const user = useCurrentUser();
- * console.log(user?.username);
- * ```
- */
-export const useCurrentUser = (): Profile | null => {
-  const { user } = useAuth();
-  return user;
 };

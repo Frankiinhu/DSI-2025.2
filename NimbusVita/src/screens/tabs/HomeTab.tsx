@@ -10,19 +10,13 @@ import { Colors, Typography, Spacing, ComponentStyles } from '../../styles';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { getCurrentWeather, loadWeatherCache, saveWeatherCache } from '../../services/weather.service';
 import { useNotifications } from '../../config/notifications';
+import { 
+  generateRandomWeatherData, 
+  transformWeatherData,
+  type WeatherData 
+} from '../../utils/weatherHelpers';
 
 const logo = require('../../../assets/logo.png');
-
-interface WeatherData {
-  temperature: number | null;
-  humidity: number | null;
-  pressure: number | null;
-  windSpeed: number | null;
-  uvIndex: number;
-  uvFromApi: boolean;
-  airQuality: number | null;
-  condition: string;
-}
 
 interface StatusData {
   location: string;
@@ -146,64 +140,29 @@ const HomeTab: React.FC = () => {
     });
   };
 
-  const generateRandomWeatherData = () => {
-    const conditions = ['Nublado', 'Ensolarado', 'Parcialmente Nublado', 'Chuvoso', 'Tempestade'];
-    const randomCondition = conditions[Math.floor(Math.random() * conditions.length)];
-    
-    const newWeatherData = {
-      temperature: Math.floor(Math.random() * 20) + 15, // 15-35°C
-      humidity: Math.floor(Math.random() * 50) + 50, // 50-100%
-      pressure: Math.floor(Math.random() * 80) + 980, // 980-1060 hPa
-      windSpeed: Math.floor(Math.random() * 35) + 5, // 5-40 km/h
-      uvIndex: Math.floor(Math.random() * 12) + 1, // 1-12
-      uvFromApi: false, // dados simulados
-      airQuality: Math.floor(Math.random() * 150) + 30, // 30-180 AQI
-      condition: randomCondition
-    };
-
-    setWeatherData(newWeatherData);
-    updateStatus(newWeatherData);
-  };
-
   useEffect(() => {
     const load = async () => {
       setLoadingWeather(true);
       try {
         const cached = await loadWeatherCache();
         if (cached) {
-          const cachedWeatherData = {
-            temperature: cached.temperature !== null ? Math.round(cached.temperature) : null,
-            humidity: cached.humidity,
-            pressure: cached.pressure,
-            windSpeed: cached.windSpeed,
-            uvIndex: cached.uvIndex,
-            uvFromApi: cached.uvFromApi,
-            airQuality: cached.airQuality,
-            condition: cached.condition || '—'
-          };
+          const cachedWeatherData = transformWeatherData(cached);
           setWeatherData(cachedWeatherData);
           setWeatherSource('api');
           updateStatus(cachedWeatherData);
         }
 
         const real = await getCurrentWeather('Recife', 'BR');
-        const newWeatherData = {
-          temperature: real.temperature !== null ? Math.round(real.temperature) : null,
-          humidity: real.humidity,
-          pressure: real.pressure,
-          windSpeed: real.windSpeed,
-          uvIndex: real.uvIndex,
-          uvFromApi: real.uvFromApi,
-          airQuality: real.airQuality,
-          condition: real.condition || '—'
-        };
+        const newWeatherData = transformWeatherData(real);
         setWeatherData(newWeatherData);
         setWeatherSource('api');
         updateStatus(newWeatherData);
         await saveWeatherCache(real);
       } catch (e) {
         console.warn('getCurrentWeather: falhou, usando dados simulados', e);
-        generateRandomWeatherData();
+        const simulatedData = generateRandomWeatherData();
+        setWeatherData(simulatedData);
+        updateStatus(simulatedData);
         setWeatherSource('simulado');
       } finally {
         setLoadingWeather(false);
@@ -220,16 +179,7 @@ const HomeTab: React.FC = () => {
     setLoadingWeather(true);
     try {
       const real = await getCurrentWeather('Recife', 'BR');
-      const newWeatherData = {
-        temperature: real.temperature !== null ? Math.round(real.temperature) : null,
-        humidity: real.humidity,
-        pressure: real.pressure,
-        windSpeed: real.windSpeed,
-        uvIndex: real.uvIndex,
-        uvFromApi: real.uvFromApi,
-        airQuality: real.airQuality,
-        condition: real.condition || '—'
-      };
+      const newWeatherData = transformWeatherData(real);
       setWeatherData(newWeatherData);
       setWeatherSource('api');
       updateStatus(newWeatherData);
@@ -244,7 +194,9 @@ const HomeTab: React.FC = () => {
       });
     } catch (e) {
       console.warn('reloadWeather: falhou', e);
-      generateRandomWeatherData();
+      const simulatedData = generateRandomWeatherData();
+      setWeatherData(simulatedData);
+      updateStatus(simulatedData);
       setWeatherSource('simulado');
       
       // Toast de erro

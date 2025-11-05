@@ -3,7 +3,7 @@
  * Exportação centralizada de todos os estilos
  */
 
-export { Colors } from './colors';
+export { Colors, ThemeColors } from './colors';
 export { Typography, FontSizes } from './typography';
 export { Spacing, BorderRadius, Shadows } from './spacing';
 export { ComponentStyles } from './components';

@@ -4,8 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
-import { Typography, Colors, Spacing, ComponentStyles, BorderRadius } from '../../styles';
-import { theme } from '../../theme';
+import { Typography, Colors, ThemeColors, Spacing, ComponentStyles, BorderRadius } from '../../styles';
 import { updateProfile } from '../../services/supabase/auth.service';
 import { uploadProfilePicture, updateProfilePictureUrl, deleteProfilePicture } from '../../services/supabase/profile.storage.service';
 import type { Database } from '../../types/database.types';
@@ -243,7 +242,7 @@ const ProfileTab = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.interactive.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={ThemeColors.interactive.primary} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Perfil</Text>
@@ -256,7 +255,7 @@ const ProfileTab = () => {
             <View style={styles.avatarContainer}>
               {uploadingImage ? (
                 <View style={styles.avatarPlaceholder}>
-                  <ActivityIndicator size="large" color={theme.interactive.primary} />
+                  <ActivityIndicator size="large" color={ThemeColors.interactive.primary} />
                 </View>
               ) : currentUser?.avatar_url ? (
                 <Image 
@@ -265,7 +264,7 @@ const ProfileTab = () => {
                 />
               ) : (
                 <View style={styles.avatarPlaceholder}>
-                  <MaterialIcons name="person" size={60} color={theme.text.muted} />
+                  <MaterialIcons name="person" size={60} color={ThemeColors.text.muted} />
                 </View>
               )}
               <TouchableOpacity 
@@ -286,7 +285,7 @@ const ProfileTab = () => {
                 style={styles.editButton}
                 onPress={() => setIsEditMode(true)}
               >
-                <MaterialIcons name="edit" size={24} color={theme.interactive.primary} />
+                <MaterialIcons name="edit" size={24} color={ThemeColors.interactive.primary} />
               </TouchableOpacity>
             </View>
             
@@ -357,7 +356,7 @@ const ProfileTab = () => {
         message="Tem certeza que deseja sair da sua conta?"
         confirmText="Sair"
         cancelText="Cancelar"
-        confirmColor={theme.interactive.danger}
+        confirmColor={ThemeColors.interactive.danger}
         onConfirm={signOut}
         onCancel={() => setShowLogoutDialog(false)}
       />
@@ -368,7 +367,7 @@ const ProfileTab = () => {
         message="Tem certeza que deseja sair da sua conta?"
         confirmText="Sair"
         cancelText="Cancelar"
-        confirmColor={theme.interactive.danger}
+        confirmColor={ThemeColors.interactive.danger}
         onConfirm={signOut}
         onCancel={() => setShowLogoutDialog2(false)}
       />
@@ -445,7 +444,7 @@ const ProfileTab = () => {
               }}
             >
               <View style={styles.photoOptionContent}>
-                <MaterialIcons name="camera-alt" size={24} color={theme.text.primary} />
+                <MaterialIcons name="camera-alt" size={24} color={ThemeColors.text.primary} />
                 <Text style={styles.genderOptionText}>Câmera</Text>
               </View>
             </TouchableOpacity>
@@ -458,7 +457,7 @@ const ProfileTab = () => {
               }}
             >
               <View style={styles.photoOptionContent}>
-                <MaterialIcons name="photo-library" size={24} color={theme.text.primary} />
+                <MaterialIcons name="photo-library" size={24} color={ThemeColors.text.primary} />
                 <Text style={styles.genderOptionText}>Galeria</Text>
               </View>
             </TouchableOpacity>
@@ -513,7 +512,7 @@ const ProfileTab = () => {
                 value={editForm.fullName}
                 onChangeText={(text) => setEditForm(prev => ({ ...prev, fullName: text }))}
                 placeholder="Seu nome completo"
-                placeholderTextColor={theme.text.muted}
+                placeholderTextColor={ThemeColors.text.muted}
               />
             </View>
 
@@ -524,7 +523,7 @@ const ProfileTab = () => {
                 value={String(editForm.age)}
                 onChangeText={handleAgeChange}
                 placeholder="Sua idade"
-                placeholderTextColor={theme.text.muted}
+                placeholderTextColor={ThemeColors.text.muted}
                 keyboardType="number-pad"
                 maxLength={3}
               />
@@ -539,7 +538,7 @@ const ProfileTab = () => {
                 <Text style={styles.genderButtonText}>
                   {editForm.gender || 'Selecionar gênero'}
                 </Text>
-                <MaterialIcons name="arrow-drop-down" size={24} color={theme.text.primary} />
+                <MaterialIcons name="arrow-drop-down" size={24} color={ThemeColors.text.primary} />
               </TouchableOpacity>
             </View>
 
@@ -550,7 +549,7 @@ const ProfileTab = () => {
                 value={String(editForm.height || '')}
                 onChangeText={handleHeightChange}
                 placeholder="Sua altura em centímetros"
-                placeholderTextColor={theme.text.muted}
+                placeholderTextColor={ThemeColors.text.muted}
                 keyboardType="decimal-pad"
                 maxLength={6}
               />
@@ -563,7 +562,7 @@ const ProfileTab = () => {
                 value={String(editForm.weight || '')}
                 onChangeText={handleWeightChange}
                 placeholder="Seu peso em quilos"
-                placeholderTextColor={theme.text.muted}
+                placeholderTextColor={ThemeColors.text.muted}
                 keyboardType="decimal-pad"
                 maxLength={6}
               />
@@ -613,17 +612,17 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: theme.surface.primary,
+    backgroundColor: ThemeColors.surface.primary,
     borderWidth: 4,
-    borderColor: theme.interactive.primary,
+    borderColor: ThemeColors.interactive.primary,
   },
   avatarPlaceholder: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: theme.surface.primary,
+    backgroundColor: ThemeColors.surface.primary,
     borderWidth: 4,
-    borderColor: theme.border.default,
+    borderColor: ThemeColors.border.default,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -631,7 +630,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: theme.interactive.primary,
+    backgroundColor: ThemeColors.interactive.primary,
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -710,7 +709,7 @@ const styles = StyleSheet.create({
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.surface.primary,
+    backgroundColor: ThemeColors.surface.primary,
     padding: Spacing.md,
     borderRadius: BorderRadius.base,
     marginBottom: Spacing.sm,
@@ -755,22 +754,22 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     ...Typography.body,
-    color: theme.text.primary,
+    color: ThemeColors.text.primary,
     marginBottom: Spacing.xs,
   },
   textInput: {
-    backgroundColor: theme.surface.primary,
+    backgroundColor: ThemeColors.surface.primary,
     borderWidth: 1,
-    borderColor: theme.border.default,
+    borderColor: ThemeColors.border.default,
     borderRadius: BorderRadius.base,
     padding: Spacing.sm,
     ...Typography.body,
-    color: theme.text.primary,
+    color: ThemeColors.text.primary,
   },
   genderButton: {
-    backgroundColor: theme.surface.primary,
+    backgroundColor: ThemeColors.surface.primary,
     borderWidth: 1,
-    borderColor: theme.border.default,
+    borderColor: ThemeColors.border.default,
     borderRadius: BorderRadius.base,
     padding: Spacing.sm,
     flexDirection: 'row',
@@ -779,10 +778,10 @@ const styles = StyleSheet.create({
   },
   genderButtonText: {
     ...Typography.body,
-    color: theme.text.primary,
+    color: ThemeColors.text.primary,
   },
   saveButton: {
-    backgroundColor: theme.interactive.primary,
+    backgroundColor: ThemeColors.interactive.primary,
     padding: Spacing.md,
     borderRadius: BorderRadius.base,
     alignItems: 'center',
@@ -790,7 +789,7 @@ const styles = StyleSheet.create({
   },
   saveButtonText: {
     ...Typography.button,
-    color: theme.text.inverse,
+    color: ThemeColors.text.inverse,
   },
   genderDialogOverlay: {
     flex: 1,
@@ -800,7 +799,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
   },
   genderDialog: {
-    backgroundColor: theme.surface.primary,
+    backgroundColor: ThemeColors.surface.primary,
     borderRadius: BorderRadius.lg,
     padding: Spacing.xl,
     width: '100%',
@@ -808,34 +807,34 @@ const styles = StyleSheet.create({
   },
   genderDialogTitle: {
     ...Typography.h3,
-    color: theme.text.primary,
+    color: ThemeColors.text.primary,
     marginBottom: Spacing.sm,
   },
   genderDialogSubtitle: {
     ...Typography.body,
-    color: theme.text.secondary,
+    color: ThemeColors.text.secondary,
     marginBottom: Spacing.lg,
   },
   genderOptionButton: {
-    backgroundColor: theme.background.primary,
+    backgroundColor: ThemeColors.background.primary,
     padding: Spacing.md,
     borderRadius: BorderRadius.base,
     marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: theme.border.default,
+    borderColor: ThemeColors.border.default,
   },
   genderOptionText: {
     ...Typography.button,
-    color: theme.text.primary,
+    color: ThemeColors.text.primary,
     textAlign: 'center',
   },
   genderCancelButton: {
-    backgroundColor: theme.surface.secondary,
+    backgroundColor: ThemeColors.surface.secondary,
     marginTop: Spacing.md,
   },
   genderCancelText: {
     ...Typography.button,
-    color: theme.text.secondary,
+    color: ThemeColors.text.secondary,
     textAlign: 'center',
   },
   photoOptionContent: {

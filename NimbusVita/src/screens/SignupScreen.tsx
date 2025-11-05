@@ -130,7 +130,6 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/*<Image source={logo} style={styles.logo} resizeMode="contain" />*/}
           <Text style={styles.title}>
             <Text style={styles.nimbus}>Nimbus</Text>
             <Text style={styles.vita}>Vita</Text>
@@ -231,12 +230,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: Spacing.xl2,
     justifyContent: 'center',
-  },
-  logo: {
-    width: 0,
-    height: 0,
-    marginBottom: Spacing.base,
-    alignSelf: 'center',
   },
   title: {
     ...Typography.h1,
