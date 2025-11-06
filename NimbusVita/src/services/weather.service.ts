@@ -49,20 +49,85 @@ export async function getCurrentWeather(cidade = 'Recife', pais = 'BR') : Promis
   const windSpeed = wind?.speed ? Math.round(wind.speed * 3.6) : null;
   const condition = weather && weather[0] ? weather[0].description : (weather && weather[0] ? weather[0].main : '');
 
+  // Logs de diagnóstico: cidade/resolução e coordenadas usadas para buscar UV
+  try {
+    console.log('Weather API resolved location name:', weatherJson.name ?? `${cidade},${pais}`);
+    console.log('Coordinates resolved for location:', coord ? `lat=${coord.lat}, lon=${coord.lon}` : 'coord missing');
+    // Mostra a URL de consulta (mascarando a chave) para ajudar a depurar sem vazar a API key
+    try {
+      const maskedWeatherUrl = weatherUrl.replace(`appid=${API_KEY}`, 'appid=***');
+      console.log('Weather request URL:', maskedWeatherUrl);
+    } catch (e) {
+      // Ignore masking errors
+    }
+  } catch (e) {
+    // não deve quebrar a execução do serviço
+  }
+
   let uvIndex = 0;
   let uvFromApi = false;
   try {
-    // onecall endpoint to get UV (current.uvi)
-    const onecallUrl = `${BASE_URL}/onecall?lat=${coord.lat}&lon=${coord.lon}&exclude=minutely,hourly,daily,alerts&appid=${API_KEY}&units=metric`;
-    const onecallRes = await fetch(onecallUrl);
-    console.log('UV API response status:', onecallRes.status);
+    // Tentar One Call (v2.5) primeiro
+    const onecallUrlV25 = `${BASE_URL}/onecall?lat=${coord.lat}&lon=${coord.lon}&exclude=minutely,hourly,daily,alerts&appid=${API_KEY}&units=metric`;
+    try {
+      console.log('Fetching UV from onecall v2.5 (masked):', onecallUrlV25.replace(`appid=${API_KEY}`, 'appid=***'));
+    } catch (e) {
+      // ignore
+    }
+    let onecallRes = await fetch(onecallUrlV25);
+    console.log('UV API (onecall v2.5) response status:', onecallRes.status);
     if (onecallRes.ok) {
       const onecallJson = await onecallRes.json();
-      uvIndex = onecallJson.current?.uvi ?? 0;
+      uvIndex = onecallJson.current?.uvi ?? onecallJson.current?.uvi ?? 0;
       uvFromApi = true;
-      console.log('UV index from API:', uvIndex);
+      console.log('UV index from onecall v2.5 API:', uvIndex);
     } else {
-      console.warn('UV API não disponível:', await onecallRes.text());
+      const text = await onecallRes.text();
+      console.warn('onecall v2.5 não disponível:', onecallRes.status, text);
+
+      // Se 401 ou endpoint não disponível, tentar One Call v3 (data/3.0)
+      if (onecallRes.status === 401) {
+        try {
+          const altBase = BASE_URL.replace('/data/2.5', '/data/3.0');
+          const onecallUrlV30 = `${altBase}/onecall?lat=${coord.lat}&lon=${coord.lon}&exclude=minutely,hourly,daily,alerts&appid=${API_KEY}&units=metric`;
+          const onecallResV30 = await fetch(onecallUrlV30);
+          console.log('UV API (onecall v3) response status:', onecallResV30.status);
+          if (onecallResV30.ok) {
+            const onecallJson = await onecallResV30.json();
+            uvIndex = onecallJson.current?.uvi ?? onecallJson.current?.uvi ?? 0;
+            uvFromApi = true;
+            console.log('UV index from onecall v3 API:', uvIndex);
+          } else {
+            const t2 = await onecallResV30.text();
+            console.warn('onecall v3 não disponível:', onecallResV30.status, t2);
+          }
+        } catch (e) {
+          console.warn('Erro ao tentar onecall v3:', e);
+        }
+      }
+
+      // Se ainda não obteve UV, tentar endpoint legado /uvi (data/2.5/uvi)
+      if (!uvFromApi) {
+        try {
+          const uviUrl = `${BASE_URL}/uvi?lat=${coord.lat}&lon=${coord.lon}&appid=${API_KEY}`;
+          try {
+            console.log('Fetching UV from /uvi (masked):', uviUrl.replace(`appid=${API_KEY}`, 'appid=***'));
+          } catch (e) {}
+          const uviRes = await fetch(uviUrl);
+          console.log('UV API (uvi) response status:', uviRes.status);
+          if (uviRes.ok) {
+            const uviJson = await uviRes.json();
+            // Resposta do /uvi geralmente possui campo value
+            uvIndex = uviJson.value ?? uviJson.uvi ?? 0;
+            uvFromApi = true;
+            console.log('UV index from uvi API:', uvIndex);
+          } else {
+            console.warn('uvi endpoint não disponível:', await uviRes.text());
+          }
+        } catch (e) {
+          console.warn('Erro ao buscar /uvi:', e);
+        }
+      }
     }
   } catch (e) {
     console.warn('Erro ao buscar UV index:', e);
