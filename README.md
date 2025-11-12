@@ -1,6 +1,6 @@
 # NimbusVita - Aplicativo de Saúde Preventiva
 
-![NimbusVita Logo](./assets/logo.png)
+![NimbusVita Logo](./NimbusVita/assets/logo.png)
 
 ## 📱 Sobre o Projeto
 
