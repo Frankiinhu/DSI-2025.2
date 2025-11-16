@@ -10,11 +10,7 @@ import { Colors, Typography, Spacing, ComponentStyles } from '../../styles';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { getCurrentWeather, loadWeatherCache, saveWeatherCache } from '../../services/weather.service';
 import { useNotifications } from '../../config/notifications';
-import { 
-  generateRandomWeatherData, 
-  transformWeatherData,
-  type WeatherData 
-} from '../../utils/weatherHelpers';
+import { generateRandomWeatherData, transformWeatherData, type WeatherData } from '../../utils/weatherHelpers';
 
 const logo = require('../../../assets/logo.png');
 

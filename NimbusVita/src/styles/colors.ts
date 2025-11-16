@@ -70,6 +70,10 @@ export const Colors = {
       dangerous: '#8b0000',
     },
   },
+  
+  // Aliases adicionais para compatibilidade
+  error: '#d4572a',
+  textLight: '#666666',
 } as const;
 
 export type ColorPalette = typeof Colors;
