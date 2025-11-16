@@ -1,8 +1,9 @@
 import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import { View } from 'react-native';
-import { Fontisto, FontAwesome5, FontAwesome6, Octicons } from '@expo/vector-icons';
+import { Fontisto, FontAwesome5, FontAwesome6, Octicons, MaterialIcons } from '@expo/vector-icons';
 import HomeTab from './HomeTab';
+import FamilyTab from './FamilyTab';
 import CheckupTab from './CheckupTab';
 import AlertsTab from './AlertsTab';
 import ProfileTab from './ProfileTab';
@@ -52,6 +53,12 @@ const TABS_CONFIG = [
     component: CheckupTab,
     IconComponent: Fontisto,
     iconName: 'pulse',
+  },  
+  {
+    name: 'FamilyTab',
+    component: FamilyTab,
+    IconComponent: FontAwesome6,
+    iconName: 'user-group',
   },
   {
     name: 'AlertsTab',
@@ -64,7 +71,7 @@ const TABS_CONFIG = [
     component: ProfileTab,
     IconComponent: FontAwesome5,
     iconName: 'user-alt',
-  },
+  },  
 ];
 
 // Configurações comuns de ícones

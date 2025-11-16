@@ -250,6 +250,64 @@ export interface Database {
           created_at?: string
         }
       }
+      family_groups: {
+        Row: {
+          id: string
+          name: string
+          owner_id: string
+          invite_code: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          owner_id: string
+          invite_code?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          owner_id?: string
+          invite_code?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      family_members: {
+        Row: {
+          id: string
+          family_group_id: string
+          user_id: string
+          nickname: string | null
+          can_view_history: boolean
+          member_tags: string[]
+          joined_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          family_group_id: string
+          user_id: string
+          nickname?: string | null
+          can_view_history?: boolean
+          member_tags?: string[]
+          joined_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          family_group_id?: string
+          user_id?: string
+          nickname?: string | null
+          can_view_history?: boolean
+          member_tags?: string[]
+          joined_at?: string
+          created_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -295,4 +353,21 @@ export type UserStats = {
   checkups_last_7_days: number
   consecutive_days: number
   unread_alerts: number
+}
+
+// Tipos auxiliares para Família
+export type FamilyGroup = Database['public']['Tables']['family_groups']['Row']
+export type FamilyMember = Database['public']['Tables']['family_members']['Row']
+
+export type FamilyMemberWithProfile = FamilyMember & {
+  profile: {
+    username: string
+    full_name: string | null
+    avatar_url: string | null
+  }
+}
+
+export type FamilyGroupWithMembers = FamilyGroup & {
+  members: FamilyMemberWithProfile[]
+  member_count: number
 }
