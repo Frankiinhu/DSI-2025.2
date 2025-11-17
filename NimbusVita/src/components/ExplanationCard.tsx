@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../styles';
 
-const ExplanationCard: React.FC = () => {
+const ExplanationCard: React.FC = React.memo(() => {
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>Explicabilidade & Disclaimer</Text>
@@ -17,7 +17,7 @@ const ExplanationCard: React.FC = () => {
       </Text>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: { 

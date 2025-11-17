@@ -14,7 +14,7 @@ interface StatusCardProps {
   isLoading?: boolean;
 }
 
-const StatusCard: React.FC<StatusCardProps> = ({
+const StatusCard: React.FC<StatusCardProps> = React.memo(({
   location,
   riskLevel,
   riskPercentage,
@@ -24,25 +24,25 @@ const StatusCard: React.FC<StatusCardProps> = ({
   onReload,
   isLoading,
 }) => {
-  const getRiskColor = (level: string) => {
+  const getRiskColor = React.useMemo(() => (level: string) => {
     switch (level.toLowerCase()) {
       case 'baixo': return '#7b7fff';
       case 'moderado': return '#e9c46a';
       case 'alto': return '#d4572a';
       default: return '#9999b3';
     }
-  };
+  }, []);
 
-  const getRiskBackgroundColor = (level: string) => {
+  const getRiskBackgroundColor = React.useMemo(() => (level: string) => {
     switch (level.toLowerCase()) {
       case 'baixo': return '#f5f6ff';
       case 'moderado': return '#fefbf6';
       case 'alto': return '#fdf2f0';
       default: return '#f7f8fa';
     }
-  };
+  }, []);
 
-  const getWeatherIcon = (condition: string) => {
+  const getWeatherIcon = React.useMemo(() => (condition: string) => {
     switch (condition.toLowerCase()) {
       case 'nublado': return 'cloud';
       case 'ensolarado': return 'wb-sunny';
@@ -50,7 +50,7 @@ const StatusCard: React.FC<StatusCardProps> = ({
       case 'tempestade': return 'flash-on';
       default: return 'cloud';
     }
-  };
+  }, []);
 
   return (
     <View style={styles.card}>
@@ -101,7 +101,7 @@ const StatusCard: React.FC<StatusCardProps> = ({
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

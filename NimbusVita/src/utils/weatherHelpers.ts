@@ -3,27 +3,17 @@
  * Centralized helper functions for weather data transformation and generation
  */
 
-export interface WeatherData {
-  temperature: number | null;
-  humidity: number | null;
-  pressure: number | null;
-  windSpeed: number | null;
-  uvIndex: number | null;
-  uvFromApi: boolean;
-  airQuality: number | null;
-  condition: string;
-}
+import {
+  UV_THRESHOLDS,
+  UV_CATEGORIES,
+  AQI_THRESHOLDS,
+  AQI_CATEGORIES,
+  WEATHER_SIMULATION_RANGES,
+} from '../constants/thresholds';
 
-export interface RawWeatherData {
-  temperature: number | null;
-  humidity: number | null;
-  pressure: number | null;
-  windSpeed: number | null;
-  uvIndex: number | null;
-  uvFromApi: boolean;
-  airQuality: number | null;
-  condition?: string;
-}
+// Re-export types from centralized location
+export type { WeatherData, RawWeatherData, WeatherCache, WeatherSource, WeatherCondition } from '../types/weather.types';
+import type { WeatherData, RawWeatherData } from '../types/weather.types';
 
 /**
  * Weather conditions for random generation
@@ -45,14 +35,16 @@ export function generateRandomWeatherData(): WeatherData {
     Math.floor(Math.random() * WEATHER_CONDITIONS.length)
   ];
   
+  const { TEMPERATURE, HUMIDITY, PRESSURE, WIND_SPEED, UV_INDEX, AIR_QUALITY } = WEATHER_SIMULATION_RANGES;
+  
   return {
-    temperature: Math.floor(Math.random() * 20) + 15, // 15-35°C
-    humidity: Math.floor(Math.random() * 50) + 50, // 50-100%
-    pressure: Math.floor(Math.random() * 80) + 980, // 980-1060 hPa
-    windSpeed: Math.floor(Math.random() * 35) + 5, // 5-40 km/h
-    uvIndex: Math.floor(Math.random() * 12) + 1, // 1-12
+    temperature: Math.floor(Math.random() * (TEMPERATURE.MAX - TEMPERATURE.MIN)) + TEMPERATURE.MIN,
+    humidity: Math.floor(Math.random() * (HUMIDITY.MAX - HUMIDITY.MIN)) + HUMIDITY.MIN,
+    pressure: Math.floor(Math.random() * (PRESSURE.MAX - PRESSURE.MIN)) + PRESSURE.MIN,
+    windSpeed: Math.floor(Math.random() * (WIND_SPEED.MAX - WIND_SPEED.MIN)) + WIND_SPEED.MIN,
+    uvIndex: Math.floor(Math.random() * (UV_INDEX.MAX - UV_INDEX.MIN)) + UV_INDEX.MIN,
     uvFromApi: false, // simulated data
-    airQuality: Math.floor(Math.random() * 150) + 30, // 30-180 AQI
+    airQuality: Math.floor(Math.random() * (AIR_QUALITY.MAX - AIR_QUALITY.MIN)) + AIR_QUALITY.MIN,
     condition: randomCondition
   };
 }
@@ -93,11 +85,11 @@ export function isWeatherDataStale(lastUpdate: Date): boolean {
  */
 export function getUVDescription(uvIndex: number | null): string {
   if (uvIndex === null) return 'Desconhecido';
-  if (uvIndex <= 2) return 'Baixo';
-  if (uvIndex <= 5) return 'Moderado';
-  if (uvIndex <= 7) return 'Alto';
-  if (uvIndex <= 10) return 'Muito Alto';
-  return 'Extremo';
+  if (uvIndex <= UV_THRESHOLDS.LOW) return UV_CATEGORIES.LOW;
+  if (uvIndex <= UV_THRESHOLDS.MODERATE) return UV_CATEGORIES.MODERATE;
+  if (uvIndex <= UV_THRESHOLDS.HIGH) return UV_CATEGORIES.HIGH;
+  if (uvIndex <= UV_THRESHOLDS.VERY_HIGH) return UV_CATEGORIES.VERY_HIGH;
+  return UV_CATEGORIES.EXTREME;
 }
 
 /**
@@ -107,12 +99,12 @@ export function getUVDescription(uvIndex: number | null): string {
  */
 export function getAirQualityDescription(aqi: number | null): string {
   if (aqi === null) return 'Desconhecido';
-  if (aqi <= 50) return 'Bom';
-  if (aqi <= 100) return 'Moderado';
-  if (aqi <= 150) return 'Ruim para Grupos Sensíveis';
-  if (aqi <= 200) return 'Ruim';
-  if (aqi <= 300) return 'Muito Ruim';
-  return 'Perigoso';
+  if (aqi <= AQI_THRESHOLDS.GOOD) return AQI_CATEGORIES.GOOD;
+  if (aqi <= AQI_THRESHOLDS.MODERATE) return AQI_CATEGORIES.MODERATE;
+  if (aqi <= AQI_THRESHOLDS.UNHEALTHY_SENSITIVE) return AQI_CATEGORIES.UNHEALTHY_SENSITIVE;
+  if (aqi <= AQI_THRESHOLDS.UNHEALTHY) return AQI_CATEGORIES.UNHEALTHY;
+  if (aqi <= AQI_THRESHOLDS.VERY_UNHEALTHY) return AQI_CATEGORIES.VERY_UNHEALTHY;
+  return AQI_CATEGORIES.HAZARDOUS;
 }
 
 /**

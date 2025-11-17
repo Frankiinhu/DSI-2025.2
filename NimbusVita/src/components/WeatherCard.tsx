@@ -13,7 +13,7 @@ interface WeatherCardProps {
   statusColor?: string;
 }
 
-const WeatherCard: React.FC<WeatherCardProps> = ({
+const WeatherCard: React.FC<WeatherCardProps> = React.memo(({
   title,
   value,
   unit = '',
@@ -22,7 +22,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
   iconColor = Colors.primary,
   statusColor = '#666'
 }) => {
-  const getBackgroundColor = () => {
+  const getBackgroundColor = React.useMemo(() => {
     // Mantém a lógica original de mapping por cores, mas simplificada
     if (!statusColor) return '#f8f9fa';
     switch (statusColor) {
@@ -41,10 +41,10 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
       default:
         return '#f8f9fa';
     }
-  };
+  }, [statusColor]);
 
   return (
-    <View style={[styles.card, { backgroundColor: getBackgroundColor() }]}>
+    <View style={[styles.card, { backgroundColor: getBackgroundColor }]}>
       <View style={styles.cardHeader}>
         <MaterialIcons name={icon as any} size={20} color={iconColor} />
         <Text style={styles.title}>{title}</Text>
@@ -58,7 +58,7 @@ const WeatherCard: React.FC<WeatherCardProps> = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

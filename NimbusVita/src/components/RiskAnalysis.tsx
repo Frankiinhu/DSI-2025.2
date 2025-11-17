@@ -23,27 +23,27 @@ interface RiskAnalysisProps {
   recommendations: Recommendation[];
 }
 
-const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
+const RiskAnalysis: React.FC<RiskAnalysisProps> = React.memo(({
   riskPercentage,
   factors,
   recommendations,
 }) => {
-  const getRiskColor = (percentage: number) => {
+  const getRiskColor = React.useCallback((percentage: number) => {
     if (percentage < 40) return '#7b7fff';
     if (percentage < 70) return '#e9c46a';
     return '#d4572a';
-  };
+  }, []);
 
-  const getLevelColor = (level: string) => {
+  const getLevelColor = React.useCallback((level: string) => {
     switch (level.toLowerCase()) {
       case 'baixo': return '#7b7fff';
       case 'moderado': case 'médio': case 'medio': return '#e9c46a';
       case 'alto': return '#d4572a';
       default: return '#9999b3';
     }
-  };
+  }, []);
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = React.useCallback((priority: string) => {
     switch (priority.toLowerCase()) {
       case 'alto': return '#d4572a';
       case 'importante': return '#e9c46a';
@@ -51,13 +51,13 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
       case 'positivo': return '#7b7fff';
       default: return '#9999b3';
     }
-  };
+  }, []);
 
-  const getRiskLevelText = (percentage: number) => {
+  const getRiskLevelText = React.useCallback((percentage: number) => {
     if (percentage < 30) return 'Baixo';
     if (percentage < 60) return 'Moderado';
     return 'Alto';
-  };
+  }, []);
 
   return (
     <View>
@@ -151,7 +151,7 @@ const RiskAnalysis: React.FC<RiskAnalysisProps> = ({
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {
