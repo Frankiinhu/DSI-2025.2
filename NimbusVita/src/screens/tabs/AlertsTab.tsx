@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.xl,
     marginBottom: Spacing.md,
     backgroundColor: Colors.accent,
   },

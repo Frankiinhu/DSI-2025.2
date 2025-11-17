@@ -18,7 +18,7 @@ export const useNotifications = () => {
       position: 'top',
       visibilityTime: 4000,
       autoHide: true,
-      topOffset: 50,
+      topOffset: 60,
     });
   };
 

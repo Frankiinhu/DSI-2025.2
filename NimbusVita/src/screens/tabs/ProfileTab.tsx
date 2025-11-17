@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { FontAwesome6, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { Typography, Colors, ThemeColors, Spacing, ComponentStyles, BorderRadius } from '../../styles';
@@ -244,42 +244,42 @@ const ProfileTab = () => {
     <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          {/* Avatar Section */}
-          <View style={styles.avatarSection}>
-            <View style={styles.avatarContainer}>
-              {uploadingImage ? (
-                <View style={styles.avatarPlaceholder}>
-                  <ActivityIndicator size="large" color={ThemeColors.interactive.primary} />
-                </View>
-              ) : currentUser?.avatar_url ? (
-                <Image 
-                  source={{ uri: currentUser.avatar_url }} 
-                  style={styles.avatar}
-                />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <MaterialIcons name="person" size={60} color={ThemeColors.text.muted} />
-                </View>
-              )}
-              <TouchableOpacity 
-                style={styles.avatarEditButton}
-                onPress={handleChangeProfilePicture}
-                disabled={uploadingImage}
-              >
-                <MaterialIcons name="camera-alt" size={20} color={Colors.textWhite} />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.avatarName}>{currentUser?.full_name || currentUser?.username || 'Usuário'}</Text>
-          </View>
-
           <View style={styles.profileCard}>
+            {/* Avatar Section */}
+            <View style={styles.avatarSection}>
+              <View style={styles.avatarContainer}>
+                {uploadingImage ? (
+                  <View style={styles.avatarPlaceholder}>
+                    <ActivityIndicator size="large" color={ThemeColors.interactive.primary} />
+                  </View>
+                ) : currentUser?.avatar_url ? (
+                  <Image 
+                    source={{ uri: currentUser.avatar_url }} 
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <MaterialIcons name="person" size={60} color={ThemeColors.text.muted} />
+                  </View>
+                )}
+                <TouchableOpacity 
+                  style={styles.avatarEditButton}
+                  onPress={handleChangeProfilePicture}
+                  disabled={uploadingImage}
+                >
+                  <MaterialIcons name="camera-alt" size={20} color={Colors.textWhite} />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.avatarName}>{currentUser?.full_name || currentUser?.username || 'Usuário'}</Text>
+            </View>
+
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Informações Pessoais</Text>
               <TouchableOpacity
                 style={styles.editButton}
                 onPress={() => setIsEditMode(true)}
               >
-                <MaterialIcons name="edit" size={24} color={ThemeColors.interactive.primary} />
+                <FontAwesome6 name="edit" size={30} color={Colors.primary} />
               </TouchableOpacity>
             </View>
             
@@ -327,15 +327,14 @@ const ProfileTab = () => {
                 }
               </Text>
             </View>
-          </View>
 
-          <View style={styles.optionsContainer}>
+            {/* Botão de Sair */}
             <TouchableOpacity 
-              style={[styles.optionItem, styles.logoutOption]} 
+              style={styles.logoutButton} 
               onPress={() => setShowLogoutDialog2(true)}
             >
-              <MaterialIcons name="logout" size={24} color={Colors.danger} />
-              <Text style={[styles.optionText, styles.logoutText]}>
+              <MaterialIcons name="logout" size={24} color={Colors.textWhite} />
+              <Text style={styles.logoutButtonText}>
                 Sair da Conta
               </Text>
             </TouchableOpacity>
@@ -592,12 +591,15 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.xl,
     backgroundColor: Colors.accent,
   },
   avatarSection: {
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
+    paddingBottom: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceDark,
   },
   avatarContainer: {
     position: 'relative',
@@ -635,14 +637,11 @@ const styles = StyleSheet.create({
   },
   avatarName: {
     ...Typography.h2,
-    color: Colors.textWhite,
+    color: Colors.primary,
     textAlign: 'center',
     fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
     letterSpacing: 0.5,
-    marginTop: Spacing.xs,
+    marginTop: Spacing.sm
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -686,7 +685,6 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: Spacing.xs,
-    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.full,
     width: 48,
     height: 48,
@@ -694,31 +692,21 @@ const styles = StyleSheet.create({
     marginBottom: -Spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primary,
   },
-  optionsContainer: {
-    marginBottom: Spacing.xl,
-  },
-  optionItem: {
+  logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: ThemeColors.surface.primary,
+    justifyContent: 'center',
+    backgroundColor: Colors.danger,
     padding: Spacing.md,
     borderRadius: BorderRadius.base,
-    marginBottom: Spacing.sm,
+    marginTop: Spacing.lg,
+    gap: Spacing.sm,
   },
-  optionText: {
+  logoutButtonText: {
     ...Typography.button,
-    marginLeft: Spacing.sm,
-  },
-  logoutOption: {
-    ...ComponentStyles.card,
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 0,
-  },
-  logoutText: {
-    color: Colors.danger,
+    color: Colors.textWhite,
+    fontWeight: '600',
   },
   modalContainer: {
     flex: 1,

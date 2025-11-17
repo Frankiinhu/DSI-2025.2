@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.xl,
     backgroundColor: Colors.accent,
   },
   sectionTitle: {

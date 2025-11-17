@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome6, Octicons } from '@expo/vector-icons';
 import SymptomChecker from '../../components/SymptomChecker';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -391,10 +391,9 @@ const CheckupTab: React.FC = () => {
 
           {/* Histórico de Verificações */}
           <View style={styles.historyContainer}>
-            {/* Header com Título e Filtro Unificados */}
             <View style={styles.historyHeader}>
               <View style={styles.historyTitleContainer}>
-                <MaterialIcons name="history" size={24} color={Colors.primary} />
+                <Octicons name="history" size={24} color={Colors.primary} />
                 <Text style={styles.historyTitle}>Histórico de Verificações</Text>
               </View>
               
@@ -466,7 +465,7 @@ const CheckupTab: React.FC = () => {
                         </View>
                         <View style={styles.symptomsBadgeContainer}>
                           <View style={styles.symptomsBadge}>
-                            <MaterialIcons name="medical-information" size={16} color={Colors.primary} />
+                            <FontAwesome6 name="briefcase-medical" size={16} color={Colors.primary} />
                             <Text style={styles.symptomsCount}>{record.symptoms.length}</Text>
                             <Text style={styles.symptomsLabel}>sintoma{record.symptoms.length > 1 ? 's' : ''}</Text>
                           </View>
@@ -487,13 +486,13 @@ const CheckupTab: React.FC = () => {
                             style={styles.editButton}
                             onPress={() => editCheckupRecord(record)}
                           >
-                            <MaterialIcons name="edit" size={24} color={Colors.primary} />
+                            <FontAwesome6 name="edit" size={24} color={Colors.primary} />
                           </TouchableOpacity>
                           <TouchableOpacity 
                             style={styles.deleteButton}
                             onPress={() => deleteCheckupRecord(record.id)}
                           >
-                            <MaterialIcons name="delete" size={24} color="#d4572a" />
+                            <FontAwesome6 name="trash-can" size={24} color={Colors.danger} />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -571,7 +570,7 @@ const CheckupTab: React.FC = () => {
                 }
               }}
             >
-              <Text style={styles.dialogButtonText}>Reexecutar (Criar Nova)</Text>
+              <Text style={styles.dialogButtonText}>Reexecutar (Criar nova)</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -594,7 +593,7 @@ const CheckupTab: React.FC = () => {
                 }
               }}
             >
-              <Text style={[styles.dialogButtonText, styles.dialogButtonTextPrimary]}>Editar Esta Verificação</Text>
+              <Text style={[styles.dialogButtonText, styles.dialogButtonTextPrimary]}>Editar esta verificação</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -666,7 +665,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.xl,
     backgroundColor: Colors.accent,
   },
   statsContainer: {
@@ -824,25 +823,19 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: Spacing.sm,
-    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.full,
     width: 48,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.primary,
   },
   deleteButton: {
     padding: Spacing.sm,
-    backgroundColor: Colors.surface,
     borderRadius: BorderRadius.full,
     width: 48,
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.danger,
   },
   moreRecordsText: {
     ...Typography.caption,

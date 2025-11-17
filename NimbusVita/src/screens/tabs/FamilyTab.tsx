@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, RefreshControl, StatusBar, Image} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { FontAwesome6, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserFamilyGroups, createFamilyGroup, joinFamilyGroup, getFamilyMembers, getMemberCheckupHistory, leaveFamilyGroup, deleteFamilyGroup, removeFamilyMember, PREDEFINED_TAGS, updateMemberTags } from '../../services/supabase/family.service';
 import { FamilyGroup, FamilyMemberWithProfile } from '../../types/database.types';
 import { Colors, Spacing, Shadows, BorderRadius, ComponentStyles } from '../../styles';
+import { useNotifications, ToastComponent } from '../../config/notifications';
 
 
 const FamilyTab = () => {
   const { user } = useAuth();
+  const { notify } = useNotifications();
   const [groups, setGroups] = useState<FamilyGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -65,7 +68,7 @@ const FamilyTab = () => {
     const result = await createFamilyGroup(user.id, groupName.trim());
     if (result.ok) {
       Alert.alert(
-        'Sucesso! 🎉',
+        'Sucesso!',
         `Grupo criado!\n\nCódigo de convite: ${result.data.invite_code}\n\nCompartilhe este código com sua família.`,
         [{ text: 'OK' }]
       );
@@ -265,6 +268,25 @@ const FamilyTab = () => {
       handleOpenGroup(selectedGroup); // Recarrega os membros
     } else {
       Alert.alert('Erro', result.message);
+    }
+  };
+
+  const handleCopyInviteCode = async (code: string) => {
+    try {
+      await Clipboard.setStringAsync(code);
+      notify('success', {
+        params: {
+          title: 'Código Copiado!',
+          description: 'O código foi copiado para a área de transferência',
+        },
+      });
+    } catch (error) {
+      notify('error', {
+        params: {
+          title: 'Erro ao Copiar',
+          description: 'Não foi possível copiar o código',
+        },
+      });
     }
   };
 
@@ -501,12 +523,16 @@ const FamilyTab = () => {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.inviteCodeBox}>
+            <TouchableOpacity 
+              style={styles.inviteCodeBox}
+              onPress={() => selectedGroup && handleCopyInviteCode(selectedGroup.invite_code)}
+              activeOpacity={0.7}
+            >
               <Text style={styles.inviteCodeLabel}>Código de Convite:</Text>
               <Text style={styles.inviteCodeText}>
                 {selectedGroup?.invite_code}
               </Text>
-            </View>
+            </TouchableOpacity>
 
             <ScrollView 
               style={styles.membersList}
@@ -534,8 +560,15 @@ const FamilyTab = () => {
                   {members.map((member) => (
                     <View key={member.id} style={styles.memberCard}>
                       <View style={styles.memberAvatar}>
-                        <Ionicons name="person" size={32} color={Colors.primary} />
-                  </View>
+                        {member.profile?.avatar_url ? (
+                          <Image 
+                            source={{ uri: member.profile.avatar_url }} 
+                            style={styles.avatarImage}
+                          />
+                        ) : (
+                          <Ionicons name="person" size={32} color={Colors.primary} />
+                        )}
+                      </View>
                   <View style={styles.memberInfo}>
                     <Text style={styles.memberName}>
                       {member.profile.full_name || member.profile.username}
@@ -559,7 +592,7 @@ const FamilyTab = () => {
                               styles.tagText,
                               tag === 'Dono' && styles.ownerTagText
                             ]}>
-                              {tag === 'Dono' ? '👑 ' : ''}{tag}
+                              {tag === 'Dono' ? '' : ''}{tag}
                             </Text>
                           </View>
                         ))}
@@ -576,7 +609,7 @@ const FamilyTab = () => {
                       style={styles.iconButton}
                       onPress={() => handleOpenTagsModal(member)}
                     >
-                      <Ionicons name="pricetag-outline" size={24} color={Colors.primary} />
+                      <MaterialCommunityIcons name="tag-outline" size={30} color={Colors.primary} />
                     </TouchableOpacity>
                     
                     {/* Todos podem ver histórico */}
@@ -585,9 +618,9 @@ const FamilyTab = () => {
                       onPress={() => handleViewMemberHistory(member)}
                       disabled={member.user_id === user?.id}
                     >
-                      <Ionicons 
-                        name="analytics-outline" 
-                        size={24} 
+                      <MaterialCommunityIcons 
+                        name="chart-timeline-variant" 
+                        size={30} 
                         color={member.user_id === user?.id ? Colors.textLight : Colors.primary} 
                       />
                     </TouchableOpacity>
@@ -616,7 +649,7 @@ const FamilyTab = () => {
                     style={[styles.modalButton, styles.dangerButton]}
                     onPress={() => handleDeleteGroup(selectedGroup)}
                   >
-                    <Text style={styles.modalButtonText}>Dele§tar Grupo</Text>
+                    <Text style={styles.modalButtonText}>Deletar Grupo</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
@@ -628,6 +661,9 @@ const FamilyTab = () => {
                 )}
               </View>
             )}
+          </View>
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999 }} pointerEvents="box-none">
+            <ToastComponent />
           </View>
         </View>
       </Modal>
@@ -725,7 +761,7 @@ const FamilyTab = () => {
               </View>
 
               {/* Tag customizada */}
-              <Text style={styles.sectionTitle}>Criar Tag Personalizada</Text>
+              <Text style={styles.sectionTitle}>Criar tag personalizada</Text>
               <View style={styles.customTagRow}>
                 <TextInput
                   style={[styles.input, styles.customTagInput]}
@@ -745,7 +781,7 @@ const FamilyTab = () => {
               {/* Tags selecionadas */}
               {selectedTags.length > 0 && (
                 <>
-                  <Text style={styles.sectionTitle}>Tags Selecionadas</Text>
+                  <Text style={styles.sectionTitle}>Tags selecionadas</Text>
                   <View style={styles.selectedTagsContainer}>
                     {selectedTags.map((tag, index) => (
                       <View key={index} style={styles.selectedTag}>
@@ -755,7 +791,7 @@ const FamilyTab = () => {
                             <Ionicons
                               name="close-circle"
                               size={20}
-                              color={Colors.error}
+                              color={Colors.textWhite}
                             />
                           </TouchableOpacity>
                         )}
@@ -785,8 +821,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
   },
   container: {
-    padding: Spacing.xs,
-    paddingTop: Spacing.base,
+    paddingTop: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     marginBottom: Spacing.md,
   },
   centerContainer: {
@@ -1043,12 +1079,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textLight,
     marginBottom: 4,
+    textAlign: 'center',
   },
   inviteCodeText: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.primary,
     letterSpacing: 2,
+    textAlign: 'center',
   },
   membersList: {
     flex: 1,
@@ -1098,6 +1136,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   memberInfo: {
     flex: 1,

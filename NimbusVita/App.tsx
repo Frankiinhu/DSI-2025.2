@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
 import MainTabs from './src/screens/tabs/MainTabs';
@@ -77,7 +78,9 @@ export default function App() {
         <AuthProvider>
           <Navigation />
         </AuthProvider>
-        <ToastComponent />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 999999, elevation: 999999 }} pointerEvents="box-none">
+          <ToastComponent />
+        </View>
       </SafeAreaView>
     </ErrorBoundary>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, FontAwesome6 } from '@expo/vector-icons';
 import { Colors, Spacing } from '../styles';
 
 interface StatusCardProps {
@@ -64,7 +64,7 @@ const StatusCard: React.FC<StatusCardProps> = React.memo(({
             <ActivityIndicator size="small" color={Colors.primary} style={styles.reloadButton} />
           ) : (
             <TouchableOpacity onPress={onReload} style={styles.reloadButton}>
-              <MaterialIcons name="refresh" size={20} color={Colors.primary} />
+              <FontAwesome6 name="arrow-rotate-right" size={18} color={Colors.primary} />
             </TouchableOpacity>
           )}
         </View>
