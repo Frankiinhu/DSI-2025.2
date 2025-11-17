@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, RefreshControl, StatusBar} from 'react-native';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, RefreshControl, StatusBar, Image} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -112,6 +112,19 @@ const FamilyTab = () => {
       const membersList = result.data || [];
       console.log('✅ Membros carregados:', membersList.length);
       console.log('✅ Dados dos membros:', JSON.stringify(membersList, null, 2));
+      
+      // Log individual de cada membro para debug
+      membersList.forEach((member: FamilyMemberWithProfile, index: number) => {
+        console.log(`👤 Membro ${index + 1}:`, {
+          id: member.id,
+          user_id: member.user_id,
+          profile: member.profile,
+          username: member.profile?.username,
+          full_name: member.profile?.full_name,
+          avatar_url: member.profile?.avatar_url
+        });
+      });
+      
       setMembers(membersList);
     } else {
       console.error('❌ Erro ao carregar membros:', result.message);
@@ -406,7 +419,7 @@ const FamilyTab = () => {
                   <Text style={styles.groupDetails}>
                     {(group as any).member_count || 0} membros • Código: {group.invite_code}
                   </Text>
-                  <Text style={styles.groupHint}>👥 Toque para ver membros</Text>
+                  <Text style={styles.groupHint}>Toque para ver membros</Text>
                   {group.owner_id === user?.id && (
                     <View style={styles.ownerBadge}>
                       <Text style={styles.ownerBadgeText}>Você é o dono</Text>
@@ -543,15 +556,22 @@ const FamilyTab = () => {
                   {members.map((member) => (
                     <View key={member.id} style={styles.memberCard}>
                       <View style={styles.memberAvatar}>
-                        <Ionicons name="person" size={32} color={Colors.primary} />
-                  </View>
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>
-                      {member.profile.full_name || member.profile.username}
-                    </Text>
-                    <Text style={styles.memberUsername}>
-                      @{member.profile.username}
-                    </Text>
+                        {member.profile?.avatar_url ? (
+                          <Image 
+                            source={{ uri: member.profile.avatar_url }} 
+                            style={styles.avatarImage}
+                          />
+                        ) : (
+                          <Ionicons name="person" size={32} color={Colors.primary} />
+                        )}
+                      </View>
+                      <View style={styles.memberInfo}>
+                        <Text style={styles.memberName}>
+                          {member.profile?.full_name || member.profile?.username || 'Usuário'}
+                        </Text>
+                        <Text style={styles.memberUsername}>
+                          @{member.profile?.username || 'desconhecido'}
+                        </Text>
                     
                     {/* Tags do membro */}
                     {member.member_tags && member.member_tags.length > 0 && (
@@ -625,7 +645,7 @@ const FamilyTab = () => {
                     style={[styles.modalButton, styles.dangerButton]}
                     onPress={() => handleDeleteGroup(selectedGroup)}
                   >
-                    <Text style={styles.modalButtonText}>Deletar Grupo</Text>
+                    <Text style={styles.modalButtonText}>Dele§tar Grupo</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
@@ -794,8 +814,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accent,
   },
   container: {
-    padding: Spacing.lg,
-    paddingTop: Spacing.xl2,
+    padding: Spacing.xs,
+    paddingTop: Spacing.base,
     marginBottom: Spacing.md,
   },
   centerContainer: {
@@ -831,11 +851,19 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: Colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   secondaryButton: {
     backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: Colors.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3
   },
   actionButtonText: {
     fontSize: 16,
@@ -941,7 +969,7 @@ const styles = StyleSheet.create({
     color: Colors.textLight,
   },
   groupHint: {
-    fontSize: 20,
+    fontSize: 16,
     color: Colors.primary,
     marginTop: 4,
     fontWeight: '500',
@@ -949,11 +977,11 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primary + '10',
+    backgroundColor: Colors.accentLight,
     padding: 12,
     borderRadius: 8,
     marginHorizontal: 16,
-    marginBottom: 8,
+    marginBottom: Spacing.xs,
     gap: 8,
   },
   infoText: {
@@ -1039,7 +1067,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.error,
   },
   warningButton: {
-    backgroundColor: '#ff9800',
+    backgroundColor: Colors.primary,
   },
   inviteCodeBox: {
     backgroundColor: '#f5f5f5',
@@ -1107,6 +1135,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   memberInfo: {
     flex: 1,

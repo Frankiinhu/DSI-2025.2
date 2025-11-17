@@ -258,43 +258,79 @@ export const getFamilyMembers = async (
   familyGroupId: string
 ): Promise<FamilyResponse> => {
   try {
-    // 1. Busca membros do grupo
+    // Tenta usar a função RPC primeiro (mais confiável com RLS)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_family_members_with_profiles', { 
+        p_family_group_id: familyGroupId 
+      });
+
+    if (!rpcError && rpcData) {
+      console.log('✅ Usando RPC - Membros carregados:', rpcData.length);
+      return { ok: true, data: rpcData };
+    }
+
+    console.log('⚠️ RPC não disponível, usando método alternativo');
+    console.log('⚠️ Erro RPC:', rpcError);
+
+    // Fallback: Busca membros do grupo SEM JOIN (left join para pegar todos)
     const { data: membersData, error: membersError } = await supabase
       .from('family_members')
       .select('*')
       .eq('family_group_id', familyGroupId)
       .order('joined_at', { ascending: true });
 
-    if (membersError) throw membersError;
+    if (membersError) {
+      console.error('❌ Erro ao buscar membros:', membersError);
+      throw membersError;
+    }
+    
     if (!membersData || membersData.length === 0) {
+      console.log('ℹ️ Nenhum membro encontrado no grupo');
       return { ok: true, data: [] };
     }
 
-    // 2. Busca profiles dos membros
-    const userIds = membersData.map((m: any) => m.user_id);
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, username, full_name, avatar_url, age, gender')
-      .in('id', userIds);
+    console.log('📊 Membros encontrados (sem profiles):', membersData.length);
+    console.log('📊 User IDs:', membersData.map((m: any) => m.user_id));
 
-    if (profilesError) throw profilesError;
+    // Busca profiles individualmente para cada membro
+    const membersWithProfiles = await Promise.all(
+      membersData.map(async (member: any) => {
+        console.log(`🔍 Buscando profile para user_id: ${member.user_id}`);
+        
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, username, full_name, avatar_url, age, gender')
+          .eq('id', member.user_id)
+          .single();
 
-    // 3. Combina dados
-    const membersWithProfiles = membersData.map((member: any) => ({
-      ...member,
-      profile: profilesData?.find((p: any) => p.id === member.user_id) || {
-        username: 'Usuário',
-        full_name: null,
-        avatar_url: null,
-      },
-    }));
+        if (profileError) {
+          console.error(`❌ Erro ao buscar profile ${member.user_id}:`, profileError);
+        }
+
+        console.log(`📊 Profile retornado para ${member.user_id}:`, profileData);
+
+        return {
+          ...member,
+          profile: profileData || {
+            id: member.user_id,
+            username: 'Usuário desconhecido',
+            full_name: null,
+            avatar_url: null,
+            age: null,
+            gender: null
+          }
+        };
+      })
+    );
+
+    console.log('✅ Total de membros processados:', membersWithProfiles.length);
 
     return {
       ok: true,
       data: membersWithProfiles,
     };
   } catch (error: any) {
-    console.error('Erro ao buscar membros:', error);
+    console.error('❌ Erro ao buscar membros:', error);
     return {
       ok: false,
       message: error.message || 'Erro ao buscar membros',

@@ -66,8 +66,8 @@ const HomeTab: React.FC = () => {
     if (pressure < 1000) factors.push('pressão muito baixa');
     else if (pressure < 1010) factors.push('pressão baixa');
 
-    if (data.uvFromApi && data.uvIndex > 8) factors.push('UV muito alto');
-    else if (data.uvFromApi && data.uvIndex > 6) factors.push('UV alto');
+    if (data.uvFromApi && data.uvIndex !== null && data.uvIndex > 8) factors.push('UV muito alto');
+    else if (data.uvFromApi && data.uvIndex !== null && data.uvIndex > 6) factors.push('UV alto');
 
     if (airQuality > 150) factors.push('ar muito poluído');
     else if (airQuality > 100) factors.push('ar poluído');
@@ -113,7 +113,7 @@ const HomeTab: React.FC = () => {
     else if (airQuality > 100) riskScore += 30;
 
     // UV
-    if (data.uvFromApi && data.uvIndex > 7) riskScore += 20;
+    if (data.uvFromApi && data.uvIndex !== null && data.uvIndex > 7) riskScore += 20;
 
     // Pressão
     if (pressure < 1000) riskScore += 20;
@@ -287,7 +287,7 @@ const HomeTab: React.FC = () => {
     } else if (pressure < 1010) {
       neurologicalImpact = 'Moderado';
       neurologicalReason = 'Pressão baixa';
-    } else if (weatherData.uvIndex > 8) {
+    } else if (weatherData.uvIndex !== null && weatherData.uvIndex > 8) {
       neurologicalImpact = 'Moderado';
       neurologicalReason = 'UV elevado';
     }
@@ -356,14 +356,14 @@ const HomeTab: React.FC = () => {
     }
 
     // Recomendações baseadas no UV
-    if (weatherData.uvIndex > 8) {
+    if (weatherData.uvIndex !== null && weatherData.uvIndex > 8) {
       recommendations.push({
         title: 'UV Muito Alto',
         description: 'Use protetor solar FPS 50+, chapéu e óculos de sol. Evite sol das 10h-16h',
         priority: 'Alto',
         icon: 'wb-sunny'
       });
-    } else if (weatherData.uvIndex > 6) {
+    } else if (weatherData.uvIndex !== null && weatherData.uvIndex > 6) {
       recommendations.push({
         title: 'UV Elevado',
         description: 'Use protetor solar FPS 30+ e óculos de sol',
@@ -532,17 +532,17 @@ const HomeTab: React.FC = () => {
               />
               <WeatherCard
                 title="UV"
-                value={weatherData.uvIndex.toString()}
+                value={weatherData.uvIndex === null ? '—' : weatherData.uvIndex.toString()}
                 unit=""
-                status={!weatherData.uvFromApi ? 'Indisponível' :
+                status={!weatherData.uvFromApi || weatherData.uvIndex === null ? 'Indisponível' :
                        weatherData.uvIndex > 8 ? 'Muito Alto' : 
                        weatherData.uvIndex > 6 ? 'Alto' : 
                        weatherData.uvIndex > 3 ? 'Moderado' : 'Baixo'}
                 icon="wb-sunny"
-                iconColor={!weatherData.uvFromApi ? Colors.textSecondary :
+                iconColor={!weatherData.uvFromApi || weatherData.uvIndex === null ? Colors.textSecondary :
                           weatherData.uvIndex > 8 ? Colors.danger : 
                           weatherData.uvIndex > 6 ? Colors.warning : Colors.secondaryLight}
-                statusColor={!weatherData.uvFromApi ? Colors.textSecondary :
+                statusColor={!weatherData.uvFromApi || weatherData.uvIndex === null ? Colors.textSecondary :
                             weatherData.uvIndex > 8 ? Colors.danger : 
                             weatherData.uvIndex > 6 ? Colors.warning : Colors.secondaryLight}
               />

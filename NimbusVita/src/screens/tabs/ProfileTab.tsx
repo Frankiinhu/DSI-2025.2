@@ -491,20 +491,25 @@ const ProfileTab = () => {
       <Modal
         visible={isEditMode}
         animationType="slide"
+        transparent={true}
         onRequestClose={() => setIsEditMode(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Editar Perfil</Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setIsEditMode(false)}
-            >
-              <MaterialIcons name="close" size={32} color={Colors.textWhite} />
-            </TouchableOpacity>
-          </View>
+        <View style={styles.modalContainer}>
+          <SafeAreaView style={styles.modalContentWrapper}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Editar Perfil</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setIsEditMode(false)}
+              >
+                <MaterialIcons name="close" size={28} color={Colors.textDark} />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.modalContent}>
+            <ScrollView 
+              style={styles.modalContent}
+              showsVerticalScrollIndicator={false}
+            >
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Nome Completo</Text>
               <TextInput
@@ -575,7 +580,8 @@ const ProfileTab = () => {
               <Text style={styles.saveButtonText}>Salvar Alterações</Text>
             </TouchableOpacity>
           </ScrollView>
-        </SafeAreaView>
+          </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -728,68 +734,79 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: Colors.accent,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContentWrapper: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    height: '90%',
+    display: 'flex',
+    flexDirection: 'column',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: Spacing.lg,
-    backgroundColor: Colors.primary,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.primaryLight,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   modalTitle: {
-    ...Typography.h2,
-    color: Colors.textWhite
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colors.textDark,
   },
   closeButton: {
-    padding: Spacing.xs,
+    padding: 4,
   },
   modalContent: {
-    padding: Spacing.lg,
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
   },
   inputGroup: {
-    marginBottom: Spacing.md,
+    marginBottom: 16,
   },
   inputLabel: {
-    ...Typography.body,
-    color: ThemeColors.text.primary,
-    marginBottom: Spacing.xs,
+    fontSize: 14,
+    color: Colors.textLight,
+    marginBottom: 8,
+    fontWeight: '500',
   },
   textInput: {
-    backgroundColor: ThemeColors.surface.primary,
-    borderWidth: 1,
-    borderColor: ThemeColors.border.default,
-    borderRadius: BorderRadius.base,
-    padding: Spacing.sm,
-    ...Typography.body,
-    color: ThemeColors.text.primary,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: Colors.textDark,
   },
   genderButton: {
-    backgroundColor: ThemeColors.surface.primary,
-    borderWidth: 1,
-    borderColor: ThemeColors.border.default,
-    borderRadius: BorderRadius.base,
-    padding: Spacing.sm,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   genderButtonText: {
-    ...Typography.body,
-    color: ThemeColors.text.primary,
+    fontSize: 16,
+    color: Colors.textDark,
   },
   saveButton: {
-    backgroundColor: ThemeColors.interactive.primary,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.base,
+    backgroundColor: Colors.primary,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: Spacing.xl,
+    marginTop: 24,
+    marginBottom: 20,
   },
   saveButtonText: {
-    ...Typography.button,
-    color: ThemeColors.text.inverse,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   genderDialogOverlay: {
     flex: 1,
