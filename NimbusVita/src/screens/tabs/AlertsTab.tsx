@@ -7,20 +7,14 @@ import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } f
 
 const AlertsTab: React.FC = () => {
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+    <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Alertas de Saúde</Text>
-          <Text style={styles.headerSubtitle}>Informações importantes sobre sua região</Text>
-        </View>
-
         <View style={styles.container}>
           <AlertCard />
           <ExplanationCard />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -31,20 +25,13 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  header: {
-    ...ComponentStyles.header,
-  },
-  headerTitle: {
-    ...ComponentStyles.headerTitle,
-  },
-  headerSubtitle: {
-    ...ComponentStyles.headerSubtitle,
+    backgroundColor: Colors.accent,
   },
   container: {
     padding: Spacing.lg,
-    paddingTop: Spacing.xl2,
-    marginBottom: Spacing.md
+    paddingTop: Spacing.md,
+    marginBottom: Spacing.md,
+    backgroundColor: Colors.accent,
   },
   statsContainer: {
     flexDirection: 'row',

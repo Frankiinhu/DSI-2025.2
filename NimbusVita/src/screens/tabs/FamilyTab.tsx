@@ -112,19 +112,6 @@ const FamilyTab = () => {
       const membersList = result.data || [];
       console.log('✅ Membros carregados:', membersList.length);
       console.log('✅ Dados dos membros:', JSON.stringify(membersList, null, 2));
-      
-      // Log individual de cada membro para debug
-      membersList.forEach((member: FamilyMemberWithProfile, index: number) => {
-        console.log(`👤 Membro ${index + 1}:`, {
-          id: member.id,
-          user_id: member.user_id,
-          profile: member.profile,
-          username: member.profile?.username,
-          full_name: member.profile?.full_name,
-          avatar_url: member.profile?.avatar_url
-        });
-      });
-      
       setMembers(membersList);
     } else {
       console.error('❌ Erro ao carregar membros:', result.message);
@@ -301,8 +288,7 @@ const FamilyTab = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
+    <View style={styles.safeArea}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -310,14 +296,6 @@ const FamilyTab = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Minha Família</Text>
-          <Text style={styles.headerSubtitle}>
-            Acompanhe a saúde de quem você ama
-          </Text>
-        </View>
-
         {/* Action Buttons */}
         <View style={styles.container}>
         <View style={styles.actionButtons}>
@@ -556,22 +534,15 @@ const FamilyTab = () => {
                   {members.map((member) => (
                     <View key={member.id} style={styles.memberCard}>
                       <View style={styles.memberAvatar}>
-                        {member.profile?.avatar_url ? (
-                          <Image 
-                            source={{ uri: member.profile.avatar_url }} 
-                            style={styles.avatarImage}
-                          />
-                        ) : (
-                          <Ionicons name="person" size={32} color={Colors.primary} />
-                        )}
-                      </View>
-                      <View style={styles.memberInfo}>
-                        <Text style={styles.memberName}>
-                          {member.profile?.full_name || member.profile?.username || 'Usuário'}
-                        </Text>
-                        <Text style={styles.memberUsername}>
-                          @{member.profile?.username || 'desconhecido'}
-                        </Text>
+                        <Ionicons name="person" size={32} color={Colors.primary} />
+                  </View>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>
+                      {member.profile.full_name || member.profile.username}
+                    </Text>
+                    <Text style={styles.memberUsername}>
+                      @{member.profile.username}
+                    </Text>
                     
                     {/* Tags do membro */}
                     {member.member_tags && member.member_tags.length > 0 && (
@@ -804,7 +775,7 @@ const FamilyTab = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -825,15 +796,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  header: {
-    ...ComponentStyles.header,
-  },
-  headerTitle: {
-    ...ComponentStyles.headerTitle,
-  },
-  headerSubtitle: {
-    ...ComponentStyles.headerSubtitle,
+    backgroundColor: Colors.accent,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -1135,12 +1098,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
   },
   memberInfo: {
     flex: 1,

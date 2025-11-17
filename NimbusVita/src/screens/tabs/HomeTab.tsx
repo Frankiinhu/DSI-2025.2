@@ -420,27 +420,8 @@ const HomeTab: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar style='light' backgroundColor={Colors.primary} />
+    <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.headerLeft}>
-              <Image
-                source={logo}
-                style={styles.headerLogo}
-                resizeMode="contain"
-              />
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.greeting}>{getGreeting()}</Text>
-                <Text style={styles.userName}>{getUserFirstName()}</Text>
-                <Text style={styles.subtitle}>Como você está se sentindo hoje?</Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
         <View style={styles.container}>
           {/* Status Card */}
           <View style={{ marginBottom: 16 }}>
@@ -585,7 +566,7 @@ const HomeTab: React.FC = () => {
         onConfirm={signOut}
         onCancel={() => setShowLogoutDialog(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -596,48 +577,12 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    backgroundColor: Colors.accent,
   },
   container: {
     padding: Spacing.lg,
-    paddingTop: Spacing.xl2,
-  },
-  header: {
-    ...ComponentStyles.header,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: Spacing.sm,
-  },
-  headerLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  headerTextContainer: {
-    flex: 1,
-    marginLeft: Spacing.base,
-  },
-  greeting: {
-    ...Typography.body,
-    color: Colors.secondary,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  userName: {
-    ...Typography.h4,
-    color: Colors.textWhite,
-    marginBottom: Spacing.xs,
-  },
-  subtitle: {
-    ...Typography.bodySmall,
-    color: Colors.textWhite,
-    opacity: 0.8,
-  },
-  headerLogo: { 
-    width: 64, 
-    height: 64,
+    paddingTop: Spacing.md,
+    backgroundColor: Colors.accent,
   },
   sectionTitle: {
     ...Typography.h4,

@@ -241,14 +241,8 @@ const ProfileTab = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={ThemeColors.interactive.primary} />
+    <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Perfil</Text>
-          <Text style={styles.headerSubtitle}>Gerencie sua conta e configurações</Text>
-        </View>
-
         <View style={styles.container}>
           {/* Avatar Section */}
           <View style={styles.avatarSection}>
@@ -583,7 +577,7 @@ const ProfileTab = () => {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -594,18 +588,12 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  header: {
-    ...ComponentStyles.header,
-  },
-  headerTitle: {
-    ...ComponentStyles.headerTitle,
-  },
-  headerSubtitle: {
-    ...ComponentStyles.headerSubtitle,
+    backgroundColor: Colors.accent,
   },
   container: {
     padding: Spacing.lg,
+    paddingTop: Spacing.md,
+    backgroundColor: Colors.accent,
   },
   avatarSection: {
     alignItems: 'center',

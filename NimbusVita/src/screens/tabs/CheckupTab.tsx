@@ -322,12 +322,8 @@ const CheckupTab: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Checkup</Text>
-          <Text style={styles.headerSubtitle}>Prognósticos baseados nos sintomas observados</Text>
-        </View>
         <View style={styles.container}>
           {/* Loading Indicator */}
           {loading && (
@@ -655,7 +651,7 @@ const CheckupTab: React.FC = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -666,19 +662,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  header: {
-    ...ComponentStyles.header,
-  },
-  headerTitle: {
-    ...ComponentStyles.headerTitle,
-  },
-  headerSubtitle: {
-    ...ComponentStyles.headerSubtitle,
+    backgroundColor: Colors.accent,
   },
   container: {
     padding: Spacing.lg,
-    paddingTop: Spacing.xl2,
+    paddingTop: Spacing.md,
     backgroundColor: Colors.accent,
   },
   statsContainer: {
