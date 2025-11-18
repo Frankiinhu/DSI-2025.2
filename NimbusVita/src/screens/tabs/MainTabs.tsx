@@ -3,11 +3,12 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Fontisto, FontAwesome5, FontAwesome6, Octicons, MaterialIcons } from '@expo/vector-icons';
+import { Fontisto, FontAwesome5, FontAwesome6, Octicons, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import HomeTab from './HomeTab';
 import FamilyTab from './FamilyTab';
 import CheckupTab from './CheckupTab';
 import AlertsTab from './AlertsTab';
+import MapsTab from './MapsTab';
 import ProfileTab from './ProfileTab';
 import { Colors, Spacing, Shadows, BorderRadius, ComponentStyles } from '../../styles';
 import { useAuth } from '../../contexts/AuthContext';
@@ -60,6 +61,14 @@ const TABS_CONFIG = [
     iconName: 'pulse',
     title: 'Verificação de Sintomas',
     subtitle: 'Registre seus sintomas diários',
+  },
+    {
+    name: 'MapsTab',
+    component: MapsTab,
+    IconComponent: Ionicons,
+    iconName: 'map',
+    title: 'UBS Próximas',
+    subtitle: 'Encontre Unidades de Saúde perto de você',
   },  
   {
     name: 'FamilyTab',

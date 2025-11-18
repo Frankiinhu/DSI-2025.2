@@ -222,10 +222,20 @@ const FamilyTab = () => {
   };
 
   const handleOpenTagsModal = (member: FamilyMemberWithProfile) => {
+    console.log('🏷️ Abrindo modal de tags para:', member.profile.username);
+    console.log('🏷️ Tags atuais:', member.member_tags);
+    
+    // Define os dados primeiro
     setSelectedMember(member);
     setSelectedTags(member.member_tags || []);
     setCustomTag('');
-    setShowTagsModal(true);
+    
+    // Fecha o modal de membros e abre o de tags com um pequeno delay
+    setShowMembersModal(false);
+    setTimeout(() => {
+      setShowTagsModal(true);
+      console.log('🏷️ Modal de tags aberto');
+    }, 300);
   };
 
   const handleToggleTag = (tag: string) => {
@@ -265,7 +275,10 @@ const FamilyTab = () => {
     if (result.ok) {
       Alert.alert('Sucesso! 🎉', result.message);
       setShowTagsModal(false);
-      handleOpenGroup(selectedGroup); // Recarrega os membros
+      // Reabre o modal de membros após um pequeno delay
+      setTimeout(() => {
+        handleOpenGroup(selectedGroup); // Recarrega os membros e reabre o modal
+      }, 300);
     } else {
       Alert.alert('Erro', result.message);
     }
@@ -518,7 +531,14 @@ const FamilyTab = () => {
           <View style={styles.modalContentLarge}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{selectedGroup?.name}</Text>
-              <TouchableOpacity onPress={() => setShowMembersModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowMembersModal(false);
+                // Pequeno delay antes de limpar para garantir animação suave
+                setTimeout(() => {
+                  setSelectedGroup(null);
+                  setMembers([]);
+                }, 300);
+              }}>
                 <Ionicons name="close" size={28} color={Colors.textDark} />
               </TouchableOpacity>
             </View>
@@ -604,12 +624,13 @@ const FamilyTab = () => {
                     )}
                   </View>
                   <View style={styles.memberActions}>
-                    {/* Botão de editar tags */}
+                    {/* Botão de editar tags - Todos podem editar tags de qualquer membro */}
                     <TouchableOpacity
                       style={styles.iconButton}
                       onPress={() => handleOpenTagsModal(member)}
+                      activeOpacity={0.7}
                     >
-                      <MaterialCommunityIcons name="tag-outline" size={30} color={Colors.primary} />
+                      <MaterialCommunityIcons name="tag" size={30} color={Colors.primary} />
                     </TouchableOpacity>
                     
                     {/* Todos podem ver histórico */}
@@ -730,7 +751,15 @@ const FamilyTab = () => {
               <Text style={styles.modalTitle}>
                 Editar Tags - {selectedMember?.profile.username}
               </Text>
-              <TouchableOpacity onPress={() => setShowTagsModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowTagsModal(false);
+                // Reabre o modal de membros após fechar
+                if (selectedGroup) {
+                  setTimeout(() => {
+                    setShowMembersModal(true);
+                  }, 300);
+                }
+              }}>
                 <Ionicons name="close" size={28} color={Colors.textDark} />
               </TouchableOpacity>
             </View>
