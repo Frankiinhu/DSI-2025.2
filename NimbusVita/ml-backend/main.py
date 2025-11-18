@@ -127,6 +127,7 @@ class PredictionResponse(BaseModel):
 
 
 @app.get("/")
+@app.head("/")
 async def root():
     """Endpoint raiz para verificar se a API está funcionando"""
     return {
@@ -139,6 +140,7 @@ async def root():
 
 
 @app.get("/health")
+@app.head("/health")
 async def health_check():
     """Endpoint de health check"""
     return {

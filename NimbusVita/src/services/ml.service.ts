@@ -4,17 +4,22 @@
 
 import { Platform } from 'react-native';
 import { ML_API_HOST, ML_API_PORT, ML_API_PRODUCTION_URL } from '../config/ml.config';
+import { logger } from '../utils/logger';
 
 // URL da API - alterar conforme ambiente
 const getApiUrl = () => {
-  if (!__DEV__) {
+  // FORÇAR PRODUÇÃO: Sempre usar Render para testes
+  return ML_API_PRODUCTION_URL;
+  
+  // Modo DEV desabilitado temporariamente
+  /* if (!__DEV__) {
     return ML_API_PRODUCTION_URL;
   }
   
   // Se IP customizado foi configurado (dispositivo físico)
   if (ML_API_HOST) {
     return `http://${ML_API_HOST}:${ML_API_PORT}`;
-  }
+  } */
   
   // Configuração automática para emuladores
   if (Platform.OS === 'android') {
@@ -31,7 +36,7 @@ const getApiUrl = () => {
 
 const ML_API_URL = getApiUrl();
 
-console.log('📡 ML API configurada:', ML_API_URL);
+logger.info('📡 ML API configurada:', ML_API_URL);
 
 export interface DiagnosisResult {
   condition: string;
@@ -58,10 +63,10 @@ export async function predictDiagnosis(
   symptoms: string[]
 ): Promise<PredictionResponse> {
   try {
-    console.log('🔍 Tentando conectar à API:', ML_API_URL);
+    logger.debug('🔍 Tentando conectar à API:', ML_API_URL);
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos timeout (Render cold start)
     
     const response = await fetch(`${ML_API_URL}/predict`, {
       method: 'POST',
@@ -80,13 +85,13 @@ export async function predictDiagnosis(
     }
 
     const data: PredictionResponse = await response.json();
-    console.log('✅ Resposta da API recebida');
+    logger.info('✅ Resposta da API recebida');
     return data;
   } catch (error: any) {
     if (error.name === 'AbortError') {
-      console.error('⏱️ Timeout: API não respondeu em 5 segundos');
+      logger.error('⏱️ Timeout: API não respondeu em 60 segundos');
     } else {
-      console.error('❌ Erro ao chamar API de ML:', error.message);
+      logger.error('❌ Erro ao chamar API de ML:', error.message);
     }
     throw error;
   }
@@ -112,7 +117,7 @@ export async function checkMLApiHealth(): Promise<boolean> {
     const data = await response.json();
     return data.status === 'healthy';
   } catch (error) {
-    console.error('⚠️ API de ML não está disponível:', error);
+    logger.warn('⚠️ API de ML não está disponível');
     return false;
   }
 }

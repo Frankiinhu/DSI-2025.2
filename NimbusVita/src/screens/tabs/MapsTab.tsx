@@ -566,6 +566,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.xs,
   },
+  disabledContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  disabledTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginTop: Spacing.lg,
+    textAlign: 'center',
+  },
+  disabledText: {
+    fontSize: 16,
+    color: Colors.textSecondary,
+    marginTop: Spacing.md,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
 });
 
 export default MapsTab;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import { Colors, Spacing } from '../styles';
 import { useNotifications } from '../config/notifications';
@@ -113,26 +113,30 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     }
   }, [preSelectedSymptoms]);
 
-  const filteredSymptoms = Object.entries(SYMPTOMS).filter(([key, value]) =>
-    value.toLowerCase().includes(searchText.toLowerCase()) ||
-    key.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const filteredSymptoms = useMemo(() => {
+    if (!searchText) return [];
+    const search = searchText.toLowerCase();
+    return Object.entries(SYMPTOMS).filter(([key, value]) =>
+      value.toLowerCase().includes(search) ||
+      key.toLowerCase().includes(search)
+    );
+  }, [searchText]);
 
-  const addSymptom = (key: string) => {
+  const addSymptom = useCallback((key: string) => {
     const newSelected = new Set(selectedSymptoms);
     newSelected.add(key);
     setSelectedSymptoms(newSelected);
     setSearchText('');
     setShowDropdown(false);
-  };
+  }, [selectedSymptoms]);
 
-  const removeSymptom = (key: string) => {
+  const removeSymptom = useCallback((key: string) => {
     const newSelected = new Set(selectedSymptoms);
     newSelected.delete(key);
     setSelectedSymptoms(newSelected);
-  };
+  }, [selectedSymptoms]);
 
-  const mockPredict = () => {
+  const mockPredict = useCallback(() => {
     const count = selectedSymptoms.size;
     
     const res: Record<string, number> = {};
@@ -211,9 +215,9 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     }
     
     return res;
-  };
+  }, [selectedSymptoms]);
 
-  const performPrediction = async () => {
+  const performPrediction = useCallback(async () => {
     const count = selectedSymptoms.size;
     if (count === 0) {
       notify('warning', {
@@ -237,11 +241,10 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       results = convertApiResponseToResults(apiResponse);
       
       setPredictions(results);
-      console.log('✅ Predição via API de ML');
+      // API funcionou
       
     } catch (error) {
       // Fallback para mock se API falhar
-      console.log('⚠️ API não disponível, usando predição mock');
       setUsingMockData(true);
       
       results = mockPredict();
@@ -263,9 +266,9 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       const symptomsNames = symptomsArray.map(key => SYMPTOMS[key as keyof typeof SYMPTOMS]);
       onCheckupComplete(symptomsNames, results);
     }
-  };
+  }, [selectedSymptoms, onCheckupComplete, notify, mockPredict]);
 
-  const clearAll = () => {
+  const clearAll = useCallback(() => {
     setSelectedSymptoms(new Set());
     setPredictions(null);
     setSearchText('');
@@ -274,7 +277,7 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     if (onClearRequest) {
       onClearRequest();
     }
-  };
+  }, [onClearRequest]);
 
   return (
     <View style={styles.card}>
@@ -386,7 +389,12 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
         disabled={selectedSymptoms.size === 0 || isLoadingPrediction}
       >
         {isLoadingPrediction ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <>
+            <ActivityIndicator size="small" color="#fff" />
+            <Text style={[styles.predictBtnText, { marginTop: 8, fontSize: 12 }]}>
+              Primeira análise pode demorar até 1 min...
+            </Text>
+          </>
         ) : (
           <Text style={[
             styles.predictBtnText,
