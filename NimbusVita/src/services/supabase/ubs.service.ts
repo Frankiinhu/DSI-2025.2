@@ -29,21 +29,45 @@ const mapUBSFromDatabase = (dbUBS: any): UBSLocation => ({
  */
 export const getAllUBS = async (): Promise<UBSResponse> => {
   try {
+    console.log('📡 Iniciando busca de UBS no Supabase...');
+    
     const { data, error } = await supabase
       .from('ubs_locations')
       .select('*')
       .order('name', { ascending: true });
 
-    if (error) throw error;
+    console.log('📡 Resposta do Supabase:', { 
+      hasData: !!data, 
+      dataLength: data?.length, 
+      hasError: !!error,
+      errorDetails: error 
+    });
 
-    const mappedData = (data || []).map(mapUBSFromDatabase);
+    if (error) {
+      console.error('❌ Erro do Supabase:', error);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('⚠️ Nenhuma UBS encontrada no banco de dados');
+      return {
+        ok: true,
+        data: [],
+        message: 'Nenhuma UBS cadastrada'
+      };
+    }
+
+    console.log('✅ Mapeando dados das UBS...');
+    const mappedData = data.map(mapUBSFromDatabase);
+    console.log('✅ UBS mapeadas:', mappedData.length);
 
     return {
       ok: true,
       data: mappedData,
     };
   } catch (error: any) {
-    console.error('Erro ao buscar UBS:', error);
+    console.error('❌ Erro ao buscar UBS:', error);
+    console.error('❌ Stack:', error.stack);
     return {
       ok: false,
       message: error.message || 'Erro ao buscar UBS',

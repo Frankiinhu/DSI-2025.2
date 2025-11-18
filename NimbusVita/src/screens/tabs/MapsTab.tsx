@@ -37,22 +37,34 @@ const MapsTab = () => {
   };
 
   useEffect(() => {
-    requestLocationPermission();
-    loadUBSLocations();
+    const initialize = async () => {
+      await loadUBSLocations();
+      await requestLocationPermission();
+    };
+    initialize();
   }, []);
 
   /**
    * Carrega todas as UBS do banco de dados
    */
   const loadUBSLocations = async () => {
-    console.log('🗺️ Carregando UBS...');
-    const result = await getAllUBS();
-    console.log('🗺️ Resultado da busca:', result);
-    if (result.ok) {
-      console.log('🗺️ UBS encontradas:', result.data?.length || 0);
-      setUbsLocations(result.data || []);
-    } else {
-      console.error('❌ Erro ao carregar UBS:', result.message);
+    try {
+      console.log('🗺️ Carregando UBS...');
+      const result = await getAllUBS();
+      
+      if (result.ok && result.data && result.data.length > 0) {
+        console.log('✅ UBS carregadas com sucesso:', result.data.length);
+        setUbsLocations(result.data);
+      } else {
+        console.error('❌ Erro ao carregar UBS:', result.message);
+        Alert.alert(
+          'Erro ao carregar UBS',
+          result.message || 'Não foi possível carregar as UBS. Verifique sua conexão.'
+        );
+      }
+    } catch (error) {
+      console.error('❌ Erro exception:', error);
+      Alert.alert('Erro', 'Erro inesperado ao carregar UBS');
     }
   };
 
@@ -61,6 +73,7 @@ const MapsTab = () => {
    */
   const requestLocationPermission = async () => {
     try {
+      setLoading(false); // Remove loading logo após carregar UBS
       const { status } = await Location.requestForegroundPermissionsAsync();
       
       if (status === 'granted') {
@@ -76,8 +89,6 @@ const MapsTab = () => {
     } catch (error) {
       console.error('Erro ao solicitar permissão:', error);
       setUserLocation(defaultRegion);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -146,6 +157,14 @@ const MapsTab = () => {
    * Calcula distâncias de todas as UBS em relação ao usuário
    */
   const calculateDistances = (userLat: number, userLon: number) => {
+    console.log('📏 Calculando distâncias. UBS disponíveis:', ubsLocations.length);
+    
+    // Só calcula se houver UBS
+    if (ubsLocations.length === 0) {
+      console.log('⚠️ Nenhuma UBS para calcular distância');
+      return;
+    }
+
     const ubsWithDistances = ubsLocations.map((ubs) => ({
       ...ubs,
       distance: calculateDistance(userLat, userLon, ubs.latitude, ubs.longitude),
@@ -153,6 +172,7 @@ const MapsTab = () => {
 
     // Ordena por distância
     ubsWithDistances.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    console.log('✅ Distâncias calculadas. Total UBS:', ubsWithDistances.length);
     setUbsLocations(ubsWithDistances);
   };
 
@@ -239,7 +259,7 @@ const MapsTab = () => {
             <View style={styles.markerContainer}>
               <MaterialCommunityIcons
                 name="hospital-building"
-                size={32}
+                size={20}
                 color={Colors.primary}
               />
             </View>
@@ -411,7 +431,7 @@ const styles = StyleSheet.create({
   markerContainer: {
     backgroundColor: '#fff',
     padding: 8,
-    borderRadius: 20,
+    borderRadius: 32,
     ...Shadows.sm,
   },
   controlButtons: {
@@ -513,6 +533,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: 12,
     marginTop: Spacing.lg,
+    marginBottom: Spacing.lg,
     gap: Spacing.sm,
   },
   directionsButtonText: {
