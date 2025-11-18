@@ -16,6 +16,17 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Colors, Spacing, Shadows } from '../../styles';
 import { UBSLocation, MapRegion } from '../../types/ubs.types';
 import { getAllUBS, getNearbyUBS } from '../../services/supabase/ubs.service';
+import { HealthLocation, CreateHealthLocationDTO, UpdateHealthLocationDTO } from '../../types/health-location.types';
+import {
+  getHealthLocations,
+  createHealthLocation,
+  updateHealthLocation,
+  deleteHealthLocation,
+  deactivateHealthLocation,
+  cleanExpiredEvents,
+} from '../../services/supabase/health-location.service';
+import { HealthLocationForm } from '../../components/HealthLocationForm';
+import { HealthLocationList } from '../../components/HealthLocationList';
 
 const MapsTab = () => {
   const mapRef = useRef<MapView>(null);
@@ -28,6 +39,17 @@ const MapsTab = () => {
   const [loading, setLoading] = useState(true);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [showUserLocation, setShowUserLocation] = useState(false);
+  
+  // Estados para gerenciamento de locais de saúde
+  const [healthLocations, setHealthLocations] = useState<HealthLocation[]>([]);
+  const [showHealthLocationForm, setShowHealthLocationForm] = useState(false);
+  const [showHealthLocationList, setShowHealthLocationList] = useState(false);
+  const [editingHealthLocation, setEditingHealthLocation] = useState<HealthLocation | null>(null);
+  
+  // Estados para seleção de localização no mapa
+  const [isPickingLocation, setIsPickingLocation] = useState(false);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<{ latitude: number; longitude: number; address?: string } | null>(null);
+  const [tempMarker, setTempMarker] = useState<{ latitude: number; longitude: number } | null>(null);
 
   // Região inicial (Brasil - Recife como padrão)
   const defaultRegion: MapRegion = {
@@ -40,6 +62,7 @@ const MapsTab = () => {
   useEffect(() => {
     const initialize = async () => {
       await loadUBSLocations();
+      await loadHealthLocations();
       await requestLocationPermission();
     };
     initialize();
@@ -48,6 +71,29 @@ const MapsTab = () => {
       isMountedRef.current = false;
     };
   }, []);
+
+  /**
+   * Carrega todos os locais de saúde customizados
+   */
+  const loadHealthLocations = async () => {
+    try {
+      console.log('🏥 Carregando locais de saúde customizados...');
+      
+      // Limpa eventos expirados primeiro
+      await cleanExpiredEvents();
+      
+      const result = await getHealthLocations({ is_active: true });
+      
+      if (result.ok && Array.isArray(result.data)) {
+        console.log('✅ Locais de saúde carregados:', result.data.length);
+        setHealthLocations(result.data);
+      } else {
+        console.error('❌ Erro ao carregar locais:', result.message);
+      }
+    } catch (error) {
+      console.error('❌ Erro exception ao carregar locais:', error);
+    }
+  };
 
   /**
    * Carrega todas as UBS do banco de dados
@@ -204,6 +250,179 @@ const MapsTab = () => {
   };
 
   /**
+   * Handlers para gerenciamento de locais de saúde
+   */
+  const handleCreateHealthLocation = async (data: CreateHealthLocationDTO) => {
+    try {
+      const result = await createHealthLocation(data);
+      if (result.ok) {
+        Alert.alert('Sucesso', 'Local de saúde adicionado com sucesso!');
+        await loadHealthLocations();
+        setShowHealthLocationForm(false);
+      } else {
+        Alert.alert('Erro', result.message || 'Erro ao adicionar local');
+      }
+    } catch (error) {
+      console.error('Erro ao criar local:', error);
+      Alert.alert('Erro', 'Erro inesperado ao criar local');
+    }
+  };
+
+  const handleUpdateHealthLocation = async (data: UpdateHealthLocationDTO) => {
+    if (!editingHealthLocation) return;
+    
+    try {
+      const result = await updateHealthLocation(editingHealthLocation.id, data);
+      if (result.ok) {
+        Alert.alert('Sucesso', 'Local de saúde atualizado com sucesso!');
+        await loadHealthLocations();
+        setShowHealthLocationForm(false);
+        setEditingHealthLocation(null);
+      } else {
+        Alert.alert('Erro', result.message || 'Erro ao atualizar local');
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar local:', error);
+      Alert.alert('Erro', 'Erro inesperado ao atualizar local');
+    }
+  };
+
+  const handleDeleteHealthLocation = async (id: string) => {
+    try {
+      const result = await deleteHealthLocation(id);
+      if (result.ok) {
+        Alert.alert('Sucesso', 'Local de saúde excluído com sucesso!');
+        await loadHealthLocations();
+      } else {
+        Alert.alert('Erro', result.message || 'Erro ao excluir local');
+      }
+    } catch (error) {
+      console.error('Erro ao excluir local:', error);
+      Alert.alert('Erro', 'Erro inesperado ao excluir local');
+    }
+  };
+
+  const handleToggleActiveHealthLocation = async (id: string, isActive: boolean) => {
+    try {
+      const result = isActive
+        ? await updateHealthLocation(id, { is_active: true })
+        : await deactivateHealthLocation(id);
+      
+      if (result.ok) {
+        Alert.alert('Sucesso', `Local ${isActive ? 'ativado' : 'desativado'} com sucesso!`);
+        await loadHealthLocations();
+      } else {
+        Alert.alert('Erro', result.message || 'Erro ao alterar status');
+      }
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+      Alert.alert('Erro', 'Erro inesperado ao alterar status');
+    }
+  };
+
+  const handleEditHealthLocation = (location: HealthLocation) => {
+    setEditingHealthLocation(location);
+    setShowHealthLocationList(false);
+    setShowHealthLocationForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowHealthLocationForm(false);
+    setEditingHealthLocation(null);
+    setIsPickingLocation(false);
+    setSelectedCoordinates(null);
+    setTempMarker(null);
+  };
+
+  const handlePickLocation = () => {
+    setIsPickingLocation(true);
+    setShowHealthLocationForm(false);
+    Alert.alert(
+      'Selecionar Localização',
+      'Toque no mapa para selecionar a localização desejada',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const getAddressFromCoordinates = async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'NimbusVita/1.0',
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error('Erro ao buscar endereço');
+      }
+      
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const addr = data.address;
+        const parts = [];
+        
+        // Monta o endereço no formato brasileiro
+        if (addr.road || addr.street) {
+          parts.push(addr.road || addr.street);
+        }
+        if (addr.house_number) {
+          parts[parts.length - 1] = `${parts[parts.length - 1]}, ${addr.house_number}`;
+        }
+        if (addr.suburb || addr.neighbourhood) {
+          parts.push(addr.suburb || addr.neighbourhood);
+        }
+        if (addr.city || addr.town || addr.village) {
+          parts.push(addr.city || addr.town || addr.village);
+        }
+        if (addr.state) {
+          parts.push(addr.state);
+        }
+        
+        return parts.join(' - ') || data.display_name || 'Endereço não encontrado';
+      }
+      
+      return data.display_name || 'Endereço não encontrado';
+    } catch (error) {
+      console.error('Erro ao buscar endereço:', error);
+      return 'Endereço não disponível';
+    }
+  };
+
+  const handleMapPress = async (event: any) => {
+    if (isPickingLocation) {
+      const { latitude, longitude } = event.nativeEvent.coordinate;
+      setTempMarker({ latitude, longitude });
+      setSelectedCoordinates({ latitude, longitude });
+      
+      // Buscar endereço
+      Alert.alert('Buscando endereço...', 'Aguarde um momento');
+      const address = await getAddressFromCoordinates(latitude, longitude);
+      
+      // Atualizar estado com endereço
+      setSelectedCoordinates({ 
+        latitude, 
+        longitude,
+        address 
+      } as any);
+      
+      // Voltar ao formulário automaticamente
+      setTimeout(() => {
+        setIsPickingLocation(false);
+        setShowHealthLocationForm(true);
+        Alert.alert(
+          'Localização Selecionada',
+          `📍 ${address}\n\nLat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}\n\nVerifique o endereço e ajuste se necessário.`,
+          [{ text: 'OK' }]
+        );
+      }, 500);
+    }
+  };
+
+  /**
    * Abre o Google Maps com direções
    */
   const openDirections = (ubs: UBSLocation) => {
@@ -252,6 +471,7 @@ const MapsTab = () => {
         showsMyLocationButton={false}
         showsCompass={true}
         showsScale={true}
+        onPress={handleMapPress}
       >
         {/* Marcadores das UBS */}
         {ubsLocations.map((ubs) => (
@@ -275,6 +495,59 @@ const MapsTab = () => {
           </Marker>
         ))}
 
+        {/* Marcadores dos locais de saúde customizados */}
+        {healthLocations.map((location) => (
+          <Marker
+            key={location.id}
+            coordinate={{
+              latitude: location.latitude,
+              longitude: location.longitude,
+            }}
+            title={location.name}
+            description={location.address}
+          >
+            <View style={[
+              styles.markerContainer,
+              location.type === 'event' ? styles.eventMarker : styles.ubsMarker
+            ]}>
+              <Text style={styles.markerEmoji}>
+                {location.type === 'ubs' ? '🏥' : '📅'}
+              </Text>
+            </View>
+            <Callout>
+              <View style={styles.calloutContainer}>
+                <Text style={styles.calloutTitle}>{location.name}</Text>
+                <Text style={styles.calloutType}>
+                  {location.type === 'ubs' ? 'UBS' : 'Evento'}
+                </Text>
+                {location.description && (
+                  <Text style={styles.calloutDescription}>{location.description}</Text>
+                )}
+                <Text style={styles.calloutAddress}>{location.address}</Text>
+                {location.event_date && (
+                  <Text style={styles.calloutDate}>
+                    📅 {new Date(location.event_date).toLocaleDateString('pt-BR')}
+                    {location.event_time && ` às ${location.event_time}`}
+                  </Text>
+                )}
+              </View>
+            </Callout>
+          </Marker>
+        ))}
+
+        {/* Marcador temporário ao selecionar localização */}
+        {tempMarker && (
+          <Marker
+            coordinate={tempMarker}
+            pinColor={Colors.success}
+          >
+            <View style={styles.tempMarkerContainer}>
+              <Text style={styles.tempMarkerIcon}>📍</Text>
+              <Text style={styles.tempMarkerText}>Nova localização</Text>
+            </View>
+          </Marker>
+        )}
+
         {/* Círculo ao redor da localização do usuário (raio de 5km) */}
         {userLocation && showUserLocation && (
           <Circle
@@ -288,6 +561,29 @@ const MapsTab = () => {
           />
         )}
       </MapView>
+
+      {/* Banner quando estiver selecionando localização */}
+      {isPickingLocation && (
+        <View style={styles.pickingLocationBanner}>
+          <Text style={styles.pickingLocationIcon}>👆</Text>
+          <View style={styles.pickingLocationTextContainer}>
+            <Text style={styles.pickingLocationTitle}>Selecione no Mapa</Text>
+            <Text style={styles.pickingLocationSubtitle}>
+              Toque no local desejado
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.cancelPickingButton}
+            onPress={() => {
+              setIsPickingLocation(false);
+              setTempMarker(null);
+              setShowHealthLocationForm(true);
+            }}
+          >
+            <Text style={styles.cancelPickingText}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Botões de controle */}
       <View style={styles.controlButtons}>
@@ -304,12 +600,18 @@ const MapsTab = () => {
           )}
         </TouchableOpacity>
 
-        {/* Botão de lista */}
+        {/* Botão adicionar local */}
+        <TouchableOpacity
+          style={[styles.controlButton, styles.addButton]}
+          onPress={() => setShowHealthLocationForm(true)}
+        >
+          <Ionicons name="add" size={24} color={Colors.textWhite} />
+        </TouchableOpacity>
+
+        {/* Botão de lista de locais customizados */}
         <TouchableOpacity
           style={styles.controlButton}
-          onPress={() => {
-            // TODO: Mostrar lista de UBS
-          }}
+          onPress={() => setShowHealthLocationList(true)}
         >
           <Ionicons name="list" size={24} color={Colors.primary} />
         </TouchableOpacity>
@@ -411,6 +713,55 @@ const MapsTab = () => {
           <Text style={styles.emptyStateSubtext}>
             Os locais serão exibidos aqui quando forem adicionados
           </Text>
+        </View>
+      )}
+
+      {/* Modal de formulário */}
+      <HealthLocationForm
+        visible={showHealthLocationForm}
+        onClose={handleCloseForm}
+        onSubmit={(data) => {
+          if (editingHealthLocation) {
+            return handleUpdateHealthLocation(data);
+          } else {
+            return handleCreateHealthLocation(data as CreateHealthLocationDTO);
+          }
+        }}
+        onPickLocation={handlePickLocation}
+        selectedCoordinates={selectedCoordinates || undefined}
+        initialData={editingHealthLocation ? {
+          type: editingHealthLocation.type,
+          name: editingHealthLocation.name,
+          description: editingHealthLocation.description,
+          address: editingHealthLocation.address,
+          latitude: editingHealthLocation.latitude,
+          longitude: editingHealthLocation.longitude,
+          contact_phone: editingHealthLocation.contact_phone,
+          contact_email: editingHealthLocation.contact_email,
+          event_date: editingHealthLocation.event_date,
+          event_time: editingHealthLocation.event_time,
+          event_end_date: editingHealthLocation.event_end_date,
+        } : undefined}
+        mode={editingHealthLocation ? 'edit' : 'create'}
+      />
+
+      {/* Modal de lista */}
+      {showHealthLocationList && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Locais de Saúde</Text>
+              <TouchableOpacity onPress={() => setShowHealthLocationList(false)}>
+                <Ionicons name="close" size={24} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <HealthLocationList
+              locations={healthLocations}
+              onEdit={handleEditHealthLocation}
+              onDelete={handleDeleteHealthLocation}
+              onToggleActive={handleToggleActiveHealthLocation}
+            />
+          </View>
         </View>
       )}
     </View>
@@ -594,6 +945,150 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  // Estilos para marcadores customizados
+  ubsMarker: {
+    backgroundColor: Colors.primary + '20',
+    borderColor: Colors.primary,
+  },
+  eventMarker: {
+    backgroundColor: Colors.secondary + '20',
+    borderColor: Colors.secondary,
+  },
+  markerEmoji: {
+    fontSize: 16,
+  },
+  calloutContainer: {
+    padding: Spacing.sm,
+    minWidth: 200,
+  },
+  calloutTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  calloutType: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  calloutDescription: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    marginVertical: 4,
+  },
+  calloutAddress: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
+  calloutDate: {
+    fontSize: 13,
+    color: Colors.primary,
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  addButton: {
+    backgroundColor: Colors.primary,
+  },
+  // Estilos para o modal de lista
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.textPrimary,
+  },
+  // Estilos para marcador temporário
+  tempMarkerContainer: {
+    backgroundColor: Colors.success,
+    padding: Spacing.sm,
+    borderRadius: 8,
+    alignItems: 'center',
+    minWidth: 120,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  tempMarkerIcon: {
+    fontSize: 24,
+    marginBottom: 4,
+  },
+  tempMarkerText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: Colors.textWhite,
+  },
+  // Estilos para o banner de seleção
+  pickingLocationBanner: {
+    position: 'absolute',
+    top: 60,
+    left: Spacing.md,
+    right: Spacing.md,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    padding: Spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  pickingLocationIcon: {
+    fontSize: 32,
+  },
+  pickingLocationTextContainer: {
+    flex: 1,
+  },
+  pickingLocationTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.textWhite,
+    marginBottom: 2,
+  },
+  pickingLocationSubtitle: {
+    fontSize: 13,
+    color: Colors.textWhite,
+    opacity: 0.9,
+  },
+  cancelPickingButton: {
+    backgroundColor: Colors.textWhite,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: 8,
+  },
+  cancelPickingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
   },
 });
 
