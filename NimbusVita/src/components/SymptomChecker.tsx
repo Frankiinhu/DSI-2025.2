@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import { Colors, Spacing } from '../styles';
 import { useNotifications } from '../config/notifications';
+import { predictDiagnosis, checkMLApiHealth, convertApiResponseToResults } from '../services/ml.service';
 
 const SYMPTOMS = {
   // Sintomas Gerais
@@ -94,6 +95,8 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
   const [predictions, setPredictions] = useState<Record<string, number> | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showInfoDialog, setShowInfoDialog] = useState(false);
+  const [isLoadingPrediction, setIsLoadingPrediction] = useState(false);
+  const [usingMockData, setUsingMockData] = useState(false);
 
   // Effect para definir sintomas pré-selecionados
   React.useEffect(() => {
@@ -131,16 +134,7 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
 
   const mockPredict = () => {
     const count = selectedSymptoms.size;
-    if (count === 0) {
-      notify('warning', {
-        params: {
-          title: 'Atenção',
-          description: 'Selecione pelo menos um sintoma para prever.',
-        },
-      });
-      return;
-    }
-
+    
     const res: Record<string, number> = {};
     let sum = 0;
     
@@ -216,19 +210,58 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       res[highest] += (100 - total);
     }
     
-    setPredictions(res);
+    return res;
+  };
+
+  const performPrediction = async () => {
+    const count = selectedSymptoms.size;
+    if (count === 0) {
+      notify('warning', {
+        params: {
+          title: 'Atenção',
+          description: 'Selecione pelo menos um sintoma para prever.',
+        },
+      });
+      return;
+    }
+
+    setIsLoadingPrediction(true);
+    setUsingMockData(false);
+
+    let results: Record<string, number> | null = null;
     
-    // Chama a callback se fornecida
-    if (onCheckupComplete) {
+    try {
+      // Tentar usar a API real primeiro
+      const symptomsArray = Array.from(selectedSymptoms);
+      const apiResponse = await predictDiagnosis(symptomsArray);
+      results = convertApiResponseToResults(apiResponse);
+      
+      setPredictions(results);
+      console.log('✅ Predição via API de ML');
+      
+    } catch (error) {
+      // Fallback para mock se API falhar
+      console.log('⚠️ API não disponível, usando predição mock');
+      setUsingMockData(true);
+      
+      results = mockPredict();
+      setPredictions(results);
+      
+      notify('info', {
+        params: {
+          title: 'Modo Offline',
+          description: 'Usando predição local. Conecte à API para resultados mais precisos.',
+        },
+      });
+    } finally {
+      setIsLoadingPrediction(false);
+    }
+    
+    // Chama a callback com os resultados obtidos
+    if (onCheckupComplete && results) {
       const symptomsArray = Array.from(selectedSymptoms);
       const symptomsNames = symptomsArray.map(key => SYMPTOMS[key as keyof typeof SYMPTOMS]);
-      onCheckupComplete(symptomsNames, res);
-      
-      // NÃO limpar automaticamente - deixar o usuário ver os resultados
-      // A limpeza será feita quando:
-      // 1. Usuário clicar em "Limpar todos"
-      // 2. Iniciar uma nova análise
-      // 3. CheckupTab gerenciar após salvar (se necessário)
+      onCheckupComplete(symptomsNames, results);
     }
   };
 
@@ -348,16 +381,20 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
       )}
 
       <TouchableOpacity
-        style={[styles.predictBtn, selectedSymptoms.size === 0 && styles.predictBtnDisabled]}
-        onPress={mockPredict}
-        disabled={selectedSymptoms.size === 0}
+        style={[styles.predictBtn, (selectedSymptoms.size === 0 || isLoadingPrediction) && styles.predictBtnDisabled]}
+        onPress={performPrediction}
+        disabled={selectedSymptoms.size === 0 || isLoadingPrediction}
       >
-        <Text style={[
-          styles.predictBtnText,
-          selectedSymptoms.size === 0 && styles.predictBtnTextDisabled
-        ]}>
-          {selectedSymptoms.size > 0 ? 'Analisar Sintomas' : 'Selecione sintomas para analisar'}
-        </Text>
+        {isLoadingPrediction ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={[
+            styles.predictBtnText,
+            selectedSymptoms.size === 0 && styles.predictBtnTextDisabled
+          ]}>
+            {selectedSymptoms.size > 0 ? 'Analisar Sintomas' : 'Selecione sintomas para analisar'}
+          </Text>
+        )}
       </TouchableOpacity>
 
       {predictions && (
@@ -366,6 +403,11 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
           <Text style={styles.resultsSubtitle}>
             Baseado em {selectedSymptoms.size} sintoma{selectedSymptoms.size > 1 ? 's' : ''} selecionado{selectedSymptoms.size > 1 ? 's' : ''}
           </Text>
+          {usingMockData && (
+            <View style={styles.mockWarning}>
+              <Text style={styles.mockWarningText}>⚠️ Modo Offline - Predição Local</Text>
+            </View>
+          )}
           
           {Object.entries(predictions)
             .sort(([,a], [,b]) => b - a)
@@ -604,6 +646,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginBottom: 16,
+  },
+  mockWarning: {
+    backgroundColor: '#fff3cd',
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#ffc107',
+  },
+  mockWarningText: {
+    fontSize: 12,
+    color: '#856404',
+    fontWeight: '500',
   },
   resultItem: {
     marginBottom: 16,
