@@ -19,6 +19,7 @@ import { getAllUBS, getNearbyUBS } from '../../services/supabase/ubs.service';
 
 const MapsTab = () => {
   const mapRef = useRef<MapView>(null);
+  const isMountedRef = useRef(true);
   
   // Estados
   const [userLocation, setUserLocation] = useState<MapRegion | null>(null);
@@ -42,6 +43,10 @@ const MapsTab = () => {
       await requestLocationPermission();
     };
     initialize();
+    
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   /**
@@ -54,7 +59,7 @@ const MapsTab = () => {
       
       if (result.ok && result.data && result.data.length > 0) {
         console.log('✅ UBS carregadas com sucesso:', result.data.length);
-        setUbsLocations(result.data);
+        if (isMountedRef.current) setUbsLocations(result.data);
       } else {
         console.error('❌ Erro ao carregar UBS:', result.message);
         Alert.alert(
@@ -73,7 +78,7 @@ const MapsTab = () => {
    */
   const requestLocationPermission = async () => {
     try {
-      setLoading(false); // Remove loading logo após carregar UBS
+      if (isMountedRef.current) setLoading(false); // Remove loading logo após carregar UBS
       const { status } = await Location.requestForegroundPermissionsAsync();
       
       if (status === 'granted') {
@@ -84,11 +89,11 @@ const MapsTab = () => {
           'Permita o acesso à localização para ver UBS próximas a você.',
           [{ text: 'OK' }]
         );
-        setUserLocation(defaultRegion);
+        if (isMountedRef.current) setUserLocation(defaultRegion);
       }
     } catch (error) {
       console.error('Erro ao solicitar permissão:', error);
-      setUserLocation(defaultRegion);
+      if (isMountedRef.current) setUserLocation(defaultRegion);
     }
   };
 
@@ -96,11 +101,15 @@ const MapsTab = () => {
    * Obtém a localização atual do usuário
    */
   const getUserLocation = async () => {
+    if (!isMountedRef.current) return;
+    
     try {
-      setLoadingLocation(true);
+      if (isMountedRef.current) setLoadingLocation(true);
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
+
+      if (!isMountedRef.current) return;
 
       const newRegion: MapRegion = {
         latitude: location.coords.latitude,
@@ -123,7 +132,7 @@ const MapsTab = () => {
       console.error('Erro ao obter localização:', error);
       Alert.alert('Erro', 'Não foi possível obter sua localização');
     } finally {
-      setLoadingLocation(false);
+      if (isMountedRef.current) setLoadingLocation(false);
     }
   };
 
