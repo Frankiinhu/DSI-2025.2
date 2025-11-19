@@ -2,15 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import WeatherCard from '../../components/WeatherCard';
 import StatusCard from '../../components/StatusCard';
 import RiskAnalysis from '../../components/RiskAnalysis';
-import { Colors, Typography, Spacing, ComponentStyles } from '../../styles';
+import MonitoredLocationsManager from '../../components/MonitoredLocationsManager';
+import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import { getCurrentWeather, loadWeatherCache, saveWeatherCache } from '../../services/weather.service';
+import { getCurrentWeather, getWeatherByCoordinates, loadWeatherCache, saveWeatherCache } from '../../services/weather.service';
 import { useNotifications } from '../../config/notifications';
 import { generateRandomWeatherData, transformWeatherData, type WeatherData } from '../../utils/weatherHelpers';
+import { getMonitoredLocations } from '../../services/supabase/monitored-locations.service';
+import type { MonitoredLocation } from '../../types/monitored-location.types';
 
 const logo = require('../../../assets/logo.png');
 
@@ -27,6 +31,11 @@ const HomeTab: React.FC = () => {
   const { notify } = useNotifications();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showLocationsModal, setShowLocationsModal] = useState(false);
+  const [monitoredLocations, setMonitoredLocations] = useState<MonitoredLocation[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [expandedLocationId, setExpandedLocationId] = useState<string | null>(null);
+  const [locationWeatherData, setLocationWeatherData] = useState<Record<string, WeatherData>>({});
   const [weatherData, setWeatherData] = useState<WeatherData>({
     temperature: 28,
     humidity: 79,
@@ -46,6 +55,99 @@ const HomeTab: React.FC = () => {
     description: 'Conectando ao serviço meteorológico...',
     lastUpdate: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
   });
+
+  // Carrega localizações monitoradas
+  const loadMonitoredLocations = async () => {
+    if (!currentUser) {
+      console.log('❌ Sem usuário logado');
+      return;
+    }
+    console.log('🔄 Carregando localizações monitoradas...');
+    setLoadingLocations(true);
+    const result = await getMonitoredLocations(currentUser.id);
+    console.log('📍 Resultado:', result);
+    if (result.ok && Array.isArray(result.data)) {
+      console.log(`✅ ${result.data.length} localizações carregadas:`, result.data);
+      setMonitoredLocations(result.data);
+    } else {
+      console.log('⚠️ Falha ao carregar ou dados inválidos');
+    }
+    setLoadingLocations(false);
+  };
+
+  // Carrega dados meteorológicos de uma localização específica
+  const loadLocationWeather = async (location: MonitoredLocation) => {
+    try {
+      console.log(`🌤️ Carregando clima para ${location.city_name}...`);
+      const weatherResult = await getWeatherByCoordinates(
+        Number(location.latitude),
+        Number(location.longitude)
+      );
+      
+      const transformedData = transformWeatherData(weatherResult);
+      setLocationWeatherData(prev => ({
+        ...prev,
+        [location.id]: transformedData
+      }));
+      console.log(`✅ Clima carregado para ${location.city_name}`);
+    } catch (error) {
+      console.error(`❌ Erro ao carregar clima de ${location.city_name}:`, error);
+      // Usar dados simulados em caso de erro
+      const simulatedData = generateRandomWeatherData();
+      setLocationWeatherData(prev => ({
+        ...prev,
+        [location.id]: simulatedData
+      }));
+    }
+  };
+
+  // Toggle expansão do card e carrega dados se necessário
+  const toggleLocationExpand = async (location: MonitoredLocation) => {
+    if (expandedLocationId === location.id) {
+      setExpandedLocationId(null);
+    } else {
+      setExpandedLocationId(location.id);
+      // Se ainda não temos dados meteorológicos para essa localização, carregar
+      if (!locationWeatherData[location.id]) {
+        await loadLocationWeather(location);
+      }
+    }
+  };
+
+  // Calcula nível de risco baseado nos dados meteorológicos
+  const calculateRiskLevel = (weather: WeatherData): { level: string; percentage: number; description: string } => {
+    let riskScore = 0;
+    const factors: string[] = [];
+
+    const temp = weather.temperature ?? 25;
+    const humidity = weather.humidity ?? 60;
+    const airQuality = weather.airQuality ?? 50;
+    const uvIndex = weather.uvIndex ?? 5;
+
+    if (temp > 32) { riskScore += 25; factors.push('calor extremo'); }
+    else if (temp > 28) { riskScore += 15; factors.push('calor intenso'); }
+    else if (temp < 15) { riskScore += 20; factors.push('frio intenso'); }
+
+    if (humidity > 80) { riskScore += 20; factors.push('umidade muito alta'); }
+    else if (humidity < 30) { riskScore += 15; factors.push('ar muito seco'); }
+
+    if (airQuality > 150) { riskScore += 30; factors.push('ar muito poluído'); }
+    else if (airQuality > 100) { riskScore += 20; factors.push('ar poluído'); }
+
+    if (uvIndex > 8) { riskScore += 15; factors.push('UV extremo'); }
+    else if (uvIndex > 6) { riskScore += 10; factors.push('UV alto'); }
+
+    const percentage = Math.min(riskScore, 100);
+    let level = 'Baixo';
+    if (percentage >= 70) level = 'Alto';
+    else if (percentage >= 40) level = 'Moderado';
+
+    const description = factors.length > 0 
+      ? `Atenção: ${factors.join(', ')}` 
+      : 'Condições meteorológicas favoráveis';
+
+    return { level, percentage, description };
+  };
 
   // Gera uma descrição do status atual baseado nas condições meteorológicas
   const generateStatusDescription = (data: WeatherData) => {
@@ -135,6 +237,11 @@ const HomeTab: React.FC = () => {
       lastUpdate: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     });
   };
+
+  // Carrega localizações ao montar
+  useEffect(() => {
+    loadMonitoredLocations();
+  }, [currentUser]);
 
   useEffect(() => {
     const load = async () => {
@@ -423,6 +530,23 @@ const HomeTab: React.FC = () => {
     <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
+          {/* Botão de Localizações Monitoradas */}
+          <TouchableOpacity
+            style={styles.locationButton}
+            onPress={() => setShowLocationsModal(true)}
+            disabled={loadingLocations}
+          >
+            <Ionicons name="location" size={20} color={Colors.primary} />
+            <Text style={styles.locationButtonText}>
+              {loadingLocations ? 'Carregando...' : 
+                monitoredLocations.length > 0 
+                  ? `${monitoredLocations.length} ${monitoredLocations.length === 1 ? 'localização monitorada' : 'localizações monitoradas'}`
+                  : 'Adicionar localizações para monitorar'
+              }
+            </Text>
+            <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+
           {/* Status Card */}
           <View style={{ marginBottom: 16 }}>
             <StatusCard
@@ -552,6 +676,201 @@ const HomeTab: React.FC = () => {
             factors={getRiskFactors()}
             recommendations={getRecommendations()}
           />
+
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Monitored Locations Section */}
+          <View style={styles.monitoredSection}>
+            <View style={styles.monitoredHeader}>
+              <Ionicons name="location" size={24} color={Colors.primary} />
+              <Text style={styles.monitoredTitle}>Localizações Monitoradas</Text>
+            </View>
+            
+            {loadingLocations ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.loadingText}>Carregando...</Text>
+              </View>
+            ) : monitoredLocations.length === 0 ? (
+              <View style={styles.emptyLocations}>
+                <Ionicons name="location-outline" size={48} color={Colors.textLight} />
+                <Text style={styles.emptyText}>Nenhuma cidade adicionada</Text>
+                <Text style={styles.emptySubtext}>
+                  Adicione cidades para monitorar informações de saúde em tempo real
+                </Text>
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={() => setShowLocationsModal(true)}
+                >
+                  <Ionicons name="add-circle" size={20} color={Colors.textWhite} />
+                  <Text style={styles.addButtonText}>Adicionar Cidade</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+                {monitoredLocations.map((location) => {
+                  const isExpanded = expandedLocationId === location.id;
+                  const weather = locationWeatherData[location.id];
+                  const riskData = weather ? calculateRiskLevel(weather) : null;
+
+                  return (
+                    <View key={location.id} style={styles.locationCard}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => toggleLocationExpand(location)}
+                      >
+                        <View style={styles.locationCardHeader}>
+                          <View style={styles.locationCardInfo}>
+                            {location.is_primary && (
+                              <View style={styles.primaryBadge}>
+                                <Ionicons name="star" size={12} color={Colors.warning} />
+                                <Text style={styles.primaryBadgeText}>Principal</Text>
+                              </View>
+                            )}
+                            <Text style={styles.locationCardCity}>
+                              {location.nickname || location.city_name}
+                            </Text>
+                            {location.nickname && (
+                              <Text style={styles.locationCardSubname}>{location.city_name}</Text>
+                            )}
+                            <Text style={styles.locationCardDetails}>
+                              {[location.state, location.country].filter(Boolean).join(', ')}
+                            </Text>
+                          </View>
+                          <View style={styles.locationCardActions}>
+                            <TouchableOpacity
+                              style={styles.locationCardActionButton}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                setShowLocationsModal(true);
+                              }}
+                            >
+                              <Ionicons name="settings-outline" size={18} color={Colors.textSecondary} />
+                            </TouchableOpacity>
+                            <Ionicons 
+                              name={isExpanded ? "chevron-up" : "chevron-down"} 
+                              size={20} 
+                              color={Colors.textSecondary} 
+                            />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Conteúdo Expandido */}
+                      {isExpanded && (
+                        <View style={styles.locationExpandedContent}>
+                          {!weather ? (
+                            <View style={styles.locationLoadingContainer}>
+                              <ActivityIndicator size="small" color={Colors.primary} />
+                              <Text style={styles.locationLoadingText}>Carregando dados meteorológicos...</Text>
+                            </View>
+                          ) : (
+                            <>
+                              {/* Risk Badge */}
+                              {riskData && (
+                                <View style={[
+                                  styles.riskBadge,
+                                  { backgroundColor: 
+                                    riskData.level === 'Alto' ? Colors.danger + '15' :
+                                    riskData.level === 'Moderado' ? Colors.warning + '15' :
+                                    Colors.success + '15'
+                                  }
+                                ]}>
+                                  <Ionicons 
+                                    name="warning-outline" 
+                                    size={16} 
+                                    color={
+                                      riskData.level === 'Alto' ? Colors.danger :
+                                      riskData.level === 'Moderado' ? Colors.warning :
+                                      Colors.success
+                                    }
+                                  />
+                                  <Text style={[
+                                    styles.riskBadgeText,
+                                    { color: 
+                                      riskData.level === 'Alto' ? Colors.danger :
+                                      riskData.level === 'Moderado' ? Colors.warning :
+                                      Colors.success
+                                    }
+                                  ]}>
+                                    Risco {riskData.level} ({riskData.percentage}%)
+                                  </Text>
+                                </View>
+                              )}
+
+                              {/* Weather Grid */}
+                              <View style={styles.weatherMiniGrid}>
+                                <View style={styles.weatherMiniCard}>
+                                  <Ionicons name="thermometer-outline" size={20} color={Colors.primary} />
+                                  <Text style={styles.weatherMiniValue}>
+                                    {weather.temperature !== null ? `${Math.round(weather.temperature)}°C` : '—'}
+                                  </Text>
+                                  <Text style={styles.weatherMiniLabel}>Temperatura</Text>
+                                </View>
+
+                                <View style={styles.weatherMiniCard}>
+                                  <Ionicons name="water-outline" size={20} color={Colors.primary} />
+                                  <Text style={styles.weatherMiniValue}>
+                                    {weather.humidity !== null ? `${weather.humidity}%` : '—'}
+                                  </Text>
+                                  <Text style={styles.weatherMiniLabel}>Umidade</Text>
+                                </View>
+
+                                <View style={styles.weatherMiniCard}>
+                                  <Ionicons name="speedometer-outline" size={20} color={Colors.primary} />
+                                  <Text style={styles.weatherMiniValue}>
+                                    {weather.pressure !== null ? `${weather.pressure}` : '—'}
+                                  </Text>
+                                  <Text style={styles.weatherMiniLabel}>Pressão</Text>
+                                </View>
+
+                                <View style={styles.weatherMiniCard}>
+                                  <Ionicons name="sunny-outline" size={20} color={Colors.primary} />
+                                  <Text style={styles.weatherMiniValue}>
+                                    {weather.uvIndex !== null ? weather.uvIndex : '—'}
+                                  </Text>
+                                  <Text style={styles.weatherMiniLabel}>UV Index</Text>
+                                </View>
+
+                                <View style={styles.weatherMiniCard}>
+                                  <Ionicons name="cloud-outline" size={20} color={Colors.primary} />
+                                  <Text style={styles.weatherMiniValue}>
+                                    {weather.airQuality !== null ? weather.airQuality : '—'}
+                                  </Text>
+                                  <Text style={styles.weatherMiniLabel}>Qualidade Ar</Text>
+                                </View>
+
+                                <View style={styles.weatherMiniCard}>
+                                  <MaterialCommunityIcons name="weather-windy" size={20} color={Colors.primary} />
+                                  <Text style={styles.weatherMiniValue}>
+                                    {weather.windSpeed !== null ? `${weather.windSpeed}` : '—'}
+                                  </Text>
+                                  <Text style={styles.weatherMiniLabel}>Vento km/h</Text>
+                                </View>
+                              </View>
+
+                              {/* Description */}
+                              {riskData && (
+                                <Text style={styles.riskDescription}>{riskData.description}</Text>
+                              )}
+                            </>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+                <TouchableOpacity
+                  style={styles.manageButton}
+                  onPress={() => setShowLocationsModal(true)}
+                >
+                  <Ionicons name="settings-outline" size={18} color={Colors.primary} />
+                  <Text style={styles.manageButtonText}>Gerenciar Localizações</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
       </ScrollView>
 
@@ -565,6 +884,15 @@ const HomeTab: React.FC = () => {
         confirmColor={Colors.danger}
         onConfirm={signOut}
         onCancel={() => setShowLogoutDialog(false)}
+      />
+
+      {/* Monitored Locations Manager Modal */}
+      <MonitoredLocationsManager
+        visible={showLocationsModal}
+        onClose={() => setShowLocationsModal(false)}
+        userId={currentUser?.id || ''}
+        locations={monitoredLocations}
+        onRefresh={loadMonitoredLocations}
       />
     </View>
   );
@@ -595,6 +923,224 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: Spacing.xl2,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.primary + '15',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.primary + '30',
+  },
+  locationButtonText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: Colors.border,
+    marginVertical: Spacing.xl,
+  },
+  monitoredSection: {
+    marginBottom: Spacing.xl,
+  },
+  monitoredHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+    gap: Spacing.sm,
+  },
+  monitoredTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.textDark,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+  },
+  emptyLocations: {
+    alignItems: 'center',
+    padding: Spacing.xl,
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.lg,
+    ...Shadows.sm,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xs,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+    ...Shadows.md,
+  },
+  addButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textWhite,
+  },
+  locationCard: {
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    ...Shadows.sm,
+  },
+  locationCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  locationCardInfo: {
+    flex: 1,
+  },
+  primaryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.warning + '15',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+    alignSelf: 'flex-start',
+    marginBottom: Spacing.xs,
+    gap: 4,
+  },
+  primaryBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.warning,
+  },
+  locationCardCity: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginBottom: 2,
+  },
+  locationCardSubname: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  locationCardDetails: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  locationCardAction: {
+    padding: Spacing.sm,
+  },
+  manageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.sm,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  manageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+  },
+  locationCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  locationCardActionButton: {
+    padding: Spacing.xs,
+  },
+  locationExpandedContent: {
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  locationLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  locationLoadingText: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  riskBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+    gap: Spacing.xs,
+  },
+  riskBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  weatherMiniGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  weatherMiniCard: {
+    flex: 1,
+    minWidth: '30%',
+    backgroundColor: Colors.accent,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    gap: 4,
+  },
+  weatherMiniValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.textDark,
+  },
+  weatherMiniLabel: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+  },
+  riskDescription: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
 

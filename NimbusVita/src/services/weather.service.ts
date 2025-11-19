@@ -27,6 +27,29 @@ const mapAqiToNumber = (aqi: number) => {
   }
 };
 
+export async function getWeatherByCoordinates(lat: number, lon: number): Promise<CurrentWeatherResult> {
+  const BASE_URL = process.env.EXPO_PUBLIC_OPENWEATHER_BASE_URL;
+  const API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
+
+  if (!BASE_URL || !API_KEY) {
+    throw new Error('OpenWeather config ausente (BASE_URL/API_KEY)');
+  }
+
+  const weatherUrl = `${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=pt_br`;
+  const weatherRes = await fetch(weatherUrl);
+  const weatherJson = await weatherRes.json();
+  if (!weatherRes.ok) throw new Error(weatherJson.message || 'Erro ao obter weather');
+
+  const { main, wind, coord, weather } = weatherJson;
+  const temperature = main?.temp;
+  const humidity = main?.humidity;
+  const pressure = main?.pressure;
+  const windSpeed = wind?.speed ? Math.round(wind.speed * 3.6) : null;
+  const condition = weather && weather[0] ? weather[0].description : (weather && weather[0] ? weather[0].main : '');
+
+  return await processWeatherData(coord, temperature, humidity, pressure, windSpeed, condition, BASE_URL, API_KEY);
+}
+
 export async function getCurrentWeather(cidade = 'Recife', pais = 'BR') : Promise<CurrentWeatherResult> {
   const BASE_URL = process.env.EXPO_PUBLIC_OPENWEATHER_BASE_URL;
   const API_KEY = process.env.EXPO_PUBLIC_OPENWEATHER_API_KEY;
@@ -45,21 +68,25 @@ export async function getCurrentWeather(cidade = 'Recife', pais = 'BR') : Promis
   const temperature = main?.temp;
   const humidity = main?.humidity;
   const pressure = main?.pressure;
-  // OpenWeather wind speed is m/s -> convert to km/h
   const windSpeed = wind?.speed ? Math.round(wind.speed * 3.6) : null;
   const condition = weather && weather[0] ? weather[0].description : (weather && weather[0] ? weather[0].main : '');
 
-  // Logs de diagnóstico: cidade/resolução e coordenadas usadas para buscar UV
+  return await processWeatherData(coord, temperature, humidity, pressure, windSpeed, condition, BASE_URL, API_KEY);
+}
+
+async function processWeatherData(
+  coord: any,
+  temperature: number | null,
+  humidity: number | null,
+  pressure: number | null,
+  windSpeed: number | null,
+  condition: string,
+  BASE_URL: string,
+  API_KEY: string
+): Promise<CurrentWeatherResult> {
+  // Logs de diagnóstico
   try {
-    console.log('Weather API resolved location name:', weatherJson.name ?? `${cidade},${pais}`);
     console.log('Coordinates resolved for location:', coord ? `lat=${coord.lat}, lon=${coord.lon}` : 'coord missing');
-    // Mostra a URL de consulta (mascarando a chave) para ajudar a depurar sem vazar a API key
-    try {
-      const maskedWeatherUrl = weatherUrl.replace(`appid=${API_KEY}`, 'appid=***');
-      console.log('Weather request URL:', maskedWeatherUrl);
-    } catch (e) {
-      // Ignore masking errors
-    }
   } catch (e) {
     // não deve quebrar a execução do serviço
   }
