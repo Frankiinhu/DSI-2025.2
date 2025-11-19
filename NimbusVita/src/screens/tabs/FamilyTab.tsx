@@ -13,6 +13,8 @@ import { useNotifications, ToastComponent } from '../../config/notifications';
 const FamilyTab = () => {
   const { user } = useAuth();
   const { notify } = useNotifications();
+  const isMountedRef = React.useRef(true);
+  const timeoutRefs = React.useRef<NodeJS.Timeout[]>([]);
   const [groups, setGroups] = useState<FamilyGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -36,21 +38,31 @@ const FamilyTab = () => {
   const [customTag, setCustomTag] = useState('');
 
   useEffect(() => {
+    isMountedRef.current = true;
     loadGroups();
+    return () => {
+      isMountedRef.current = false;
+      // Limpar todos os timeouts pendentes
+      timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+      timeoutRefs.current = [];
+    };
   }, []);
 
-  useEffect(() => {
-    console.log('🎨 Estado atualizado - showMembersModal:', showMembersModal, 'loadingMembers:', loadingMembers, 'members.length:', members.length);
-  }, [showMembersModal, loadingMembers, members]);
+  // useEffect de debug removido para evitar overhead
+  // useEffect(() => {
+  //   console.log('🎨 Estado atualizado - showMembersModal:', showMembersModal, 'loadingMembers:', loadingMembers, 'members.length:', members.length);
+  // }, [showMembersModal, loadingMembers, members]);
 
   const loadGroups = async () => {
     if (!user) return;
     setLoading(true);
     const result = await getUserFamilyGroups(user.id);
-    if (result.ok) {
+    if (result.ok && isMountedRef.current) {
       setGroups(result.data || []);
     }
-    setLoading(false);
+    if (isMountedRef.current) {
+      setLoading(false);
+    }
   };
 
   const onRefresh = async () => {
@@ -114,8 +126,10 @@ const FamilyTab = () => {
     if (result.ok) {
       const membersList = result.data || [];
       console.log('✅ Membros carregados:', membersList.length);
-      console.log('✅ Dados dos membros:', JSON.stringify(membersList, null, 2));
-      setMembers(membersList);
+      // JSON.stringify removido para evitar overhead
+      if (isMountedRef.current) {
+        setMembers(membersList);
+      }
     } else {
       console.error('❌ Erro ao carregar membros:', result.message);
       Alert.alert('Erro ao carregar membros', result.message || 'Não foi possível carregar os membros do grupo');
@@ -242,10 +256,13 @@ const FamilyTab = () => {
     
     // Fecha o modal de membros e abre o de tags com um pequeno delay
     setShowMembersModal(false);
-    setTimeout(() => {
-      setShowTagsModal(true);
-      console.log('🏷️ Modal de tags aberto');
+    const timeoutId = setTimeout(() => {
+      if (isMountedRef.current) {
+        setShowTagsModal(true);
+        console.log('🏷️ Modal de tags aberto');
+      }
     }, 300);
+    timeoutRefs.current.push(timeoutId);
   };
 
   const handleToggleTag = (tag: string) => {
@@ -286,9 +303,11 @@ const FamilyTab = () => {
       Alert.alert('Sucesso! 🎉', result.message);
       setShowTagsModal(false);
       // Reabre o modal de membros após um pequeno delay
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
+        if (!isMountedRef.current) return;
         handleOpenGroup(selectedGroup); // Recarrega os membros e reabre o modal
       }, 300);
+      timeoutRefs.current.push(timeoutId);
     } else {
       Alert.alert('Erro', result.message);
     }
@@ -544,10 +563,12 @@ const FamilyTab = () => {
               <TouchableOpacity onPress={() => {
                 setShowMembersModal(false);
                 // Pequeno delay antes de limpar para garantir animação suave
-                setTimeout(() => {
+                const timeoutId = setTimeout(() => {
+                  if (!isMountedRef.current) return;
                   setSelectedGroup(null);
                   setMembers([]);
                 }, 300);
+                timeoutRefs.current.push(timeoutId);
               }}>
                 <Ionicons name="close" size={28} color={Colors.textDark} />
               </TouchableOpacity>
@@ -592,8 +613,9 @@ const FamilyTab = () => {
                       <View style={styles.memberAvatar}>
                         {member.profile?.avatar_url ? (
                           <Image 
-                            source={{ uri: member.profile.avatar_url }} 
+                            source={{ uri: member.profile.avatar_url, cache: 'force-cache' }} 
                             style={styles.avatarImage}
+                            resizeMode="cover"
                           />
                         ) : (
                           <Ionicons name="person" size={32} color={Colors.primary} />
@@ -898,9 +920,11 @@ const FamilyTab = () => {
                 setShowTagsModal(false);
                 // Reabre o modal de membros após fechar
                 if (selectedGroup) {
-                  setTimeout(() => {
+                  const timeoutId = setTimeout(() => {
+                    if (!isMountedRef.current) return;
                     setShowMembersModal(true);
                   }, 300);
+                  timeoutRefs.current.push(timeoutId);
                 }
               }}>
                 <Ionicons name="close" size={28} color={Colors.textDark} />
