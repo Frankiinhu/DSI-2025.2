@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ToastAndroid, Pla
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AlertCard from '../../components/AlertCard';
-import ExplanationCard from '../../components/ExplanationCard';
 import MedicationsManager from '../../components/MedicationsManager';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 import { useAuth } from '../../contexts/AuthContext';
@@ -86,7 +85,6 @@ const AlertsTab: React.FC = () => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
           <AlertCard />
-          <ExplanationCard />
 
           {/* Divider */}
           <View style={styles.divider} />

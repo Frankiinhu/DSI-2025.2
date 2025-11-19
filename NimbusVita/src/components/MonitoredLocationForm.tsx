@@ -72,10 +72,41 @@ const MonitoredLocationForm: React.FC<MonitoredLocationFormProps> = ({
         `addressdetails=1&` +
         `limit=8&` +
         `countrycodes=br&` +
-        `featuretype=city`
+        `featuretype=city`,
+        {
+          headers: {
+            'User-Agent': 'NimbusVita/1.0',
+            'Accept': 'application/json',
+          },
+        }
       );
       
+      // Verificar se a resposta é OK
+      if (!response.ok) {
+        console.error(`Erro HTTP: ${response.status}`);
+        setCityOptions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      // Verificar se o content-type é JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('Resposta não é JSON:', contentType);
+        setCityOptions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
       const data = await response.json();
+      
+      // Verificar se data é um array
+      if (!Array.isArray(data)) {
+        console.error('Resposta não é um array:', data);
+        setCityOptions([]);
+        setShowSuggestions(false);
+        return;
+      }
       
       const cities: CityOption[] = data
         .filter((item: any) => item.address?.city || item.address?.town || item.address?.municipality)
@@ -93,6 +124,7 @@ const MonitoredLocationForm: React.FC<MonitoredLocationFormProps> = ({
     } catch (error) {
       console.error('Erro ao buscar cidades:', error);
       setCityOptions([]);
+      setShowSuggestions(false);
     } finally {
       setSearchingCities(false);
     }

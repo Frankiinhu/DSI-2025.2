@@ -4,6 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons, FontAwesome6, Octicons } from '@expo/vector-icons';
 import SymptomChecker from '../../components/SymptomChecker';
+import { ModelInfoCard } from '../../components/ModelInfoCard';
+import { ExplanationCard } from '../../components/ExplanationCard';
+import type { PredictionResponse } from '../../services/ml.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   createCheckupOfflineFirst, 
@@ -48,6 +51,7 @@ const CheckupTab: React.FC = () => {
   const [recordToEdit, setRecordToEdit] = useState<CheckupRecord | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [recordToView, setRecordToView] = useState<CheckupRecord | null>(null);
+  const [lastPrediction, setLastPrediction] = useState<PredictionResponse | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -179,7 +183,7 @@ const CheckupTab: React.FC = () => {
     filterHistoryByTime(checkupHistory, filter);
   };
 
-  const addCheckupRecord = async (symptoms: string[], results: Record<string, number>) => {
+  const addCheckupRecord = async (symptoms: string[], results: Record<string, number>, predictionData?: PredictionResponse) => {
     if (!user) {
       notify('error', {
         params: {
@@ -192,6 +196,11 @@ const CheckupTab: React.FC = () => {
 
     try {
       setLoading(true);
+      
+      // Armazenar dados da predição para exibir SHAP
+      if (predictionData) {
+        setLastPrediction(predictionData);
+      }
       
       // Se está editando um checkup existente, atualiza em vez de criar
       if (editingRecord) {
@@ -507,6 +516,28 @@ const CheckupTab: React.FC = () => {
               )}
             </View>
           </View>
+
+          {/* Seção de Análise do Modelo */}
+          {lastPrediction && (
+            <View style={styles.analysisSection}>
+              <View style={styles.analysisTitleContainer}>
+                <MaterialIcons name="analytics" size={24} color={Colors.primary} />
+                <Text style={styles.analysisTitle}>Análise do Modelo</Text>
+              </View>
+              
+              <Text style={styles.analysisSubtitle}>
+                Entenda como o modelo de inteligência artificial chegou ao diagnóstico
+              </Text>
+
+              {/* Dashboard do Modelo com features do checkup específico */}
+              <ModelInfoCard predictionData={lastPrediction} />
+
+              {/* Explicação SHAP da última predição */}
+              {lastPrediction && lastPrediction.diagnoses && lastPrediction.diagnoses.length > 0 && (
+                <ExplanationCard diagnosisResults={lastPrediction} />
+              )}
+            </View>
+          )}
 
           <View style={styles.footer}>
             <Text style={styles.footerNote}>
@@ -996,6 +1027,28 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     marginTop: Spacing.xs,
     lineHeight: 20,
+  },
+  analysisSection: {
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.xl,
+  },
+  analysisTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  analysisTitle: {
+    ...Typography.h5,
+    fontSize: 22,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginLeft: Spacing.sm,
+  },
+  analysisSubtitle: {
+    ...Typography.body,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
+    lineHeight: 22,
   },
 });
 

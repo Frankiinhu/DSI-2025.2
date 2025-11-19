@@ -38,10 +38,17 @@ const ML_API_URL = getApiUrl();
 
 logger.info('📡 ML API configurada:', ML_API_URL);
 
+export interface ShapExplanation {
+  feature: string;
+  impact: number;
+  value: number;
+}
+
 export interface DiagnosisResult {
   condition: string;
   probability: number;
   confidence: 'high' | 'medium' | 'low';
+  explanations?: ShapExplanation[];
 }
 
 export interface PredictionResponse {
@@ -94,6 +101,47 @@ export async function predictDiagnosis(
       logger.error('❌ Erro ao chamar API de ML:', error.message);
     }
     throw error;
+  }
+}
+
+/**
+ * Faz predição de diagnósticos COM explicações SHAP baseado nos sintomas selecionados
+ * @param symptoms Array com IDs dos sintomas selecionados
+ * @returns Predição com diagnósticos, probabilidades e explicações SHAP
+ */
+export async function predictDiagnosisWithExplanations(
+  symptoms: string[]
+): Promise<PredictionResponse> {
+  try {
+    logger.debug('🔍 Tentando conectar à API (com explicações):', ML_API_URL);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    
+    const response = await fetch(`${ML_API_URL}/predict-with-explanations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ symptoms } as PredictionRequest),
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      // Fallback para predição sem explicações se o endpoint não estiver disponível
+      logger.warn('⚠️ Endpoint com explicações não disponível, usando predição padrão');
+      return await predictDiagnosis(symptoms);
+    }
+
+    const data: PredictionResponse = await response.json();
+    logger.info('✅ Resposta da API recebida (com explicações SHAP)');
+    return data;
+  } catch (error: any) {
+    logger.warn('⚠️ Erro ao buscar explicações, tentando predição padrão');
+    // Fallback para predição sem explicações
+    return await predictDiagnosis(symptoms);
   }
 }
 

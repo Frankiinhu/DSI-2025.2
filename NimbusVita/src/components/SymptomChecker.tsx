@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ScrollView, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, ScrollView, ActivityIndicator } from 'react-native';
 import { Colors, Spacing } from '../styles';
 import { useNotifications } from '../config/notifications';
-import { predictDiagnosis, checkMLApiHealth, convertApiResponseToResults } from '../services/ml.service';
+import { predictDiagnosisWithExplanations, checkMLApiHealth, convertApiResponseToResults, PredictionResponse } from '../services/ml.service';
 
 const SYMPTOMS = {
   // Sintomas Gerais
@@ -78,7 +78,7 @@ const QUICK_SYMPTOMS = [
 const randomFactor = () => Math.random() * 0.4 + 0.8; // 0.8 - 1.2
 
 interface SymptomCheckerProps {
-  onCheckupComplete?: (symptoms: string[], results: Record<string, number>) => void;
+  onCheckupComplete?: (symptoms: string[], results: Record<string, number>, predictionData?: PredictionResponse) => void;
   preSelectedSymptoms?: string[];
   onClearRequest?: () => void; // Callback para quando limpar é solicitado
 }
@@ -93,8 +93,8 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
   const [searchText, setSearchText] = useState('');
   const [selectedSymptoms, setSelectedSymptoms] = useState<Set<string>>(new Set());
   const [predictions, setPredictions] = useState<Record<string, number> | null>(null);
+  const [diagnosisResults, setDiagnosisResults] = useState<PredictionResponse | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showInfoDialog, setShowInfoDialog] = useState(false);
   const [isLoadingPrediction, setIsLoadingPrediction] = useState(false);
   const [usingMockData, setUsingMockData] = useState(false);
 
@@ -233,14 +233,17 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     setUsingMockData(false);
 
     let results: Record<string, number> | null = null;
+    let fullPredictionData: PredictionResponse | null = null;
     
     try {
       // Tentar usar a API real primeiro
       const symptomsArray = Array.from(selectedSymptoms);
-      const apiResponse = await predictDiagnosis(symptomsArray);
+      const apiResponse = await predictDiagnosisWithExplanations(symptomsArray);
       results = convertApiResponseToResults(apiResponse);
+      fullPredictionData = apiResponse;
       
       setPredictions(results);
+      setDiagnosisResults(apiResponse); // Armazena resposta completa com explicações
       // API funcionou
       
     } catch (error) {
@@ -264,13 +267,15 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
     if (onCheckupComplete && results) {
       const symptomsArray = Array.from(selectedSymptoms);
       const symptomsNames = symptomsArray.map(key => SYMPTOMS[key as keyof typeof SYMPTOMS]);
-      onCheckupComplete(symptomsNames, results);
+      // Passa o predictionData completo incluindo explicações SHAP
+      onCheckupComplete(symptomsNames, results, fullPredictionData || undefined);
     }
   }, [selectedSymptoms, onCheckupComplete, notify, mockPredict]);
 
   const clearAll = useCallback(() => {
     setSelectedSymptoms(new Set());
     setPredictions(null);
+    setDiagnosisResults(null);
     setSearchText('');
     
     // Notificar pai que limpeza foi solicitada (útil para resetar modo de edição)
@@ -430,40 +435,8 @@ const SymptomChecker: React.FC<SymptomCheckerProps> = ({
               </View>
             </View>
           ))}
-
-          <TouchableOpacity 
-            style={styles.explainBtn} 
-            onPress={() => setShowInfoDialog(true)}
-          >
-            <Text style={styles.explainBtnText}>ⓘ Como foi calculado</Text>
-          </TouchableOpacity>
         </View>
       )}
-
-      {/* Info Dialog */}
-      <Modal
-        visible={showInfoDialog}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowInfoDialog(false)}
-      >
-        <View style={styles.infoDialogOverlay}>
-          <View style={styles.infoDialogContainer}>
-            <Text style={styles.infoDialogTitle}>Como funciona a análise?</Text>
-            <Text style={styles.infoDialogMessage}>
-              Esta análise considera {selectedSymptoms.size} sintoma{selectedSymptoms.size > 1 ? 's' : ''} selecionado{selectedSymptoms.size > 1 ? 's' : ''} e utiliza um algoritmo que pondera a frequência de cada sintoma em diferentes condições médicas.
-              {'\n\n'}
-              IMPORTANTE: Este é um protótipo educacional. As probabilidades são simuladas e não substituem consulta médica profissional.
-            </Text>
-            <TouchableOpacity
-              style={styles.infoDialogButton}
-              onPress={() => setShowInfoDialog(false)}
-            >
-              <Text style={styles.infoDialogButtonText}>Entendi</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -698,23 +671,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#e9c46a',
     borderRadius: 8,
   },
-  explainBtn: { 
-    marginTop: 16, 
-    backgroundColor: '#e9c46a', 
-    padding: 14, 
-    borderRadius: 12, 
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  explainBtnText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
   quickContainer: {
     marginBottom: 16,
   },
@@ -741,49 +697,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#495057',
     fontWeight: '500',
-  },
-  infoDialogOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  infoDialogContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  infoDialogTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: 16,
-  },
-  infoDialogMessage: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 24,
-    marginBottom: 24,
-  },
-  infoDialogButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  infoDialogButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 
