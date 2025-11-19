@@ -349,38 +349,57 @@ export const getMemberCheckupHistory = async (
   limit: number = 20
 ): Promise<FamilyResponse> => {
   try {
-    // Verifica se o usuário atual tem permissão para ver o histórico
-    const { data: currentMember, error: permissionError } = await supabase
+    console.log('📊 Buscando histórico de checkups...');
+    console.log('   memberId:', memberId);
+    console.log('   familyGroupId:', familyGroupId);
+    console.log('   currentUserId:', currentUserId);
+
+    // Verifica se o usuário atual é membro do grupo
+    const { data: currentMember, error: memberError } = await supabase
       .from('family_members')
-      .select('can_view_history')
+      .select('id, can_view_history')
       .eq('family_group_id', familyGroupId)
       .eq('user_id', currentUserId)
-      .single();
+      .maybeSingle();
 
-    if (permissionError || !currentMember?.can_view_history) {
+    if (memberError) {
+      console.error('❌ Erro ao verificar membro:', memberError);
+      throw memberError;
+    }
+
+    if (!currentMember) {
+      console.log('❌ Usuário não é membro do grupo');
       return {
         ok: false,
-        message: 'Você não tem permissão para ver o histórico',
+        message: 'Você não é membro deste grupo',
         data: [],
       };
     }
 
-    // Busca as verificações do membro
+    console.log('✅ Usuário é membro do grupo:', currentMember);
+
+    // Busca as verificações do membro usando a view recent_checkups_view
+    console.log('🔍 Buscando checkups do usuário via recent_checkups_view...');
     const { data, error } = await supabase
-      .from('symptom_checkups')
+      .from('recent_checkups_view')
       .select('*')
       .eq('user_id', memberId)
       .order('checkup_date', { ascending: false })
       .limit(limit);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Erro ao buscar checkups:', error);
+      throw error;
+    }
+
+    console.log(`✅ Encontrados ${data?.length || 0} checkups`);
 
     return {
       ok: true,
-      data,
+      data: data || [],
     };
   } catch (error: any) {
-    console.error('Erro ao buscar histórico:', error);
+    console.error('❌ Erro ao buscar histórico:', error);
     return {
       ok: false,
       message: error.message || 'Erro ao buscar histórico',
