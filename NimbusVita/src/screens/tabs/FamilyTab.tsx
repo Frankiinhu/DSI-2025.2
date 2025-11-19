@@ -139,7 +139,12 @@ const FamilyTab = () => {
 
   const handleViewMemberHistory = async (member: FamilyMemberWithProfile) => {
     if (!user || !selectedGroup) return;
+    
+    console.log('📊 Abrindo histórico para:', member.profile.username);
     setSelectedMember(member);
+    
+    // Fecha o modal de membros antes de abrir o de histórico
+    setShowMembersModal(false);
     
     const result = await getMemberCheckupHistory(
       member.user_id,
@@ -148,9 +153,14 @@ const FamilyTab = () => {
     );
     
     if (result.ok) {
+      console.log('✅ Histórico carregado:', result.data?.length || 0, 'registros');
       setMemberHistory(result.data || []);
-      setShowHistoryModal(true);
+      // Pequeno delay para garantir que o modal anterior fechou
+      setTimeout(() => {
+        setShowHistoryModal(true);
+      }, 300);
     } else {
+      console.error('❌ Erro ao carregar histórico:', result.message);
       Alert.alert('Erro', result.message);
     }
   };
@@ -721,10 +731,25 @@ const FamilyTab = () => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, styles.largeModal]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Histórico de {selectedMember?.profile.username}
-              </Text>
-              <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>
+                  Histórico de {selectedMember?.profile.full_name || selectedMember?.profile.username}
+                </Text>
+                {memberHistory.length > 0 && (
+                  <Text style={styles.modalSubtitle}>
+                    {memberHistory.length} {memberHistory.length === 1 ? 'verificação encontrada' : 'verificações encontradas'}
+                  </Text>
+                )}
+              </View>
+              <TouchableOpacity 
+                onPress={() => {
+                  setShowHistoryModal(false);
+                  // Volta para o modal de membros após um pequeno delay
+                  setTimeout(() => {
+                    setShowMembersModal(true);
+                  }, 300);
+                }}
+              >
                 <Ionicons name="close" size={28} color={Colors.textDark} />
               </TouchableOpacity>
             </View>
@@ -736,24 +761,142 @@ const FamilyTab = () => {
                   <Text style={styles.emptyHistoryText}>
                     Nenhuma verificação encontrada
                   </Text>
+                  <Text style={styles.emptyHistorySubtext}>
+                    Este membro ainda não realizou nenhuma verificação de sintomas
+                  </Text>
                 </View>
               ) : (
-                memberHistory.map((checkup) => (
-                  <View key={checkup.id} style={styles.historyCard}>
-                    <View style={styles.historyHeader}>
-                      <Text style={styles.historyDate}>
-                        {formatDate(checkup.checkup_date)}
-                      </Text>
+                memberHistory.map((checkup: any) => {
+                  // Parse predictions da mesma forma que symptoms
+                  let predictions: any = {};
+                  if (checkup.predictions) {
+                    if (typeof checkup.predictions === 'string') {
+                      try {
+                        predictions = JSON.parse(checkup.predictions);
+                      } catch (e) {
+                        console.error('❌ Erro ao parsear predictions:', e);
+                      }
+                    } else if (typeof checkup.predictions === 'object') {
+                      predictions = checkup.predictions;
+                    }
+                  }
+
+                  // Parse symptoms se for string JSON
+                  let symptoms = checkup.symptoms;
+                  if (typeof symptoms === 'string') {
+                    try {
+                      symptoms = JSON.parse(symptoms);
+                    } catch {
+                      symptoms = [];
+                    }
+                  }
+                  
+                  // Extrai risk_level e disease_predictions
+                  const riskLevel = predictions.risk_level || 'low';
+                  const diseasePredictions = predictions.disease_predictions || predictions;
+                  
+                  const riskColor = 
+                    riskLevel === 'high' ? Colors.danger :
+                    riskLevel === 'moderate' ? Colors.warning :
+                    Colors.success;
+                  
+                  const riskLabel = 
+                    riskLevel === 'high' ? 'Alto Risco' :
+                    riskLevel === 'moderate' ? 'Risco Moderado' :
+                    'Baixo Risco';
+
+                  return (
+                    <View key={checkup.id} style={styles.historyCard}>
+                      <View style={styles.historyHeader}>
+                        <View style={styles.historyDateContainer}>
+                          <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
+                          <Text style={styles.historyDate}>
+                            {formatDate(checkup.checkup_date)}
+                          </Text>
+                        </View>
+                        <View style={[styles.riskBadge, { backgroundColor: riskColor + '20' }]}>
+                          <Text style={[styles.riskBadgeText, { color: riskColor }]}>
+                            {riskLabel}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {symptoms && Array.isArray(symptoms) && symptoms.length > 0 && (
+                        <View style={styles.symptomsList}>
+                          <Text style={styles.symptomsLabel}>Sintomas relatados:</Text>
+                          <View style={styles.symptomsContainer}>
+                            {symptoms.map((symptom: any, index: number) => (
+                              <View key={index} style={styles.symptomTag}>
+                                <Text style={styles.symptomTagText}>
+                                  {symptom.symptom_name || symptom.symptom_key || symptom}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {/* Prognóstico e Porcentagens */}
+                      {diseasePredictions && typeof diseasePredictions === 'object' && Object.keys(diseasePredictions).length > 0 && (
+                        <View style={styles.predictionsContainer}>
+                          <View style={styles.predictionsHeader}>
+                            <Ionicons name="medical-outline" size={18} color={Colors.primary} />
+                            <Text style={styles.predictionsLabel}>Prognóstico:</Text>
+                          </View>
+                          <View style={styles.predictionsListContainer}>
+                            {Object.entries(diseasePredictions)
+                              .filter(([key]) => !['risk_level', 'explanation', 'recommendations'].includes(key))
+                              .sort((a: any, b: any) => b[1] - a[1]) // Ordena por maior porcentagem
+                              .slice(0, 5) // Mostra top 5
+                              .map(([disease, probability]: [string, any], index: number) => {
+                                const percentage = parseFloat(probability).toFixed(1);
+                                const probabilityValue = parseFloat(probability) / 100; // Converte para 0-1
+                                const barColor = 
+                                  probabilityValue > 0.7 ? Colors.danger :
+                                  probabilityValue > 0.4 ? Colors.warning :
+                                  Colors.success;
+                                
+                                return (
+                                  <View key={index} style={styles.predictionItem}>
+                                    <View style={styles.predictionInfo}>
+                                      <Text style={styles.predictionDisease}>{disease}</Text>
+                                      <Text style={[styles.predictionPercentage, { color: barColor }]}>
+                                        {percentage}%
+                                      </Text>
+                                    </View>
+                                    <View style={styles.predictionBarBackground}>
+                                      <View 
+                                        style={[
+                                          styles.predictionBar, 
+                                          { width: `${Math.min(parseFloat(percentage), 100)}%` as any, backgroundColor: barColor }
+                                        ]} 
+                                      />
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                          </View>
+                        </View>
+                      )}
+
+                      {predictions.explanation && (
+                        <View style={styles.analysisContainer}>
+                          <Ionicons name="fitness-outline" size={16} color={Colors.primary} />
+                          <Text style={styles.analysisText} numberOfLines={3}>
+                            {predictions.explanation}
+                          </Text>
+                        </View>
+                      )}
+
+                      {checkup.notes && (
+                        <View style={styles.notesContainer}>
+                          <Ionicons name="document-text-outline" size={16} color={Colors.textSecondary} />
+                          <Text style={styles.historyNotes}>{checkup.notes}</Text>
+                        </View>
+                      )}
                     </View>
-                    <Text style={styles.historySymptoms}>
-                      {Array.isArray(checkup.symptoms) &&
-                        checkup.symptoms.map((s: any) => s.symptom_key).join(', ')}
-                    </Text>
-                    {checkup.notes && (
-                      <Text style={styles.historyNotes}>{checkup.notes}</Text>
-                    )}
-                  </View>
-                ))
+                  );
+                })
               )}
             </ScrollView>
           </View>
@@ -1092,6 +1235,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.textDark,
   },
+  modalSubtitle: {
+    fontSize: 14,
+    color: Colors.textLight,
+    marginTop: 4,
+  },
   modalDescription: {
     fontSize: 14,
     color: Colors.textLight,
@@ -1260,6 +1408,128 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.textLight,
     marginTop: 12,
+    textAlign: 'center',
+  },
+  emptyHistorySubtext: {
+    fontSize: 14,
+    color: Colors.textLight,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  historyDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  riskBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  riskBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  symptomsList: {
+    marginTop: 12,
+  },
+  symptomsLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginBottom: 8,
+  },
+  symptomsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  symptomTag: {
+    backgroundColor: Colors.primary + '15',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  symptomTagText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '500',
+  },
+  predictionsContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f8f9ff',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+  },
+  predictionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  predictionsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textDark,
+  },
+  predictionsListContainer: {
+    gap: 10,
+  },
+  predictionItem: {
+    gap: 4,
+  },
+  predictionInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  predictionDisease: {
+    fontSize: 13,
+    color: Colors.textDark,
+    fontWeight: '500',
+    flex: 1,
+  },
+  predictionPercentage: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  predictionBarBackground: {
+    height: 6,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  predictionBar: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  analysisContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 12,
+    padding: 10,
+    backgroundColor: Colors.primary + '10',
+    borderRadius: 8,
+  },
+  analysisText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.textDark,
+    lineHeight: 18,
+  },
+  notesContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
   // Estilos de Tags
   tagsContainer: {
