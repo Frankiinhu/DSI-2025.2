@@ -32,7 +32,6 @@ interface CheckupStats {
 const CheckupTab: React.FC = () => {
   const { user } = useAuth();
   const { notify } = useNotifications();
-  const isMountedRef = React.useRef(true);
   const [checkupHistory, setCheckupHistory] = useState<CheckupRecord[]>([]);
   const [filteredHistory, setFilteredHistory] = useState<CheckupRecord[]>([]);
   const [selectedTimeFilter, setSelectedTimeFilter] = useState<'today' | '7days' | '30days'>('30days');
@@ -51,31 +50,25 @@ const CheckupTab: React.FC = () => {
   const [recordToView, setRecordToView] = useState<CheckupRecord | null>(null);
 
   useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
-
-  // useEffect(() => {
-  //   if (user) {
-  //     loadCheckupHistory();
-  //   }
-  // }, [user]);
+    if (user) {
+      loadCheckupHistory();
+    }
+  }, [user]);
 
   // Recarregar histórico sempre que a aba receber foco
   useFocusEffect(
     useCallback(() => {
-      if (user && isMountedRef.current) {
+      if (user) {
         loadCheckupHistory();
       }
     }, [user])
   );
 
   const loadCheckupHistory = async () => {
-    if (!user || !isMountedRef.current) return;
+    if (!user) return;
     
     try {
-      if (isMountedRef.current) setLoading(true);
+      setLoading(true);
       console.log('🔄 loadCheckupHistory: Carregando checkups para userId:', user.id);
       
       const response = await getCheckupsOfflineFirst(user.id);
@@ -88,7 +81,7 @@ const CheckupTab: React.FC = () => {
       
       // Converter formato local para formato do componente
       const history: CheckupRecord[] = response.checkups.map((checkup) => {
-        // Log detalhado removido para performance
+        console.log(`  - Checkup ID: ${checkup.id}, Sintomas: ${checkup.symptoms.length}, Timestamp: ${checkup.timestamp}`);
         return {
           id: checkup.id,
           date: checkup.date,
@@ -98,10 +91,8 @@ const CheckupTab: React.FC = () => {
         };
       });
       
-      if (isMountedRef.current) {
-        setCheckupHistory(history);
-        calculateStats(history);
-      }
+      setCheckupHistory(history);
+      calculateStats(history);
       
     } catch (error) {
       console.error('Erro ao carregar histórico:', error);
@@ -112,7 +103,7 @@ const CheckupTab: React.FC = () => {
         },
       });
     } finally {
-      if (isMountedRef.current) setLoading(false);
+      setLoading(false);
     }
   };
 

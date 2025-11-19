@@ -42,36 +42,29 @@ type AuthProviderProps = {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const isMountedRef = React.useRef(true);
 
   useEffect(() => {
-    isMountedRef.current = true;
-    
     // Verificar sessão inicial ao montar o componente
     checkSession();
 
     // Listener para mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!isMountedRef.current) return;
         if (__DEV__) console.log('Auth state changed:', event);
         
         if (session?.user) {
           // Usuário logou - buscar perfil completo
-          if (isMountedRef.current) await loadUserProfile();
+          await loadUserProfile();
         } else {
           // Usuário deslogou - limpar dados locais
-          if (isMountedRef.current) {
-            await clearLocalCheckups();
-            setUser(null);
-          }
+          await clearLocalCheckups();
+          setUser(null);
         }
       }
     );
 
     // Cleanup: remover listener ao desmontar
     return () => {
-      isMountedRef.current = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -80,11 +73,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Verificar sessão inicial
    */
   const checkSession = async () => {
-    if (!isMountedRef.current) return;
     if (__DEV__) console.log('🔍 Iniciando verificação de sessão...');
     
     try {
-      if (isMountedRef.current) setLoading(true);
+      setLoading(true);
       
       if (__DEV__) console.log('📡 Buscando usuário atual...');
       const profile = await Promise.race([
@@ -93,8 +85,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setTimeout(() => reject(new Error('Timeout ao buscar usuário')), 10000)
         )
       ]);
-      
-      if (!isMountedRef.current) return;
       
       if (__DEV__) console.log('✅ Usuário obtido:', profile ? `ID: ${profile.id}` : 'Nenhum usuário');
       setUser(profile);
@@ -108,10 +98,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('❌ Erro ao verificar sessão:', error);
-      if (isMountedRef.current) setUser(null);
+      setUser(null);
     } finally {
       if (__DEV__) console.log('✅ Verificação de sessão finalizada. Loading = false');
-      if (isMountedRef.current) setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -119,12 +109,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Carregar perfil do usuário
    */
   const loadUserProfile = async () => {
-    if (!isMountedRef.current) return;
-    
     try {
       const profile = await getCurrentUser();
-      if (!isMountedRef.current) return;
-      
       setUser(profile);
       
       // Sincronizar dados quando o usuário faz login
@@ -136,7 +122,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       console.error('Erro ao carregar perfil:', error);
-      if (isMountedRef.current) setUser(null);
+      setUser(null);
     }
   };
 
@@ -210,11 +196,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * Atualizar perfil do usuário
    */
   const refreshUser = async () => {
-    if (!isMountedRef.current) return;
-    
     try {
       const profile = await getCurrentUser();
-      if (isMountedRef.current) setUser(profile);
+      setUser(profile);
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error);
     }
