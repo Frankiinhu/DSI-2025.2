@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity, Modal } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -36,6 +36,8 @@ const HomeTab: React.FC = () => {
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [expandedLocationId, setExpandedLocationId] = useState<string | null>(null);
   const [locationWeatherData, setLocationWeatherData] = useState<Record<string, WeatherData>>({});
+  const [selectedLocation, setSelectedLocation] = useState<MonitoredLocation | null>(null);
+  const [showActionMenu, setShowActionMenu] = useState(false);
   const [weatherData, setWeatherData] = useState<WeatherData>({
     temperature: 28,
     humidity: 79,
@@ -112,6 +114,54 @@ const HomeTab: React.FC = () => {
         await loadLocationWeather(location);
       }
     }
+  };
+
+  // Abre menu de ações para uma localização
+  const handleLocationAction = (location: MonitoredLocation) => {
+    setSelectedLocation(location);
+    setShowActionMenu(true);
+  };
+
+  // Edita uma localização
+  const handleEditLocation = () => {
+    setShowActionMenu(false);
+    // Pequeno delay para suavizar a transição entre modals
+    setTimeout(() => {
+      setShowLocationsModal(true);
+    }, 300);
+  };
+
+  // Deleta uma localização
+  const handleDeleteLocation = async () => {
+    if (!selectedLocation) return;
+    
+    setShowActionMenu(false);
+    
+    // Importar dinamicamente para evitar erro de dependência circular
+    const { deleteMonitoredLocation } = await import('../../services/supabase/monitored-locations.service');
+    
+    if (!currentUser) return;
+    
+    const result = await deleteMonitoredLocation(selectedLocation.id, currentUser.id);
+    
+    if (result.ok) {
+      notify('success', {
+        params: {
+          title: 'Sucesso',
+          description: 'Localização removida com sucesso'
+        }
+      });
+      loadMonitoredLocations();
+    } else {
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: result.message || 'Erro ao remover localização'
+        }
+      });
+    }
+    
+    setSelectedLocation(null);
   };
 
   // Calcula nível de risco baseado nos dados meteorológicos
@@ -743,10 +793,10 @@ const HomeTab: React.FC = () => {
                               style={styles.locationCardActionButton}
                               onPress={(e) => {
                                 e.stopPropagation();
-                                setShowLocationsModal(true);
+                                handleLocationAction(location);
                               }}
                             >
-                              <Ionicons name="settings-outline" size={18} color={Colors.textSecondary} />
+                              <Ionicons name="ellipsis-vertical" size={18} color={Colors.textSecondary} />
                             </TouchableOpacity>
                             <Ionicons 
                               name={isExpanded ? "chevron-up" : "chevron-down"} 
@@ -885,6 +935,63 @@ const HomeTab: React.FC = () => {
         onConfirm={signOut}
         onCancel={() => setShowLogoutDialog(false)}
       />
+
+      {/* Action Menu Modal */}
+      <Modal
+        visible={showActionMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowActionMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.actionMenuOverlay}
+          activeOpacity={1}
+          onPress={() => setShowActionMenu(false)}
+        >
+          <View style={styles.actionMenuContainer}>
+            <View style={styles.actionMenuHeader}>
+              <Text style={styles.actionMenuTitle}>
+                {selectedLocation?.nickname || selectedLocation?.city_name}
+              </Text>
+              <Text style={styles.actionMenuSubtitle}>
+                {selectedLocation?.state && selectedLocation?.country 
+                  ? `${selectedLocation.state}, ${selectedLocation.country}`
+                  : selectedLocation?.country}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.actionMenuItem}
+              onPress={handleEditLocation}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="pencil" size={22} color={Colors.primary} />
+              <Text style={styles.actionMenuItemText}>Editar Localização</Text>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionMenuItem, styles.actionMenuItemDanger]}
+              onPress={handleDeleteLocation}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+              <Text style={[styles.actionMenuItemText, styles.actionMenuItemTextDanger]}>
+                Remover Localização
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.actionMenuCancelButton}
+              onPress={() => setShowActionMenu(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.actionMenuCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Monitored Locations Manager Modal */}
       <MonitoredLocationsManager
@@ -1141,6 +1248,67 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  actionMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+    padding: Spacing.lg,
+  },
+  actionMenuContainer: {
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    ...Shadows.xl,
+  },
+  actionMenuHeader: {
+    marginBottom: Spacing.md,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  actionMenuTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.textDark,
+    marginBottom: 4,
+  },
+  actionMenuSubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+  },
+  actionMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.xs,
+    gap: Spacing.md,
+  },
+  actionMenuItemDanger: {
+    backgroundColor: Colors.danger + '08',
+  },
+  actionMenuItemText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textDark,
+  },
+  actionMenuItemTextDanger: {
+    color: Colors.danger,
+  },
+  actionMenuCancelButton: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.border,
+    alignItems: 'center',
+  },
+  actionMenuCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textDark,
   },
 });
 
