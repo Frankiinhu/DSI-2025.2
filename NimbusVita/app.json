@@ -7,6 +7,12 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "extra": {
+      "supabaseUrl": "https://ckwxytflrrnhvyapgvyr.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrd3h5dGZscnJuaHZ5YXBndnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MTc3NTksImV4cCI6MjA3NjI5Mzc1OX0.smRQFtQz958Z6cVUOENE2spuSD0_74cvT003cajwY8s",
+      "openWeatherBaseUrl": "https://api.openweathermap.org/data/2.5",
+      "openWeatherApiKey": "fa148ac244f9d5b9beecbe2c6baabbd2"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
