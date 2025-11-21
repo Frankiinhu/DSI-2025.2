@@ -8,13 +8,14 @@ import WeatherCard from '../../components/WeatherCard';
 import StatusCard from '../../components/StatusCard';
 import RiskAnalysis from '../../components/RiskAnalysis';
 import MonitoredLocationsManager from '../../components/MonitoredLocationsManager';
+import MonitoredLocationForm from '../../components/MonitoredLocationForm';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { getCurrentWeather, getWeatherByCoordinates, loadWeatherCache, saveWeatherCache } from '../../services/weather.service';
 import { useNotifications } from '../../config/notifications';
 import { generateRandomWeatherData, transformWeatherData, type WeatherData } from '../../utils/weatherHelpers';
-import { getMonitoredLocations } from '../../services/supabase/monitored-locations.service';
-import type { MonitoredLocation } from '../../types/monitored-location.types';
+import { getMonitoredLocations, createMonitoredLocation } from '../../services/supabase/monitored-locations.service';
+import type { MonitoredLocation, CreateMonitoredLocationDTO } from '../../types/monitored-location.types';
 
 const logo = require('../../../assets/logo.png');
 
@@ -32,6 +33,7 @@ const HomeTab: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showLocationsModal, setShowLocationsModal] = useState(false);
+  const [showInlineForm, setShowInlineForm] = useState(false);
   const [monitoredLocations, setMonitoredLocations] = useState<MonitoredLocation[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [expandedLocationId, setExpandedLocationId] = useState<string | null>(null);
@@ -162,6 +164,39 @@ const HomeTab: React.FC = () => {
     }
     
     setSelectedLocation(null);
+  };
+
+  // Handler para adicionar nova localização via formulário inline
+  const handleInlineFormSubmit = async (data: CreateMonitoredLocationDTO) => {
+    if (!currentUser) {
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: 'Usuário não autenticado'
+        }
+      });
+      return;
+    }
+
+    const result = await createMonitoredLocation(currentUser.id, data);
+    
+    if (result.ok) {
+      notify('success', {
+        params: {
+          title: 'Sucesso',
+          description: result.message || 'Localização adicionada com sucesso'
+        }
+      });
+      setShowInlineForm(false);
+      await loadMonitoredLocations();
+    } else {
+      notify('error', {
+        params: {
+          title: 'Erro',
+          description: result.message || 'Erro ao adicionar localização'
+        }
+      });
+    }
   };
 
   // Calcula nível de risco baseado nos dados meteorológicos
@@ -580,23 +615,6 @@ const HomeTab: React.FC = () => {
     <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          {/* Botão de Localizações Monitoradas */}
-          <TouchableOpacity
-            style={styles.locationButton}
-            onPress={() => setShowLocationsModal(true)}
-            disabled={loadingLocations}
-          >
-            <Ionicons name="location" size={20} color={Colors.primary} />
-            <Text style={styles.locationButtonText}>
-              {loadingLocations ? 'Carregando...' : 
-                monitoredLocations.length > 0 
-                  ? `${monitoredLocations.length} ${monitoredLocations.length === 1 ? 'localização monitorada' : 'localizações monitoradas'}`
-                  : 'Adicionar localizações para monitorar'
-              }
-            </Text>
-            <Ionicons name="chevron-forward" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-
           {/* Status Card */}
           <View style={{ marginBottom: 16 }}>
             <StatusCard
@@ -727,35 +745,45 @@ const HomeTab: React.FC = () => {
             recommendations={getRecommendations()}
           />
 
-          {/* Divider */}
-          <View style={styles.divider} />
-
           {/* Monitored Locations Section */}
-          <View style={styles.monitoredSection}>
-            <View style={styles.monitoredHeader}>
-              <Ionicons name="location" size={24} color={Colors.primary} />
-              <Text style={styles.monitoredTitle}>Localizações Monitoradas</Text>
+          <View style={styles.monitoredContainer}>
+            <View style={styles.monitoredHeaderRow}>
+              <View style={styles.monitoredHeader}>
+                <Ionicons name="location" size={24} color={Colors.primary} />
+                <Text style={styles.monitoredTitle}>Localizações Monitoradas</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.addIconButton}
+                onPress={() => setShowInlineForm(!showInlineForm)}
+              >
+                <Ionicons name={showInlineForm ? "close-circle" : "add-circle"} size={28} color={Colors.primary} />
+              </TouchableOpacity>
             </View>
             
+            {/* Inline Form - Renderizado independentemente */}
+            {showInlineForm && (
+              <View style={styles.inlineFormContainer}>
+                <MonitoredLocationForm
+                  inline={true}
+                  onSubmit={handleInlineFormSubmit}
+                  onCancel={() => setShowInlineForm(false)}
+                />
+              </View>
+            )}
+            
+            {/* Lista de localizações ou estados vazios */}
             {loadingLocations ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={Colors.primary} />
                 <Text style={styles.loadingText}>Carregando...</Text>
               </View>
-            ) : monitoredLocations.length === 0 ? (
+            ) : monitoredLocations.length === 0 && !showInlineForm ? (
               <View style={styles.emptyLocations}>
                 <Ionicons name="location-outline" size={48} color={Colors.textLight} />
                 <Text style={styles.emptyText}>Nenhuma cidade adicionada</Text>
                 <Text style={styles.emptySubtext}>
                   Adicione cidades para monitorar informações de saúde em tempo real
                 </Text>
-                <TouchableOpacity
-                  style={styles.addButton}
-                  onPress={() => setShowLocationsModal(true)}
-                >
-                  <Ionicons name="add-circle" size={20} color={Colors.textWhite} />
-                  <Text style={styles.addButtonText}>Adicionar Cidade</Text>
-                </TouchableOpacity>
               </View>
             ) : (
               <>
@@ -911,13 +939,6 @@ const HomeTab: React.FC = () => {
                     </View>
                   );
                 })}
-                <TouchableOpacity
-                  style={styles.manageButton}
-                  onPress={() => setShowLocationsModal(true)}
-                >
-                  <Ionicons name="settings-outline" size={18} color={Colors.primary} />
-                  <Text style={styles.manageButtonText}>Gerenciar Localizações</Text>
-                </TouchableOpacity>
               </>
             )}
           </View>
@@ -1058,16 +1079,17 @@ const styles = StyleSheet.create({
   monitoredSection: {
     marginBottom: Spacing.xl,
   },
-  monitoredHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-    gap: Spacing.sm,
+  monitoredContainer: {
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.xl,
+    ...Shadows.md,
   },
   monitoredTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.textDark,
+    color: Colors.primary,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -1083,9 +1105,6 @@ const styles = StyleSheet.create({
   emptyLocations: {
     alignItems: 'center',
     padding: Spacing.xl,
-    backgroundColor: Colors.background,
-    borderRadius: BorderRadius.lg,
-    ...Shadows.sm,
   },
   emptyText: {
     fontSize: 16,
@@ -1116,11 +1135,12 @@ const styles = StyleSheet.create({
     color: Colors.textWhite,
   },
   locationCard: {
-    backgroundColor: Colors.background,
+    backgroundColor: '#f0f3ffe1',
     borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
-    ...Shadows.sm,
+    borderWidth: 1,
+    borderColor: '#f0f3ffe1',
   },
   locationCardHeader: {
     flexDirection: 'row',
@@ -1164,6 +1184,29 @@ const styles = StyleSheet.create({
   locationCardAction: {
     padding: Spacing.sm,
   },
+  monitoredHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  monitoredHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  addIconButton: {
+    padding: Spacing.xs,
+  },
+  inlineFormContainer: {
+    backgroundColor: '#f0f3ffe1',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#f0f3ffe1',
+    minHeight: 500,
+  },
   manageButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1192,8 +1235,6 @@ const styles = StyleSheet.create({
   locationExpandedContent: {
     marginTop: Spacing.md,
     paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
   },
   locationLoadingContainer: {
     flexDirection: 'row',

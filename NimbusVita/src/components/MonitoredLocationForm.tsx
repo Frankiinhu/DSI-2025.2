@@ -33,12 +33,14 @@ interface MonitoredLocationFormProps {
   location?: MonitoredLocation;
   onSubmit: (data: CreateMonitoredLocationDTO) => Promise<void>;
   onCancel: () => void;
+  inline?: boolean;
 }
 
 const MonitoredLocationForm: React.FC<MonitoredLocationFormProps> = ({
   location,
   onSubmit,
   onCancel,
+  inline = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [cityOptions, setCityOptions] = useState<CityOption[]>([]);
@@ -188,22 +190,24 @@ const MonitoredLocationForm: React.FC<MonitoredLocationFormProps> = ({
   const isFormValid = cityName.trim() && country.trim() && latitude && longitude;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          {location ? 'Editar Localização' : 'Nova Localização'}
-        </Text>
-        <TouchableOpacity 
-          onPress={onCancel} 
-          disabled={loading}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="close" size={24} color={Colors.textDark} />
-        </TouchableOpacity>
-      </View>
+    <View style={[styles.container, inline && styles.containerInline]}>
+      {!inline && (
+        <View style={styles.header}>
+          <Text style={styles.title}>
+            {location ? 'Editar Localização' : 'Nova Localização'}
+          </Text>
+          <TouchableOpacity 
+            onPress={onCancel} 
+            disabled={loading}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={24} color={Colors.textDark} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView 
-        style={styles.formScroll} 
+        style={[styles.formScroll, inline && styles.formScrollInline]} 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="always"
         nestedScrollEnabled={true}
@@ -329,7 +333,6 @@ const MonitoredLocationForm: React.FC<MonitoredLocationFormProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    height: '100%',
     padding: Spacing.lg,
     backgroundColor: Colors.background,
   },
@@ -345,7 +348,7 @@ const styles = StyleSheet.create({
     color: Colors.textDark,
   },
   formScroll: {
-    flex: 1,
+    flexGrow: 1,
   },
   form: {
     gap: Spacing.md,
@@ -499,6 +502,14 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: Colors.textLight,
     ...Shadows.none,
+  },
+  containerInline: {
+    height: undefined,
+    padding: Spacing.md,
+    backgroundColor: 'transparent',
+  },
+  formScrollInline: {
+    flex: 0,
   },
 });
 
