@@ -139,27 +139,48 @@ export const loginUser = async (
         email = found;
       } else {
         // fallback: query profiles table
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('username', email)
-          .single();
-        if (!profile) return { ok: false, message: 'Credenciais inválidas' };
-        email = profile.email;
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('username', email)
+            .single();
+          
+          if (profileError || !profile) {
+            console.error('Profile lookup error:', profileError);
+            return { ok: false, message: 'Credenciais inválidas' };
+          }
+          email = profile.email;
+        } catch (profileErr: any) {
+          console.error('Profile lookup exception:', profileErr);
+          if (profileErr.message?.includes('Network request failed') || profileErr.name === 'AuthRetryableFetchError') {
+            return { ok: false, message: 'Erro de conexão. Verifique sua internet e tente novamente.' };
+          }
+          return { ok: false, message: 'Credenciais inválidas' };
+        }
       }
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.toLowerCase(), password });
     if (error) {
       console.error('Login error:', error);
-      return { ok: false, message: 'Credenciais inválidas' };
+      if (error.message?.includes('Network request failed') || error.name === 'AuthRetryableFetchError') {
+        return { ok: false, message: 'Erro de conexão. Verifique sua internet e tente novamente.' };
+      }
+      if (error.message?.includes('Invalid login credentials')) {
+        return { ok: false, message: 'Email ou senha incorretos' };
+      }
+      return { ok: false, message: error.message || 'Credenciais inválidas' };
     }
     if (!data.user) return { ok: false, message: 'Erro ao fazer login' };
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
     return { ok: true, user: profile || undefined };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
+    if (error.message?.includes('Network request failed') || error.name === 'AuthRetryableFetchError') {
+      return { ok: false, message: 'Erro de conexão. Verifique sua internet e tente novamente.' };
+    }
     return { ok: false, message: 'Erro inesperado ao fazer login' };
   }
 };
@@ -180,7 +201,16 @@ export const signOut = async (): Promise<void> => {
  */
 export const getCurrentUser = async (): Promise<Profile | null> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.error('getCurrentUser auth error:', authError);
+      // Network errors should not prevent app from loading
+      if (authError.message?.includes('Network request failed') || authError.name === 'AuthRetryableFetchError') {
+        console.warn('⚠️ Network error getting user - app will continue without session');
+      }
+      return null;
+    }
 
     if (!user) return null;
 
@@ -199,8 +229,11 @@ export const getCurrentUser = async (): Promise<Profile | null> => {
     // Se 'profile' for o objeto (1 linha encontrada), ele retorna o perfil.
     return profile;
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('getCurrentUser error:', error);
+    if (error.message?.includes('Network request failed') || error.name === 'AuthRetryableFetchError') {
+      console.warn('⚠️ Network error getting user - app will continue without session');
+    }
     return null;
   }
 };
