@@ -357,10 +357,14 @@ const HomeTab: React.FC = () => {
       }
     };
     load();
+    // Atualizar relógio a cada minuto (não precisa de precisão de segundos)
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
+    }, 60000); // 60 segundos
+    
+    return () => {
+      clearInterval(timer);
+    };
   }, []);
 
   const reloadWeather = async () => {

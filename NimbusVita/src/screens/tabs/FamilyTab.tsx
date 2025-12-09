@@ -15,6 +15,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const FamilyTab = () => {
   const { user } = useAuth();
   const { notify } = useNotifications();
+  const isMountedRef = React.useRef(true);
   const [groups, setGroups] = useState<FamilyGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,22 +42,27 @@ const FamilyTab = () => {
 
   useEffect(() => {
     loadGroups();
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const loadGroups = async () => {
-    if (!user) return;
-    setLoading(true);
+    if (!user || !isMountedRef.current) return;
+    if (isMountedRef.current) setLoading(true);
     const result = await getUserFamilyGroups(user.id);
+    if (!isMountedRef.current) return;
     if (result.ok) {
       setGroups(result.data || []);
     }
-    setLoading(false);
+    if (isMountedRef.current) setLoading(false);
   };
 
   const onRefresh = async () => {
-    setRefreshing(true);
+    if (!isMountedRef.current) return;
+    if (isMountedRef.current) setRefreshing(true);
     await loadGroups();
-    setRefreshing(false);
+    if (isMountedRef.current) setRefreshing(false);
   };
 
   const handleCreateGroup = async () => {
@@ -109,10 +115,12 @@ const FamilyTab = () => {
       setExpandedGroupId(group.id);
       setShowHistoryForMember(null);
       setShowTagsForMember(null);
-      setLoadingMembers(true);
+      if (isMountedRef.current) setLoadingMembers(true);
       
       const result = await getFamilyMembers(group.id);
-      setLoadingMembers(false);
+      if (!isMountedRef.current) return;
+      
+      if (isMountedRef.current) setLoadingMembers(false);
       
       if (result.ok) {
         setMembers(result.data || []);
@@ -137,6 +145,8 @@ const FamilyTab = () => {
         expandedGroupId,
         user.id
       );
+      
+      if (!isMountedRef.current) return;
       
       if (result.ok) {
         setMemberHistory(result.data || []);
@@ -194,6 +204,8 @@ const FamilyTab = () => {
       expandedGroupId
     );
 
+    if (!isMountedRef.current) return;
+
     if (result.ok) {
       notify('success', {
         params: {
@@ -201,9 +213,10 @@ const FamilyTab = () => {
           description: result.message || 'Tags atualizadas com sucesso',
         },
       });
-      setShowTagsForMember(null);
+      if (isMountedRef.current) setShowTagsForMember(null);
       // Recarrega membros
       const membersResult = await getFamilyMembers(expandedGroupId);
+      if (!isMountedRef.current) return;
       if (membersResult.ok) {
         setMembers(membersResult.data || []);
       }
@@ -225,9 +238,11 @@ const FamilyTab = () => {
           style: 'destructive',
           onPress: async () => {
             const result = await removeFamilyMember(groupId, member.user_id, user.id);
+            if (!isMountedRef.current) return;
             if (result.ok) {
               notify('success', { params: { title: 'Membro Removido', description: result.message || 'Membro removido com sucesso' } });
               const membersResult = await getFamilyMembers(groupId);
+              if (!isMountedRef.current) return;
               if (membersResult.ok) {
                 setMembers(membersResult.data || []);
               }

@@ -59,10 +59,18 @@ const CheckupTab: React.FC = () => {
     }
   }, [user]);
 
+  const isMountedRef = React.useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   // Recarregar histórico sempre que a aba receber foco
   useFocusEffect(
     useCallback(() => {
-      if (user) {
+      if (user && isMountedRef.current) {
         loadCheckupHistory();
       }
     }, [user])
