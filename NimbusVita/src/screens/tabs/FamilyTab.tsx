@@ -1,47 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import {View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, ActivityIndicator, RefreshControl, StatusBar, Image} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { FontAwesome6, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, RefreshControl, Image, LayoutAnimation, Platform, UIManager} from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../contexts/AuthContext';
 import { getUserFamilyGroups, createFamilyGroup, joinFamilyGroup, getFamilyMembers, getMemberCheckupHistory, leaveFamilyGroup, deleteFamilyGroup, removeFamilyMember, PREDEFINED_TAGS, updateMemberTags } from '../../services/supabase/family.service';
 import { FamilyGroup, FamilyMemberWithProfile } from '../../types/database.types';
-import { Colors, Spacing, Shadows, BorderRadius, ComponentStyles } from '../../styles';
+import { Colors, Spacing } from '../../styles';
 import { useNotifications, ToastComponent } from '../../config/notifications';
 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const FamilyTab = () => {
   const { user } = useAuth();
   const { notify } = useNotifications();
   const [groups, setGroups] = useState<FamilyGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMembers, setLoadingMembers] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState<FamilyGroup | null>(null);
+  
+  // Estados de expansão inline
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+  const [loadingMembers, setLoadingMembers] = useState(false);
   const [members, setMembers] = useState<FamilyMemberWithProfile[]>([]);
+  
+  const [showHistoryForMember, setShowHistoryForMember] = useState<string | null>(null);
   const [memberHistory, setMemberHistory] = useState<any[]>([]);
-  const [selectedMember, setSelectedMember] = useState<FamilyMemberWithProfile | null>(null);
-
-  // Modais
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [showMembersModal, setShowMembersModal] = useState(false);
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [showTagsModal, setShowTagsModal] = useState(false);
-
-  // Inputs
-  const [groupName, setGroupName] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
+  const [selectedMemberName, setSelectedMemberName] = useState('');
+  
+  const [showTagsForMember, setShowTagsForMember] = useState<string | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [customTag, setCustomTag] = useState('');
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+
+  // Formulários
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
 
   useEffect(() => {
     loadGroups();
   }, []);
-
-  useEffect(() => {
-    console.log('🎨 Estado atualizado - showMembersModal:', showMembersModal, 'loadingMembers:', loadingMembers, 'members.length:', members.length);
-  }, [showMembersModal, loadingMembers, members]);
 
   const loadGroups = async () => {
     if (!user) return;
@@ -73,7 +73,7 @@ const FamilyTab = () => {
         [{ text: 'OK' }]
       );
       setGroupName('');
-      setShowCreateModal(false);
+      setShowCreateForm(false);
       loadGroups();
     } else {
       Alert.alert('Erro', result.message);
@@ -90,65 +90,154 @@ const FamilyTab = () => {
     if (result.ok) {
       Alert.alert('Sucesso! 🎉', result.message);
       setInviteCode('');
-      setShowJoinModal(false);
+      setShowJoinForm(false);
       loadGroups();
     } else {
       Alert.alert('Erro', result.message);
     }
   };
 
-  const handleOpenGroup = async (group: FamilyGroup) => {
-    console.log('🔵 handleOpenGroup chamado para:', group.name);
-    setSelectedGroup(group);
-    setMembers([]); // Limpa a lista anterior
-    setLoadingMembers(true);
-    setShowMembersModal(true);
+  const handleToggleGroup = async (group: FamilyGroup) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     
-    console.log('🔵 Buscando membros do grupo ID:', group.id);
-    const result = await getFamilyMembers(group.id);
-    
-    setLoadingMembers(false);
-    
-    console.log('🔵 Resultado:', result);
-    
-    if (result.ok) {
-      const membersList = result.data || [];
-      console.log('✅ Membros carregados:', membersList.length);
-      console.log('✅ Dados dos membros:', JSON.stringify(membersList, null, 2));
-      setMembers(membersList);
+    if (expandedGroupId === group.id) {
+      setExpandedGroupId(null);
+      setMembers([]);
+      setShowHistoryForMember(null);
+      setShowTagsForMember(null);
     } else {
-      console.error('❌ Erro ao carregar membros:', result.message);
-      Alert.alert('Erro ao carregar membros', result.message || 'Não foi possível carregar os membros do grupo');
-      setShowMembersModal(false);
+      setExpandedGroupId(group.id);
+      setShowHistoryForMember(null);
+      setShowTagsForMember(null);
+      setLoadingMembers(true);
+      
+      const result = await getFamilyMembers(group.id);
+      setLoadingMembers(false);
+      
+      if (result.ok) {
+        setMembers(result.data || []);
+      } else {
+        Alert.alert('Erro', result.message);
+        setExpandedGroupId(null);
+      }
     }
   };
 
   const handleViewMemberHistory = async (member: FamilyMemberWithProfile) => {
-    if (!user || !selectedGroup) return;
+    if (!user || !expandedGroupId) return;
     
-    console.log('📊 Abrindo histórico para:', member.profile.username);
-    setSelectedMember(member);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowTagsForMember(null);
     
-    // Fecha o modal de membros antes de abrir o de histórico
-    setShowMembersModal(false);
-    
-    const result = await getMemberCheckupHistory(
-      member.user_id,
-      selectedGroup.id,
-      user.id
-    );
-    
-    if (result.ok) {
-      console.log('✅ Histórico carregado:', result.data?.length || 0, 'registros');
-      setMemberHistory(result.data || []);
-      // Pequeno delay para garantir que o modal anterior fechou
-      setTimeout(() => {
-        setShowHistoryModal(true);
-      }, 300);
+    if (showHistoryForMember === member.id) {
+      setShowHistoryForMember(null);
     } else {
-      console.error('❌ Erro ao carregar histórico:', result.message);
+      const result = await getMemberCheckupHistory(
+        member.user_id,
+        expandedGroupId,
+        user.id
+      );
+      
+      if (result.ok) {
+        setMemberHistory(result.data || []);
+        setSelectedMemberName(member.profile.full_name || member.profile.username);
+        setShowHistoryForMember(member.id);
+      } else {
+        Alert.alert('Erro', result.message);
+      }
+    }
+  };
+
+  const handleOpenTagsEditor = (member: FamilyMemberWithProfile) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowHistoryForMember(null);
+    
+    if (showTagsForMember === member.id) {
+      setShowTagsForMember(null);
+    } else {
+      setSelectedTags(member.member_tags || []);
+      setCustomTag('');
+      setEditingMemberId(member.id);
+      setShowTagsForMember(member.id);
+    }
+  };
+
+  const handleToggleTag = (tag: string) => {
+    if (selectedTags.includes(tag)) {
+      setSelectedTags(selectedTags.filter((t) => t !== tag));
+    } else {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
+  const handleAddCustomTag = () => {
+    const trimmedTag = customTag.trim();
+    if (!trimmedTag) {
+      Alert.alert('Erro', 'Digite o nome da tag');
+      return;
+    }
+    if (selectedTags.includes(trimmedTag)) {
+      Alert.alert('Erro', 'Esta tag já está adicionada');
+      return;
+    }
+    setSelectedTags([...selectedTags, trimmedTag]);
+    setCustomTag('');
+  };
+
+  const handleSaveTags = async () => {
+    if (!user || !editingMemberId || !expandedGroupId) return;
+
+    const result = await updateMemberTags(
+      editingMemberId,
+      selectedTags,
+      user.id,
+      expandedGroupId
+    );
+
+    if (result.ok) {
+      notify('success', {
+        params: {
+          title: 'Tags Atualizadas!',
+          description: result.message || 'Tags atualizadas com sucesso',
+        },
+      });
+      setShowTagsForMember(null);
+      // Recarrega membros
+      const membersResult = await getFamilyMembers(expandedGroupId);
+      if (membersResult.ok) {
+        setMembers(membersResult.data || []);
+      }
+    } else {
       Alert.alert('Erro', result.message);
     }
+  };
+
+  const handleRemoveMember = async (member: FamilyMemberWithProfile, groupId: string) => {
+    if (!user) return;
+
+    Alert.alert(
+      'Remover Membro',
+      `Remover ${member.profile.username} do grupo?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await removeFamilyMember(groupId, member.user_id, user.id);
+            if (result.ok) {
+              notify('success', { params: { title: 'Membro Removido', description: result.message || 'Membro removido com sucesso' } });
+              const membersResult = await getFamilyMembers(groupId);
+              if (membersResult.ok) {
+                setMembers(membersResult.data || []);
+              }
+            } else {
+              Alert.alert('Erro', result.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleLeaveGroup = async (group: FamilyGroup) => {
@@ -165,7 +254,8 @@ const FamilyTab = () => {
           onPress: async () => {
             const result = await leaveFamilyGroup(group.id, user.id);
             if (result.ok) {
-              Alert.alert('Sucesso', result.message);
+              notify('success', { params: { title: 'Saiu do Grupo', description: result.message || 'Você saiu do grupo' } });
+              setExpandedGroupId(null);
               loadGroups();
             } else {
               Alert.alert('Erro', result.message);
@@ -190,8 +280,8 @@ const FamilyTab = () => {
           onPress: async () => {
             const result = await deleteFamilyGroup(group.id, user.id);
             if (result.ok) {
-              Alert.alert('Sucesso', result.message);
-              setShowMembersModal(false);
+              notify('success', { params: { title: 'Grupo Deletado', description: result.message || 'Grupo deletado com sucesso' } });
+              setExpandedGroupId(null);
               loadGroups();
             } else {
               Alert.alert('Erro', result.message);
@@ -200,98 +290,6 @@ const FamilyTab = () => {
         },
       ]
     );
-  };
-
-  const handleRemoveMember = async (member: FamilyMemberWithProfile) => {
-    if (!user || !selectedGroup) return;
-
-    Alert.alert(
-      'Remover Membro',
-      `Remover ${member.profile.username} do grupo?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Remover',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await removeFamilyMember(
-              selectedGroup.id,
-              member.user_id,
-              user.id
-            );
-            if (result.ok) {
-              Alert.alert('Sucesso', result.message);
-              handleOpenGroup(selectedGroup);
-            } else {
-              Alert.alert('Erro', result.message);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleOpenTagsModal = (member: FamilyMemberWithProfile) => {
-    console.log('🏷️ Abrindo modal de tags para:', member.profile.username);
-    console.log('🏷️ Tags atuais:', member.member_tags);
-    
-    // Define os dados primeiro
-    setSelectedMember(member);
-    setSelectedTags(member.member_tags || []);
-    setCustomTag('');
-    
-    // Fecha o modal de membros e abre o de tags com um pequeno delay
-    setShowMembersModal(false);
-    setTimeout(() => {
-      setShowTagsModal(true);
-      console.log('🏷️ Modal de tags aberto');
-    }, 300);
-  };
-
-  const handleToggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((t) => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
-  const handleAddCustomTag = () => {
-    const trimmedTag = customTag.trim();
-    if (!trimmedTag) {
-      Alert.alert('Erro', 'Digite o nome da tag');
-      return;
-    }
-
-    if (selectedTags.includes(trimmedTag)) {
-      Alert.alert('Erro', 'Esta tag já está adicionada');
-      return;
-    }
-
-    setSelectedTags([...selectedTags, trimmedTag]);
-    setCustomTag('');
-  };
-
-  const handleSaveTags = async () => {
-    if (!user || !selectedMember || !selectedGroup) return;
-
-    const result = await updateMemberTags(
-      selectedMember.id,
-      selectedTags,
-      user.id,
-      selectedGroup.id
-    );
-
-    if (result.ok) {
-      Alert.alert('Sucesso! 🎉', result.message);
-      setShowTagsModal(false);
-      // Reabre o modal de membros após um pequeno delay
-      setTimeout(() => {
-        handleOpenGroup(selectedGroup); // Recarrega os membros e reabre o modal
-      }, 300);
-    } else {
-      Alert.alert('Erro', result.message);
-    }
   };
 
   const handleCopyInviteCode = async (code: string) => {
@@ -334,6 +332,7 @@ const FamilyTab = () => {
 
   return (
     <View style={styles.safeArea}>
+      <ToastComponent />
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -341,648 +340,470 @@ const FamilyTab = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Action Buttons */}
         <View style={styles.container}>
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.primaryButton]}
-            onPress={() => setShowCreateModal(true)}
-          >
-            <Ionicons name="add-circle-outline" size={24} color="#fff" />
-            <Text style={styles.actionButtonText}>Criar Grupo</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.secondaryButton]}
-            onPress={() => setShowJoinModal(true)}
-          >
-            <Ionicons name="enter-outline" size={24} color={Colors.primary} />
-            <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>
-              Entrar em Grupo
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Info Text */}
-        {groups.length > 0 && (
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color={Colors.primary} />
-            <Text style={styles.infoText}>
-              Toque em um grupo para ver os membros e gerenciar tags
-            </Text>
-          </View>
-        )}
-
-        {/* Groups List */}
-        {groups.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={64} color={Colors.textLight} />
-            <Text style={styles.emptyStateText}>
-              Você ainda não faz parte de nenhum grupo familiar
-            </Text>
-            <Text style={styles.emptyStateSubtext}>
-              Crie um grupo ou entre usando um código de convite
-            </Text>
-            
-            {/* Tutorial Steps */}
-            <View style={styles.tutorialContainer}>
-              <View style={styles.tutorialStep}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>1</Text>
-                </View>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Criar ou Entrar</Text>
-                  <Text style={styles.stepDescription}>
-                    Use os botões acima para criar um novo grupo ou entrar em um existente
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.tutorialStep}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>2</Text>
-                </View>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Visualizar Membros</Text>
-                  <Text style={styles.stepDescription}>
-                    Toque no card do grupo para ver todos os membros
-                  </Text>
-                </View>
-              </View>
-              
-              <View style={styles.tutorialStep}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>3</Text>
-                </View>
-                <View style={styles.stepContent}>
-                  <Text style={styles.stepTitle}>Adicionar Tags</Text>
-                  <Text style={styles.stepDescription}>
-                    Clique no ícone 🏷️ ao lado de cada membro para adicionar tags como Mãe, Pai, Filho, etc
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.groupsList}>
-            {groups.map((group) => (
-              <TouchableOpacity
-                key={group.id}
-                style={styles.groupCard}
-                onPress={() => {
-                  console.log('Abrindo grupo:', group.name);
-                  handleOpenGroup(group);
-                }}
-              >
-                <View style={styles.groupIcon}>
-                  <Ionicons name="people" size={28} color={Colors.primary} />
-                </View>
-                <View style={styles.groupInfo}>
-                  <Text style={styles.groupName}>{group.name}</Text>
-                  <Text style={styles.groupDetails}>
-                    {(group as any).member_count || 0} membros • Código: {group.invite_code}
-                  </Text>
-                  <Text style={styles.groupHint}>Toque para ver membros</Text>
-                  {group.owner_id === user?.id && (
-                    <View style={styles.ownerBadge}>
-                      <Text style={styles.ownerBadgeText}>Você é o dono</Text>
-                    </View>
-                  )}
-                </View>
-                <Ionicons name="chevron-forward" size={28} color={Colors.primary} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-        </View>
-      </ScrollView>
-
-      {/* Create Group Modal */}
-      <Modal
-        visible={showCreateModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowCreateModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Criar Grupo Familiar</Text>
-              <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-                <Ionicons name="close" size={28} color={Colors.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Nome do grupo (ex: Família Silva)"
-              value={groupName}
-              onChangeText={setGroupName}
-              maxLength={50}
-            />
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.primaryButton]}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setShowCreateForm(!showCreateForm);
+                setShowJoinForm(false);
+              }}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="#fff" />
+              <Text style={styles.actionButtonText}>Criar Grupo</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleCreateGroup}
+              style={[styles.actionButton, styles.secondaryButton]}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setShowJoinForm(!showJoinForm);
+                setShowCreateForm(false);
+              }}
             >
-              <Text style={styles.modalButtonText}>Criar Grupo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Join Group Modal */}
-      <Modal
-        visible={showJoinModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowJoinModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Entrar em Grupo</Text>
-              <TouchableOpacity onPress={() => setShowJoinModal(false)}>
-                <Ionicons name="close" size={28} color={Colors.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalDescription}>
-              Digite o código de 8 caracteres compartilhado pelo criador do grupo
-            </Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Código de convite"
-              value={inviteCode}
-              onChangeText={(text) => setInviteCode(text.toUpperCase())}
-              maxLength={8}
-              autoCapitalize="characters"
-            />
-
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleJoinGroup}
-            >
-              <Text style={styles.modalButtonText}>Entrar no Grupo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Members Modal */}
-      <Modal
-        visible={showMembersModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowMembersModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContentLarge}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{selectedGroup?.name}</Text>
-              <TouchableOpacity onPress={() => {
-                setShowMembersModal(false);
-                // Pequeno delay antes de limpar para garantir animação suave
-                setTimeout(() => {
-                  setSelectedGroup(null);
-                  setMembers([]);
-                }, 300);
-              }}>
-                <Ionicons name="close" size={28} color={Colors.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity 
-              style={styles.inviteCodeBox}
-              onPress={() => selectedGroup && handleCopyInviteCode(selectedGroup.invite_code)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.inviteCodeLabel}>Código de Convite:</Text>
-              <Text style={styles.inviteCodeText}>
-                {selectedGroup?.invite_code}
+              <Ionicons name="enter-outline" size={24} color={Colors.primary} />
+              <Text style={[styles.actionButtonText, styles.secondaryButtonText]}>
+                Entrar em Grupo
               </Text>
             </TouchableOpacity>
-
-            <ScrollView 
-              style={styles.membersList}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 20, flexGrow: 1 }}
-            >
-              {loadingMembers ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={Colors.primary} />
-                  <Text style={styles.loadingText}>Carregando membros...</Text>
-                </View>
-              ) : members.length === 0 ? (
-                <View style={styles.emptyMembersList}>
-                  <Ionicons name="people-outline" size={48} color={Colors.textLight} />
-                  <Text style={styles.emptyMembersText}>
-                    Nenhum membro encontrado
-                  </Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.membersListTitle}>
-                    {members.length} {members.length === 1 ? 'Membro' : 'Membros'}
-                  </Text>
-                  
-                  {members.map((member) => (
-                    <View key={member.id} style={styles.memberCard}>
-                      <View style={styles.memberAvatar}>
-                        {member.profile?.avatar_url ? (
-                          <Image 
-                            source={{ uri: member.profile.avatar_url }} 
-                            style={styles.avatarImage}
-                          />
-                        ) : (
-                          <Ionicons name="person" size={32} color={Colors.primary} />
-                        )}
-                      </View>
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>
-                      {member.profile.full_name || member.profile.username}
-                    </Text>
-                    <Text style={styles.memberUsername}>
-                      @{member.profile.username}
-                    </Text>
-                    
-                    {/* Tags do membro */}
-                    {member.member_tags && member.member_tags.length > 0 && (
-                      <View style={styles.tagsContainer}>
-                        {member.member_tags.map((tag, index) => (
-                          <View 
-                            key={index} 
-                            style={[
-                              styles.tag,
-                              tag === 'Dono' && styles.ownerTag
-                            ]}
-                          >
-                            <Text style={[
-                              styles.tagText,
-                              tag === 'Dono' && styles.ownerTagText
-                            ]}>
-                              {tag === 'Dono' ? '' : ''}{tag}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                    
-                    {member.user_id === user?.id && !member.member_tags?.includes('Dono') && (
-                      <Text style={styles.memberRole}>✓ Você</Text>
-                    )}
-                  </View>
-                  <View style={styles.memberActions}>
-                    {/* Botão de editar tags - Todos podem editar tags de qualquer membro */}
-                    <TouchableOpacity
-                      style={styles.iconButton}
-                      onPress={() => handleOpenTagsModal(member)}
-                      activeOpacity={0.7}
-                    >
-                      <MaterialCommunityIcons name="tag" size={30} color={Colors.primary} />
-                    </TouchableOpacity>
-                    
-                    {/* Todos podem ver histórico */}
-                    <TouchableOpacity
-                      style={styles.iconButton}
-                      onPress={() => handleViewMemberHistory(member)}
-                      disabled={member.user_id === user?.id}
-                    >
-                      <MaterialCommunityIcons 
-                        name="chart-timeline-variant" 
-                        size={30} 
-                        color={member.user_id === user?.id ? Colors.textLight : Colors.primary} 
-                      />
-                    </TouchableOpacity>
-                    
-                    {/* Apenas o dono pode remover outros membros */}
-                    {selectedGroup?.owner_id === user?.id &&
-                      user && member.user_id !== user.id && (
-                        <TouchableOpacity
-                          style={styles.iconButton}
-                          onPress={() => handleRemoveMember(member)}
-                        >
-                          <Ionicons name="trash-outline" size={24} color={Colors.error} />
-                        </TouchableOpacity>
-                      )}
-                  </View>
-                </View>
-                  ))}
-                </>
-              )}
-            </ScrollView>
-
-            {selectedGroup && (
-              <View style={styles.modalFooter}>
-                {selectedGroup.owner_id === user?.id ? (
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.dangerButton]}
-                    onPress={() => handleDeleteGroup(selectedGroup)}
-                  >
-                    <Text style={styles.modalButtonText}>Deletar Grupo</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.modalButton, styles.warningButton]}
-                    onPress={() => handleLeaveGroup(selectedGroup)}
-                  >
-                    <Text style={styles.modalButtonText}>Sair do Grupo</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
           </View>
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999 }} pointerEvents="box-none">
-            <ToastComponent />
-          </View>
-        </View>
-      </Modal>
 
-      {/* History Modal */}
-      <Modal
-        visible={showHistoryModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowHistoryModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.largeModal]}>
-            <View style={styles.modalHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>
-                  Histórico de {selectedMember?.profile.full_name || selectedMember?.profile.username}
-                </Text>
-                {memberHistory.length > 0 && (
-                  <Text style={styles.modalSubtitle}>
-                    {memberHistory.length} {memberHistory.length === 1 ? 'verificação encontrada' : 'verificações encontradas'}
-                  </Text>
-                )}
-              </View>
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowHistoryModal(false);
-                  // Volta para o modal de membros após um pequeno delay
-                  setTimeout(() => {
-                    setShowMembersModal(true);
-                  }, 300);
-                }}
-              >
-                <Ionicons name="close" size={28} color={Colors.textDark} />
+          {/* Create Form */}
+          {showCreateForm && (
+            <View style={styles.formCard}>
+              <Text style={styles.formTitle}>Criar Novo Grupo</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Nome do grupo (ex: Família Silva)"
+                value={groupName}
+                onChangeText={setGroupName}
+                maxLength={50}
+              />
+              <TouchableOpacity style={styles.submitButton} onPress={handleCreateGroup}>
+                <Text style={styles.submitButtonText}>Criar</Text>
               </TouchableOpacity>
             </View>
+          )}
 
-            <ScrollView style={styles.historyList}>
-              {memberHistory.length === 0 ? (
-                <View style={styles.emptyHistory}>
-                  <Ionicons name="document-outline" size={48} color={Colors.textLight} />
-                  <Text style={styles.emptyHistoryText}>
-                    Nenhuma verificação encontrada
-                  </Text>
-                  <Text style={styles.emptyHistorySubtext}>
-                    Este membro ainda não realizou nenhuma verificação de sintomas
-                  </Text>
-                </View>
-              ) : (
-                memberHistory.map((checkup: any) => {
-                  // Parse predictions da mesma forma que symptoms
-                  let predictions: any = {};
-                  if (checkup.predictions) {
-                    if (typeof checkup.predictions === 'string') {
-                      try {
-                        predictions = JSON.parse(checkup.predictions);
-                      } catch (e) {
-                        console.error('❌ Erro ao parsear predictions:', e);
-                      }
-                    } else if (typeof checkup.predictions === 'object') {
-                      predictions = checkup.predictions;
-                    }
-                  }
+          {/* Join Form */}
+          {showJoinForm && (
+            <View style={styles.formCard}>
+              <Text style={styles.formTitle}>Entrar em Grupo</Text>
+              <Text style={styles.formDescription}>
+                Digite o código de 8 caracteres compartilhado pelo criador
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Código de convite"
+                value={inviteCode}
+                onChangeText={(text) => setInviteCode(text.toUpperCase())}
+                maxLength={8}
+                autoCapitalize="characters"
+              />
+              <TouchableOpacity style={styles.submitButton} onPress={handleJoinGroup}>
+                <Text style={styles.submitButtonText}>Entrar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-                  // Parse symptoms se for string JSON
-                  let symptoms = checkup.symptoms;
-                  if (typeof symptoms === 'string') {
-                    try {
-                      symptoms = JSON.parse(symptoms);
-                    } catch {
-                      symptoms = [];
-                    }
-                  }
-                  
-                  // Extrai risk_level e disease_predictions
-                  const riskLevel = predictions.risk_level || 'low';
-                  const diseasePredictions = predictions.disease_predictions || predictions;
-                  
-                  const riskColor = 
-                    riskLevel === 'high' ? Colors.danger :
-                    riskLevel === 'moderate' ? Colors.warning :
-                    Colors.success;
-                  
-                  const riskLabel = 
-                    riskLevel === 'high' ? 'Alto Risco' :
-                    riskLevel === 'moderate' ? 'Risco Moderado' :
-                    'Baixo Risco';
+          {/* Info Text */}
+          {groups.length > 0 && !showCreateForm && !showJoinForm && (
+            <View style={styles.infoBox}>
+              <Ionicons name="information-circle" size={20} color={Colors.primary} />
+              <Text style={styles.infoText}>
+                Toque em um grupo para expandir e ver os membros
+              </Text>
+            </View>
+          )}
 
-                  return (
-                    <View key={checkup.id} style={styles.historyCard}>
-                      <View style={styles.historyHeader}>
-                        <View style={styles.historyDateContainer}>
-                          <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
-                          <Text style={styles.historyDate}>
-                            {formatDate(checkup.checkup_date)}
-                          </Text>
-                        </View>
-                        <View style={[styles.riskBadge, { backgroundColor: riskColor + '20' }]}>
-                          <Text style={[styles.riskBadgeText, { color: riskColor }]}>
-                            {riskLabel}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {symptoms && Array.isArray(symptoms) && symptoms.length > 0 && (
-                        <View style={styles.symptomsList}>
-                          <Text style={styles.symptomsLabel}>Sintomas relatados:</Text>
-                          <View style={styles.symptomsContainer}>
-                            {symptoms.map((symptom: any, index: number) => (
-                              <View key={index} style={styles.symptomTag}>
-                                <Text style={styles.symptomTagText}>
-                                  {symptom.symptom_name || symptom.symptom_key || symptom}
-                                </Text>
-                              </View>
-                            ))}
-                          </View>
+          {/* Groups List */}
+          {groups.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="people-outline" size={64} color={Colors.textLight} />
+              <Text style={styles.emptyStateText}>
+                Você ainda não faz parte de nenhum grupo familiar
+              </Text>
+              <Text style={styles.emptyStateSubtext}>
+                Crie um grupo ou entre usando um código de convite
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.groupsList}>
+              {groups.map((group) => (
+                <View key={group.id} style={styles.groupWrapper}>
+                  {/* Group Header */}
+                  <TouchableOpacity
+                    style={[
+                      styles.groupCard,
+                      expandedGroupId === group.id && styles.groupCardExpanded
+                    ]}
+                    onPress={() => handleToggleGroup(group)}
+                  >
+                    <View style={styles.groupIcon}>
+                      <Ionicons name="people" size={28} color={Colors.primary} />
+                    </View>
+                    <View style={styles.groupInfo}>
+                      <Text style={styles.groupName}>{group.name}</Text>
+                      <Text style={styles.groupDetails}>
+                        {(group as any).member_count || 0} membros
+                      </Text>
+                      {group.owner_id === user?.id && (
+                        <View style={styles.ownerBadge}>
+                          <Text style={styles.ownerBadgeText}>Você é o dono</Text>
                         </View>
                       )}
+                    </View>
+                    <Ionicons 
+                      name={expandedGroupId === group.id ? "chevron-up" : "chevron-down"} 
+                      size={28} 
+                      color={Colors.primary} 
+                    />
+                  </TouchableOpacity>
 
-                      {/* Prognóstico e Porcentagens */}
-                      {diseasePredictions && typeof diseasePredictions === 'object' && Object.keys(diseasePredictions).length > 0 && (
-                        <View style={styles.predictionsContainer}>
-                          <View style={styles.predictionsHeader}>
-                            <Ionicons name="medical-outline" size={18} color={Colors.primary} />
-                            <Text style={styles.predictionsLabel}>Prognóstico:</Text>
-                          </View>
-                          <View style={styles.predictionsListContainer}>
-                            {Object.entries(diseasePredictions)
-                              .filter(([key]) => !['risk_level', 'explanation', 'recommendations'].includes(key))
-                              .sort((a: any, b: any) => b[1] - a[1]) // Ordena por maior porcentagem
-                              .slice(0, 5) // Mostra top 5
-                              .map(([disease, probability]: [string, any], index: number) => {
-                                const percentage = parseFloat(probability).toFixed(1);
-                                const probabilityValue = parseFloat(probability) / 100; // Converte para 0-1
-                                const barColor = 
-                                  probabilityValue > 0.7 ? Colors.danger :
-                                  probabilityValue > 0.4 ? Colors.warning :
-                                  Colors.success;
-                                
-                                return (
-                                  <View key={index} style={styles.predictionItem}>
-                                    <View style={styles.predictionInfo}>
-                                      <Text style={styles.predictionDisease}>{disease}</Text>
-                                      <Text style={[styles.predictionPercentage, { color: barColor }]}>
-                                        {percentage}%
+                  {/* Expanded Content */}
+                  {expandedGroupId === group.id && (
+                    <View style={styles.expandedContent}>
+                      {/* Invite Code */}
+                      <TouchableOpacity 
+                        style={styles.inviteCodeBox}
+                        onPress={() => handleCopyInviteCode(group.invite_code)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.inviteCodeLabel}>Código de Convite (toque para copiar):</Text>
+                        <Text style={styles.inviteCodeText}>{group.invite_code}</Text>
+                      </TouchableOpacity>
+
+                      {/* Members List */}
+                      {loadingMembers ? (
+                        <View style={styles.loadingContainer}>
+                          <ActivityIndicator size="large" color={Colors.primary} />
+                          <Text style={styles.loadingText}>Carregando membros...</Text>
+                        </View>
+                      ) : members.length === 0 ? (
+                        <View style={styles.emptyMembers}>
+                          <Ionicons name="people-outline" size={48} color={Colors.textLight} />
+                          <Text style={styles.emptyMembersText}>Nenhum membro encontrado</Text>
+                        </View>
+                      ) : (
+                        <>
+                          <Text style={styles.membersTitle}>
+                            {members.length} {members.length === 1 ? 'Membro' : 'Membros'}
+                          </Text>
+                          
+                          {members.map((member) => (
+                            <View key={member.id}>
+                              {/* Member Card */}
+                              <View style={styles.memberCard}>
+                                <View style={styles.memberAvatar}>
+                                  {member.profile?.avatar_url ? (
+                                    <Image 
+                                      source={{ uri: member.profile.avatar_url }} 
+                                      style={styles.avatarImage}
+                                    />
+                                  ) : (
+                                    <Ionicons name="person" size={32} color={Colors.primary} />
+                                  )}
+                                </View>
+                                <View style={styles.memberInfo}>
+                                  <Text style={styles.memberName}>
+                                    {member.profile.full_name || member.profile.username}
+                                  </Text>
+                                  <Text style={styles.memberUsername}>
+                                    @{member.profile.username}
+                                  </Text>
+                                  
+                                  {member.member_tags && member.member_tags.length > 0 && (
+                                    <View style={styles.tagsContainer}>
+                                      {member.member_tags.map((tag, index) => (
+                                        <View key={index} style={[styles.tag, tag === 'Dono' && styles.ownerTag]}>
+                                          <Text style={[styles.tagText, tag === 'Dono' && styles.ownerTagText]}>
+                                            {tag}
+                                          </Text>
+                                        </View>
+                                      ))}
+                                    </View>
+                                  )}
+                                  
+                                  {member.user_id === user?.id && !member.member_tags?.includes('Dono') && (
+                                    <Text style={styles.memberRole}>✓ Você</Text>
+                                  )}
+                                </View>
+                                <View style={styles.memberActions}>
+                                  <TouchableOpacity
+                                    style={styles.iconButton}
+                                    onPress={() => handleOpenTagsEditor(member)}
+                                  >
+                                    <MaterialCommunityIcons name="tag" size={26} color={Colors.primary} />
+                                  </TouchableOpacity>
+                                  
+                                  {member.user_id !== user?.id && (
+                                    <TouchableOpacity
+                                      style={styles.iconButton}
+                                      onPress={() => handleViewMemberHistory(member)}
+                                    >
+                                      <MaterialCommunityIcons 
+                                        name="chart-timeline-variant" 
+                                        size={26} 
+                                        color={Colors.primary} 
+                                      />
+                                    </TouchableOpacity>
+                                  )}
+                                  
+                                  {group.owner_id === user?.id && member.user_id !== user?.id && (
+                                    <TouchableOpacity
+                                      style={styles.iconButton}
+                                      onPress={() => handleRemoveMember(member, group.id)}
+                                    >
+                                      <Ionicons name="trash-outline" size={22} color={Colors.error} />
+                                    </TouchableOpacity>
+                                  )}
+                                </View>
+                              </View>
+
+                              {/* Tags Editor */}
+                              {showTagsForMember === member.id && (
+                                <View style={styles.tagsEditor}>
+                                  <Text style={styles.editorTitle}>Editar Tags</Text>
+                                  
+                                  <Text style={styles.sectionTitle}>Tags Predefinidas</Text>
+                                  <View style={styles.tagsGrid}>
+                                    {PREDEFINED_TAGS.map((tag) => (
+                                      <TouchableOpacity
+                                        key={tag}
+                                        style={[
+                                          styles.tagButton,
+                                          selectedTags.includes(tag) && styles.tagButtonSelected,
+                                        ]}
+                                        onPress={() => handleToggleTag(tag)}
+                                      >
+                                        <Text
+                                          style={[
+                                            styles.tagButtonText,
+                                            selectedTags.includes(tag) && styles.tagButtonTextSelected,
+                                          ]}
+                                        >
+                                          {tag}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    ))}
+                                  </View>
+
+                                  <Text style={styles.sectionTitle}>Tag Personalizada</Text>
+                                  <View style={styles.customTagRow}>
+                                    <TextInput
+                                      style={styles.customTagInput}
+                                      placeholder="Digite o nome da tag"
+                                      value={customTag}
+                                      onChangeText={setCustomTag}
+                                      maxLength={20}
+                                    />
+                                    <TouchableOpacity
+                                      style={styles.addTagButton}
+                                      onPress={handleAddCustomTag}
+                                    >
+                                      <Ionicons name="add" size={24} color="#fff" />
+                                    </TouchableOpacity>
+                                  </View>
+
+                                  {selectedTags.length > 0 && (
+                                    <>
+                                      <Text style={styles.sectionTitle}>Tags Selecionadas</Text>
+                                      <View style={styles.selectedTagsContainer}>
+                                        {selectedTags.map((tag, index) => (
+                                          <View key={index} style={styles.selectedTag}>
+                                            <Text style={styles.selectedTagText}>{tag}</Text>
+                                            {tag !== 'Dono' && (
+                                              <TouchableOpacity onPress={() => handleToggleTag(tag)}>
+                                                <Ionicons name="close-circle" size={18} color="#fff" />
+                                              </TouchableOpacity>
+                                            )}
+                                          </View>
+                                        ))}
+                                      </View>
+                                    </>
+                                  )}
+
+                                  <TouchableOpacity style={styles.saveButton} onPress={handleSaveTags}>
+                                    <Text style={styles.saveButtonText}>Salvar Tags</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              )}
+
+                              {/* History */}
+                              {showHistoryForMember === member.id && (
+                                <View style={styles.historySection}>
+                                  <Text style={styles.editorTitle}>
+                                    Histórico de {selectedMemberName}
+                                  </Text>
+                                  
+                                  {memberHistory.length === 0 ? (
+                                    <View style={styles.emptyHistory}>
+                                      <Ionicons name="document-outline" size={48} color={Colors.textLight} />
+                                      <Text style={styles.emptyHistoryText}>
+                                        Nenhuma verificação encontrada
                                       </Text>
                                     </View>
-                                    <View style={styles.predictionBarBackground}>
-                                      <View 
-                                        style={[
-                                          styles.predictionBar, 
-                                          { width: `${Math.min(parseFloat(percentage), 100)}%` as any, backgroundColor: barColor }
-                                        ]} 
-                                      />
-                                    </View>
-                                  </View>
-                                );
-                              })}
-                          </View>
-                        </View>
+                                  ) : (
+                                    <ScrollView style={styles.historyList} nestedScrollEnabled>
+                                      {memberHistory.map((checkup: any) => {
+                                        let predictions: any = {};
+                                        if (checkup.predictions) {
+                                          if (typeof checkup.predictions === 'string') {
+                                            try {
+                                              predictions = JSON.parse(checkup.predictions);
+                                            } catch (e) {
+                                              console.error('Erro ao parsear predictions:', e);
+                                            }
+                                          } else if (typeof checkup.predictions === 'object') {
+                                            predictions = checkup.predictions;
+                                          }
+                                        }
+
+                                        let symptoms = checkup.symptoms;
+                                        if (typeof symptoms === 'string') {
+                                          try {
+                                            symptoms = JSON.parse(symptoms);
+                                          } catch {
+                                            symptoms = [];
+                                          }
+                                        }
+                                        
+                                        const riskLevel = predictions.risk_level || 'low';
+                                        const diseasePredictions = predictions.disease_predictions || predictions;
+                                        
+                                        const riskColor = 
+                                          riskLevel === 'high' ? Colors.danger :
+                                          riskLevel === 'moderate' ? Colors.warning :
+                                          Colors.success;
+                                        
+                                        const riskLabel = 
+                                          riskLevel === 'high' ? 'Alto Risco' :
+                                          riskLevel === 'moderate' ? 'Risco Moderado' :
+                                          'Baixo Risco';
+
+                                        return (
+                                          <View key={checkup.id} style={styles.historyCard}>
+                                            <View style={styles.historyHeader}>
+                                              <View style={styles.historyDateContainer}>
+                                                <Ionicons name="calendar-outline" size={16} color={Colors.textSecondary} />
+                                                <Text style={styles.historyDate}>
+                                                  {formatDate(checkup.checkup_date)}
+                                                </Text>
+                                              </View>
+                                              <View style={[styles.riskBadge, { backgroundColor: riskColor + '20' }]}>
+                                                <Text style={[styles.riskBadgeText, { color: riskColor }]}>
+                                                  {riskLabel}
+                                                </Text>
+                                              </View>
+                                            </View>
+
+                                            {symptoms && Array.isArray(symptoms) && symptoms.length > 0 && (
+                                              <View style={styles.symptomsList}>
+                                                <Text style={styles.symptomsLabel}>Sintomas:</Text>
+                                                <View style={styles.symptomsContainer}>
+                                                  {symptoms.map((symptom: any, index: number) => (
+                                                    <View key={index} style={styles.symptomTag}>
+                                                      <Text style={styles.symptomTagText}>
+                                                        {symptom.symptom_name || symptom.symptom_key || symptom}
+                                                      </Text>
+                                                    </View>
+                                                  ))}
+                                                </View>
+                                              </View>
+                                            )}
+
+                                            {diseasePredictions && typeof diseasePredictions === 'object' && Object.keys(diseasePredictions).length > 0 && (
+                                              <View style={styles.predictionsContainer}>
+                                                <Text style={styles.predictionsLabel}>Prognóstico:</Text>
+                                                {Object.entries(diseasePredictions)
+                                                  .filter(([key]) => !['risk_level', 'explanation', 'recommendations'].includes(key))
+                                                  .sort((a: any, b: any) => b[1] - a[1])
+                                                  .slice(0, 5)
+                                                  .map(([disease, probability]: [string, any], index: number) => {
+                                                    const percentage = parseFloat(probability).toFixed(1);
+                                                    const probabilityValue = parseFloat(probability) / 100;
+                                                    const barColor = 
+                                                      probabilityValue > 0.7 ? Colors.danger :
+                                                      probabilityValue > 0.4 ? Colors.warning :
+                                                      Colors.success;
+                                                    
+                                                    return (
+                                                      <View key={index} style={styles.predictionItem}>
+                                                        <View style={styles.predictionInfo}>
+                                                          <Text style={styles.predictionDisease}>{disease}</Text>
+                                                          <Text style={[styles.predictionPercentage, { color: barColor }]}>
+                                                            {percentage}%
+                                                          </Text>
+                                                        </View>
+                                                        <View style={styles.predictionBarBackground}>
+                                                          <View 
+                                                            style={[
+                                                              styles.predictionBar, 
+                                                              { width: `${Math.min(parseFloat(percentage), 100)}%` as any, backgroundColor: barColor }
+                                                            ]} 
+                                                          />
+                                                        </View>
+                                                      </View>
+                                                    );
+                                                  })}
+                                              </View>
+                                            )}
+
+                                            {predictions.explanation && (
+                                              <View style={styles.analysisContainer}>
+                                                <Text style={styles.analysisText}>
+                                                  {predictions.explanation}
+                                                </Text>
+                                              </View>
+                                            )}
+
+                                            {checkup.notes && (
+                                              <View style={styles.notesContainer}>
+                                                <Text style={styles.notesText}>{checkup.notes}</Text>
+                                              </View>
+                                            )}
+                                          </View>
+                                        );
+                                      })}
+                                    </ScrollView>
+                                  )}
+                                </View>
+                              )}
+                            </View>
+                          ))}
+                        </>
                       )}
 
-                      {predictions.explanation && (
-                        <View style={styles.analysisContainer}>
-                          <Ionicons name="fitness-outline" size={16} color={Colors.primary} />
-                          <Text style={styles.analysisText} numberOfLines={3}>
-                            {predictions.explanation}
-                          </Text>
-                        </View>
-                      )}
-
-                      {checkup.notes && (
-                        <View style={styles.notesContainer}>
-                          <Ionicons name="document-text-outline" size={16} color={Colors.textSecondary} />
-                          <Text style={styles.historyNotes}>{checkup.notes}</Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Tags Modal */}
-      <Modal
-        visible={showTagsModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowTagsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, styles.largeModal]}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Editar Tags - {selectedMember?.profile.username}
-              </Text>
-              <TouchableOpacity onPress={() => {
-                setShowTagsModal(false);
-                // Reabre o modal de membros após fechar
-                if (selectedGroup) {
-                  setTimeout(() => {
-                    setShowMembersModal(true);
-                  }, 300);
-                }
-              }}>
-                <Ionicons name="close" size={28} color={Colors.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.tagsModalContent}>
-              {/* Tags predefinidas */}
-              <Text style={styles.sectionTitle}>Tags Predefinidas</Text>
-              <View style={styles.tagsGrid}>
-                {PREDEFINED_TAGS.map((tag) => (
-                  <TouchableOpacity
-                    key={tag}
-                    style={[
-                      styles.tagButton,
-                      selectedTags.includes(tag) && styles.tagButtonSelected,
-                    ]}
-                    onPress={() => handleToggleTag(tag)}
-                  >
-                    <Text
-                      style={[
-                        styles.tagButtonText,
-                        selectedTags.includes(tag) && styles.tagButtonTextSelected,
-                      ]}
-                    >
-                      {tag}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Tag customizada */}
-              <Text style={styles.sectionTitle}>Criar tag personalizada</Text>
-              <View style={styles.customTagRow}>
-                <TextInput
-                  style={[styles.input, styles.customTagInput]}
-                  placeholder="Digite o nome da tag"
-                  value={customTag}
-                  onChangeText={setCustomTag}
-                  maxLength={20}
-                />
-                <TouchableOpacity
-                  style={styles.addTagButton}
-                  onPress={handleAddCustomTag}
-                >
-                  <Ionicons name="add" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Tags selecionadas */}
-              {selectedTags.length > 0 && (
-                <>
-                  <Text style={styles.sectionTitle}>Tags selecionadas</Text>
-                  <View style={styles.selectedTagsContainer}>
-                    {selectedTags.map((tag, index) => (
-                      <View key={index} style={styles.selectedTag}>
-                        <Text style={styles.selectedTagText}>{tag}</Text>
-                        {tag !== 'Dono' && (
-                          <TouchableOpacity onPress={() => handleToggleTag(tag)}>
-                            <Ionicons
-                              name="close-circle"
-                              size={20}
-                              color={Colors.textWhite}
-                            />
+                      {/* Group Actions */}
+                      <View style={styles.groupActions}>
+                        {group.owner_id === user?.id ? (
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.dangerButton]}
+                            onPress={() => handleDeleteGroup(group)}
+                          >
+                            <Ionicons name="trash-outline" size={20} color="#fff" />
+                            <Text style={styles.actionButtonText}>Deletar Grupo</Text>
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.warningButton]}
+                            onPress={() => handleLeaveGroup(group)}
+                          >
+                            <Ionicons name="exit-outline" size={20} color="#fff" />
+                            <Text style={styles.actionButtonText}>Sair do Grupo</Text>
                           </TouchableOpacity>
                         )}
                       </View>
-                    ))}
-                  </View>
-                </>
-              )}
-            </ScrollView>
-
-            <TouchableOpacity
-              style={styles.modalButton}
-              onPress={handleSaveTags}
-            >
-              <Text style={styles.modalButtonText}>Salvar Tags</Text>
-            </TouchableOpacity>
-          </View>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
         </View>
-      </Modal>
+      </ScrollView>
     </View>
   );
 };
@@ -992,11 +813,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.accent,
   },
-  container: {
-    paddingTop: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1004,11 +820,14 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    backgroundColor: Colors.accent,
+  },
+  container: {
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   actionButtons: {
     flexDirection: 'row',
-    padding: 16,
+    padding: Spacing.md,
     gap: 12,
   },
   actionButton: {
@@ -1016,37 +835,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
     gap: 8,
   },
   primaryButton: {
     backgroundColor: Colors.primary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   secondaryButton: {
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3
+    borderWidth: 2,
+    borderColor: Colors.primary,
+  },
+  dangerButton: {
+    backgroundColor: Colors.error,
+  },
+  warningButton: {
+    backgroundColor: Colors.warning,
   },
   actionButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#fff',
   },
   secondaryButtonText: {
     color: Colors.primary,
   },
+  formCard: {
+    backgroundColor: '#fff',
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textDark,
+    marginBottom: Spacing.sm,
+  },
+  formDescription: {
+    fontSize: 14,
+    color: Colors.textLight,
+    marginBottom: Spacing.sm,
+  },
+  input: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    marginBottom: Spacing.sm,
+  },
+  submitButton: {
+    backgroundColor: Colors.primary,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.accentLight,
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    gap: 8,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '500',
+  },
   emptyState: {
     alignItems: 'center',
-    justifyContent: 'center',
     padding: 40,
     marginTop: 40,
   },
@@ -1063,47 +936,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  tutorialContainer: {
-    marginTop: 32,
-    width: '100%',
-    paddingHorizontal: 16,
-  },
-  tutorialStep: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    alignItems: 'flex-start',
-  },
-  stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  stepNumberText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  stepContent: {
-    flex: 1,
-  },
-  stepTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textDark,
-    marginBottom: 4,
-  },
-  stepDescription: {
-    fontSize: 14,
-    color: Colors.textLight,
-    lineHeight: 20,
-  },
   groupsList: {
-    padding: 16,
+    padding: Spacing.md,
     gap: 12,
+  },
+  groupWrapper: {
+    marginBottom: 8,
   },
   groupCard: {
     flexDirection: 'row',
@@ -1116,6 +954,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  groupCardExpanded: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   groupIcon: {
     width: 56,
@@ -1139,28 +981,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textLight,
   },
-  groupHint: {
-    fontSize: 16,
-    color: Colors.primary,
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.accentLight,
-    padding: 12,
-    borderRadius: 8,
-    marginHorizontal: 16,
-    marginBottom: Spacing.xs,
-    gap: 8,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
   ownerBadge: {
     marginTop: 6,
     alignSelf: 'flex-start',
@@ -1174,81 +994,21 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     fontWeight: '600',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  modalContentLarge: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    height: '90%',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  largeModal: {
-    maxHeight: '90%',
-    flex: 1,
-    marginTop: 'auto',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: Colors.textDark,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: Colors.textLight,
-    marginTop: 4,
-  },
-  modalDescription: {
-    fontSize: 14,
-    color: Colors.textLight,
-    marginBottom: 16,
-  },
-  input: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
+  expandedContent: {
+    backgroundColor: '#f9f9f9',
     padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  modalButton: {
-    backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  dangerButton: {
-    backgroundColor: Colors.error,
-  },
-  warningButton: {
-    backgroundColor: Colors.primary,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   inviteCodeBox: {
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: Colors.primary + '10',
+    padding: 12,
+    borderRadius: 8,
     marginBottom: 16,
     alignItems: 'center',
   },
@@ -1256,22 +1016,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textLight,
     marginBottom: 4,
-    textAlign: 'center',
   },
   inviteCodeText: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: Colors.primary,
     letterSpacing: 2,
-    textAlign: 'center',
-  },
-  membersList: {
-    flex: 1,
-    flexGrow: 1,
   },
   loadingContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 40,
   },
   loadingText: {
@@ -1279,30 +1032,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textLight,
   },
-  membersListTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.textDark,
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  emptyMembersList: {
+  emptyMembers: {
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 40,
   },
   emptyMembersText: {
     fontSize: 14,
     color: Colors.textLight,
     marginTop: 12,
-    textAlign: 'center',
+  },
+  membersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginBottom: 12,
   },
   memberCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderRadius: 8,
     marginBottom: 8,
   },
   memberAvatar: {
@@ -1337,177 +1087,6 @@ const styles = StyleSheet.create({
     color: Colors.primary,
     marginTop: 4,
   },
-  memberActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    padding: 8,
-  },
-  modalFooter: {
-    marginTop: 16,
-  },
-  historyList: {
-    flex: 1,
-  },
-  historyCard: {
-    backgroundColor: '#f9f9f9',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  historyDate: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textDark,
-  },
-  historySymptoms: {
-    fontSize: 14,
-    color: Colors.textLight,
-    marginBottom: 8,
-  },
-  historyNotes: {
-    fontSize: 13,
-    color: Colors.textLight,
-    fontStyle: 'italic',
-  },
-  emptyHistory: {
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyHistoryText: {
-    fontSize: 16,
-    color: Colors.textLight,
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  emptyHistorySubtext: {
-    fontSize: 14,
-    color: Colors.textLight,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  historyDateContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  riskBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  riskBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  symptomsList: {
-    marginTop: 12,
-  },
-  symptomsLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.textDark,
-    marginBottom: 8,
-  },
-  symptomsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  symptomTag: {
-    backgroundColor: Colors.primary + '15',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  symptomTagText: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  predictionsContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#f8f9ff',
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.primary,
-  },
-  predictionsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  predictionsLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.textDark,
-  },
-  predictionsListContainer: {
-    gap: 10,
-  },
-  predictionItem: {
-    gap: 4,
-  },
-  predictionInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  predictionDisease: {
-    fontSize: 13,
-    color: Colors.textDark,
-    fontWeight: '500',
-    flex: 1,
-  },
-  predictionPercentage: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  predictionBarBackground: {
-    height: 6,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  predictionBar: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  analysisContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 12,
-    padding: 10,
-    backgroundColor: Colors.primary + '10',
-    borderRadius: 8,
-  },
-  analysisText: {
-    flex: 1,
-    fontSize: 13,
-    color: Colors.textDark,
-    lineHeight: 18,
-  },
-  notesContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  // Estilos de Tags
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1519,8 +1098,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    marginRight: 4,
-    marginBottom: 4,
   },
   ownerTag: {
     backgroundColor: '#FFD700',
@@ -1533,17 +1110,32 @@ const styles = StyleSheet.create({
   ownerTagText: {
     color: '#B8860B',
   },
-  // Estilos do Modal de Tags
-  tagsModalContent: {
-    flex: 1,
-    marginBottom: 16,
+  memberActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  sectionTitle: {
+  iconButton: {
+    padding: 8,
+  },
+  tagsEditor: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  editorTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.textDark,
-    marginTop: 16,
     marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginTop: 12,
+    marginBottom: 8,
   },
   tagsGrid: {
     flexDirection: 'row',
@@ -1552,8 +1144,8 @@ const styles = StyleSheet.create({
   },
   tagButton: {
     backgroundColor: '#f5f5f5',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 2,
     borderColor: 'transparent',
@@ -1563,7 +1155,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   tagButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     color: Colors.textDark,
     fontWeight: '500',
   },
@@ -1578,13 +1170,16 @@ const styles = StyleSheet.create({
   },
   customTagInput: {
     flex: 1,
-    marginBottom: 0,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
   },
   addTagButton: {
     backgroundColor: Colors.primary,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1599,14 +1194,174 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingLeft: 12,
     paddingRight: 8,
-    paddingVertical: 8,
+    paddingVertical: 6,
     borderRadius: 20,
     gap: 6,
   },
   selectedTagText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#fff',
     fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: Colors.primary,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  historySection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 8,
+    maxHeight: 500,
+  },
+  historyList: {
+    maxHeight: 400,
+  },
+  emptyHistory: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyHistoryText: {
+    fontSize: 14,
+    color: Colors.textLight,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  historyCard: {
+    backgroundColor: '#f9f9f9',
+    padding: 14,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  historyDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  historyDate: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.textDark,
+  },
+  riskBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  riskBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  symptomsList: {
+    marginTop: 8,
+  },
+  symptomsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginBottom: 6,
+  },
+  symptomsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  symptomTag: {
+    backgroundColor: Colors.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  symptomTagText: {
+    fontSize: 11,
+    color: Colors.primary,
+    fontWeight: '500',
+  },
+  predictionsContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f8f9ff',
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.primary,
+  },
+  predictionsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.textDark,
+    marginBottom: 8,
+  },
+  predictionItem: {
+    marginBottom: 8,
+  },
+  predictionInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  predictionDisease: {
+    fontSize: 12,
+    color: Colors.textDark,
+    fontWeight: '500',
+    flex: 1,
+  },
+  predictionPercentage: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  predictionBarBackground: {
+    height: 5,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  predictionBar: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  analysisContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: Colors.primary + '10',
+    borderRadius: 6,
+  },
+  analysisText: {
+    fontSize: 12,
+    color: Colors.textDark,
+    lineHeight: 16,
+  },
+  notesContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  notesText: {
+    fontSize: 12,
+    color: Colors.textLight,
+    fontStyle: 'italic',
+  },
+  groupActions: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
   },
 });
 
