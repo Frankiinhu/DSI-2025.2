@@ -8,7 +8,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  FlatList,
   Switch,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -112,13 +111,13 @@ const MedicationsList: React.FC<MedicationsListProps> = ({
   }
 
   return (
-    <FlatList
-      data={medications}
-      renderItem={renderMedication}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={styles.list}
-      showsVerticalScrollIndicator={false}
-    />
+    <View style={styles.list}>
+      {medications.map((medication) => (
+        <View key={medication.id}>
+          {renderMedication({ item: medication })}
+        </View>
+      ))}
+    </View>
   );
 };
 
