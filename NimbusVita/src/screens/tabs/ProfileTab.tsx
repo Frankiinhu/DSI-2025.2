@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, TextInput, Modal, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FontAwesome6, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,10 +16,8 @@ const ProfileTab = () => {
   const { notify } = useNotifications();
   const [isEditMode, setIsEditMode] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [showGenderDialog, setShowGenderDialog] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [showLogoutDialog2, setShowLogoutDialog2] = useState(false);
-  const [showPhotoOptionsDialog, setShowPhotoOptionsDialog] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -29,6 +27,17 @@ const ProfileTab = () => {
     height: currentUser?.height || 0,
     weight: currentUser?.weight || 0
   });
+
+  // Update form when user data changes
+  useEffect(() => {
+    setEditForm({
+      fullName: currentUser?.full_name || '',
+      age: currentUser?.age || 0,
+      gender: currentUser?.gender || '',
+      height: currentUser?.height || 0,
+      weight: currentUser?.weight || 0
+    });
+  }, [currentUser]);
 
   const handleSaveProfile = async () => {
     if (!currentUser?.id) return;
@@ -45,6 +54,7 @@ const ProfileTab = () => {
       if (ok) {
         await refreshUser();
         setIsEditMode(false);
+        setHasChanges(false);
         notify('success', {
           params: {
             title: 'Sucesso',
@@ -69,33 +79,59 @@ const ProfileTab = () => {
     }
   };
 
+  const handleCancelEdit = () => {
+    if (hasChanges) {
+      Alert.alert(
+        'Descartar alterações?',
+        'Você tem alterações não salvas. Deseja descartá-las?',
+        [
+          { text: 'Continuar editando', style: 'cancel' },
+          {
+            text: 'Descartar',
+            style: 'destructive',
+            onPress: () => {
+              setEditForm({
+                fullName: currentUser?.full_name || '',
+                age: currentUser?.age || 0,
+                gender: currentUser?.gender || '',
+                height: currentUser?.height || 0,
+                weight: currentUser?.weight || 0
+              });
+              setIsEditMode(false);
+              setHasChanges(false);
+            }
+          }
+        ]
+      );
+    } else {
+      setIsEditMode(false);
+    }
+  };
+
+  const updateField = (field: keyof typeof editForm, value: any) => {
+    setEditForm(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+  };
+
   const handleAgeChange = (text: string) => {
     const age = parseInt(text);
     if (!text || (age >= 0 && age < 150)) {
-      setEditForm(prev => ({ ...prev, age: age || 0 }));
+      updateField('age', age || 0);
     }
   };
 
   const handleHeightChange = (text: string) => {
     const height = parseFloat(text);
     if (!text || (height >= 0 && height < 300)) {
-      setEditForm(prev => ({ ...prev, height: height || 0 }));
+      updateField('height', height || 0);
     }
   };
 
   const handleWeightChange = (text: string) => {
     const weight = parseFloat(text);
     if (!text || (weight >= 0 && weight < 500)) {
-      setEditForm(prev => ({ ...prev, weight: weight || 0 }));
+      updateField('weight', weight || 0);
     }
-  };
-
-  const handleEditGender = () => {
-    setShowGenderDialog(true);
-  };
-
-  const handleLogout = () => {
-    setShowLogoutDialog(true);
   };
 
   const requestPermissions = async () => {
@@ -200,7 +236,29 @@ const ProfileTab = () => {
   };
 
   const handleChangeProfilePicture = () => {
-    setShowPhotoOptionsDialog(true);
+    Alert.alert(
+      'Foto de Perfil',
+      'Escolha uma opção:',
+      [
+        {
+          text: 'Câmera',
+          onPress: () => handlePickImage('camera'),
+        },
+        {
+          text: 'Galeria',
+          onPress: () => handlePickImage('gallery'),
+        },
+        ...(currentUser?.avatar_url ? [{
+          text: 'Remover Foto',
+          onPress: () => handleRemoveProfilePicture(),
+          style: 'destructive' as const,
+        }] : []),
+        {
+          text: 'Cancelar',
+          style: 'cancel' as const,
+        },
+      ]
+    );
   };
 
   const handleRemoveProfilePicture = async () => {
@@ -270,54 +328,154 @@ const ProfileTab = () => {
                   <MaterialIcons name="camera-alt" size={20} color={Colors.textWhite} />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.avatarName}>{currentUser?.full_name || currentUser?.username || 'Usuário'}</Text>
+              <Text style={styles.avatarName}>{editForm.fullName || currentUser?.username || 'Usuário'}</Text>
             </View>
 
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Informações Pessoais</Text>
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => setIsEditMode(true)}
-              >
-                <FontAwesome6 name="edit" size={30} color={Colors.primary} />
-              </TouchableOpacity>
+              {!isEditMode ? (
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => setIsEditMode(true)}
+                >
+                  <FontAwesome6 name="edit" size={30} color={Colors.primary} />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.editActions}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={handleCancelEdit}
+                  >
+                    <MaterialIcons name="close" size={24} color={Colors.danger} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.saveIconButton}
+                    onPress={handleSaveProfile}
+                  >
+                    <MaterialIcons name="check" size={24} color={Colors.success} />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
             
-            <View style={styles.infoRow}>
+            {/* Nome Completo */}
+            <View style={styles.editableRow}>
               <Text style={styles.infoLabel}>Nome Completo:</Text>
-              <Text style={styles.infoValue}>{currentUser?.full_name || '-'}</Text>
+              {isEditMode ? (
+                <TextInput
+                  style={styles.inlineInput}
+                  value={editForm.fullName}
+                  onChangeText={(text) => updateField('fullName', text)}
+                  placeholder="Seu nome completo"
+                  placeholderTextColor={ThemeColors.text.muted}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{currentUser?.full_name || '-'}</Text>
+              )}
             </View>
             
+            {/* Nome de usuário (read-only) */}
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Nome de usuário:</Text>
               <Text style={styles.infoValue}>{currentUser?.username || '-'}</Text>
             </View>
             
+            {/* Email (read-only) */}
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Email:</Text>
               <Text style={styles.infoValue}>{currentUser?.email || '-'}</Text>
             </View>
             
-            <View style={styles.infoRow}>
+            {/* Idade */}
+            <View style={styles.editableRow}>
               <Text style={styles.infoLabel}>Idade:</Text>
-              <Text style={styles.infoValue}>{currentUser?.age || '-'}</Text>
+              {isEditMode ? (
+                <TextInput
+                  style={[styles.inlineInput, styles.numberInput]}
+                  value={String(editForm.age || '')}
+                  onChangeText={handleAgeChange}
+                  placeholder="Idade"
+                  placeholderTextColor={ThemeColors.text.muted}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{currentUser?.age || '-'}</Text>
+              )}
             </View>
             
-            <View style={styles.infoRow}>
+            {/* Gênero */}
+            <View style={styles.editableRow}>
               <Text style={styles.infoLabel}>Gênero:</Text>
-              <Text style={styles.infoValue}>{currentUser?.gender || '-'}</Text>
+              {isEditMode ? (
+                <View style={styles.genderSelectionContainer}>
+                  <TouchableOpacity
+                    style={[styles.genderChip, editForm.gender === 'masculino' && styles.genderChipSelected]}
+                    onPress={() => updateField('gender', 'masculino')}
+                  >
+                    <Text style={[styles.genderChipText, editForm.gender === 'masculino' && styles.genderChipTextSelected]}>
+                      Masculino
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.genderChip, editForm.gender === 'feminino' && styles.genderChipSelected]}
+                    onPress={() => updateField('gender', 'feminino')}
+                  >
+                    <Text style={[styles.genderChipText, editForm.gender === 'feminino' && styles.genderChipTextSelected]}>
+                      Feminino
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.genderChip, editForm.gender === 'outro' && styles.genderChipSelected]}
+                    onPress={() => updateField('gender', 'outro')}
+                  >
+                    <Text style={[styles.genderChipText, editForm.gender === 'outro' && styles.genderChipTextSelected]}>
+                      Outro
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Text style={styles.infoValue}>{currentUser?.gender || '-'}</Text>
+              )}
             </View>
 
-            <View style={styles.infoRow}>
+            {/* Altura */}
+            <View style={styles.editableRow}>
               <Text style={styles.infoLabel}>Altura (cm):</Text>
-              <Text style={styles.infoValue}>{currentUser?.height ? `${currentUser.height} cm` : '-'}</Text>
+              {isEditMode ? (
+                <TextInput
+                  style={[styles.inlineInput, styles.numberInput]}
+                  value={String(editForm.height || '')}
+                  onChangeText={handleHeightChange}
+                  placeholder="Altura"
+                  placeholderTextColor={ThemeColors.text.muted}
+                  keyboardType="decimal-pad"
+                  maxLength={6}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{currentUser?.height ? `${currentUser.height} cm` : '-'}</Text>
+              )}
             </View>
 
-            <View style={styles.infoRow}>
+            {/* Peso */}
+            <View style={styles.editableRow}>
               <Text style={styles.infoLabel}>Peso (kg):</Text>
-              <Text style={styles.infoValue}>{currentUser?.weight ? `${currentUser.weight} kg` : '-'}</Text>
+              {isEditMode ? (
+                <TextInput
+                  style={[styles.inlineInput, styles.numberInput]}
+                  value={String(editForm.weight || '')}
+                  onChangeText={handleWeightChange}
+                  placeholder="Peso"
+                  placeholderTextColor={ThemeColors.text.muted}
+                  keyboardType="decimal-pad"
+                  maxLength={6}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{currentUser?.weight ? `${currentUser.weight} kg` : '-'}</Text>
+              )}
             </View>
             
+            {/* Data de cadastro (read-only) */}
             <View style={[styles.infoRow, styles.lastRow]}>
               <Text style={styles.infoLabel}>Cadastrado em:</Text>
               <Text style={styles.infoValue}>
@@ -331,7 +489,7 @@ const ProfileTab = () => {
             {/* Botão de Sair */}
             <TouchableOpacity 
               style={styles.logoutButton} 
-              onPress={() => setShowLogoutDialog2(true)}
+              onPress={() => setShowLogoutDialog(true)}
             >
               <MaterialIcons name="logout" size={24} color={Colors.textWhite} />
               <Text style={styles.logoutButtonText}>
@@ -342,7 +500,7 @@ const ProfileTab = () => {
         </View>
       </ScrollView>
 
-      {/* Confirm Dialogs */}
+      {/* Confirm Logout Dialog */}
       <ConfirmDialog
         visible={showLogoutDialog}
         title="Confirmar Logout"
@@ -353,229 +511,6 @@ const ProfileTab = () => {
         onConfirm={signOut}
         onCancel={() => setShowLogoutDialog(false)}
       />
-
-      <ConfirmDialog
-        visible={showLogoutDialog2}
-        title="Confirmação"
-        message="Tem certeza que deseja sair da sua conta?"
-        confirmText="Sair"
-        cancelText="Cancelar"
-        confirmColor={ThemeColors.interactive.danger}
-        onConfirm={signOut}
-        onCancel={() => setShowLogoutDialog2(false)}
-      />
-
-      {/* Gender Selection Modal */}
-      <Modal
-        visible={showGenderDialog}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowGenderDialog(false)}
-      >
-        <View style={styles.genderDialogOverlay}>
-          <View style={styles.genderDialog}>
-            <Text style={styles.genderDialogTitle}>Selecionar Gênero</Text>
-            <Text style={styles.genderDialogSubtitle}>Escolha seu gênero:</Text>
-            
-            <TouchableOpacity
-              style={styles.genderOptionButton}
-              onPress={() => {
-                setEditForm(prev => ({ ...prev, gender: 'masculino' }));
-                setShowGenderDialog(false);
-              }}
-            >
-              <Text style={styles.genderOptionText}>Masculino</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.genderOptionButton}
-              onPress={() => {
-                setEditForm(prev => ({ ...prev, gender: 'feminino' }));
-                setShowGenderDialog(false);
-              }}
-            >
-              <Text style={styles.genderOptionText}>Feminino</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.genderOptionButton}
-              onPress={() => {
-                setEditForm(prev => ({ ...prev, gender: 'outro' }));
-                setShowGenderDialog(false);
-              }}
-            >
-              <Text style={styles.genderOptionText}>Outro</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.genderOptionButton, styles.genderCancelButton]}
-              onPress={() => setShowGenderDialog(false)}
-            >
-              <Text style={styles.genderCancelText}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Photo Options Modal */}
-      <Modal
-        visible={showPhotoOptionsDialog}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPhotoOptionsDialog(false)}
-      >
-        <View style={styles.genderDialogOverlay}>
-          <View style={styles.genderDialog}>
-            <Text style={styles.genderDialogTitle}>Foto de Perfil</Text>
-            <Text style={styles.genderDialogSubtitle}>Escolha uma opção:</Text>
-            
-            <TouchableOpacity
-              style={styles.genderOptionButton}
-              onPress={() => {
-                setShowPhotoOptionsDialog(false);
-                handlePickImage('camera');
-              }}
-            >
-              <View style={styles.photoOptionContent}>
-                <MaterialIcons name="camera-alt" size={24} color={ThemeColors.text.primary} />
-                <Text style={styles.genderOptionText}>Câmera</Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.genderOptionButton}
-              onPress={() => {
-                setShowPhotoOptionsDialog(false);
-                handlePickImage('gallery');
-              }}
-            >
-              <View style={styles.photoOptionContent}>
-                <MaterialIcons name="photo-library" size={24} color={ThemeColors.text.primary} />
-                <Text style={styles.genderOptionText}>Galeria</Text>
-              </View>
-            </TouchableOpacity>
-
-            {currentUser?.avatar_url && (
-              <TouchableOpacity
-                style={[styles.genderOptionButton, styles.deletePhotoButton]}
-                onPress={() => {
-                  setShowPhotoOptionsDialog(false);
-                  handleRemoveProfilePicture();
-                }}
-              >
-                <View style={styles.photoOptionContent}>
-                  <MaterialIcons name="delete" size={24} color={Colors.danger} />
-                  <Text style={[styles.genderOptionText, styles.deletePhotoText]}>Remover Foto</Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={[styles.genderOptionButton, styles.genderCancelButton]}
-              onPress={() => setShowPhotoOptionsDialog(false)}
-            >
-              <Text style={styles.genderCancelText}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Edit Profile Modal */}
-      <Modal
-        visible={isEditMode}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setIsEditMode(false)}
-      >
-        <View style={styles.modalContainer}>
-          <SafeAreaView style={styles.modalContentWrapper}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Editar Perfil</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsEditMode(false)}
-              >
-                <MaterialIcons name="close" size={28} color={Colors.textDark} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView 
-              style={styles.modalContent}
-              showsVerticalScrollIndicator={false}
-            >
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Nome Completo</Text>
-              <TextInput
-                style={styles.textInput}
-                value={editForm.fullName}
-                onChangeText={(text) => setEditForm(prev => ({ ...prev, fullName: text }))}
-                placeholder="Seu nome completo"
-                placeholderTextColor={ThemeColors.text.muted}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Idade</Text>
-              <TextInput
-                style={styles.textInput}
-                value={String(editForm.age)}
-                onChangeText={handleAgeChange}
-                placeholder="Sua idade"
-                placeholderTextColor={ThemeColors.text.muted}
-                keyboardType="number-pad"
-                maxLength={3}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Gênero</Text>
-              <TouchableOpacity
-                style={styles.genderButton}
-                onPress={handleEditGender}
-              >
-                <Text style={styles.genderButtonText}>
-                  {editForm.gender || 'Selecionar gênero'}
-                </Text>
-                <MaterialIcons name="arrow-drop-down" size={24} color={ThemeColors.text.primary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Altura (cm)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={String(editForm.height || '')}
-                onChangeText={handleHeightChange}
-                placeholder="Sua altura em centímetros"
-                placeholderTextColor={ThemeColors.text.muted}
-                keyboardType="decimal-pad"
-                maxLength={6}
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Peso (kg)</Text>
-              <TextInput
-                style={styles.textInput}
-                value={String(editForm.weight || '')}
-                onChangeText={handleWeightChange}
-                placeholder="Seu peso em quilos"
-                placeholderTextColor={ThemeColors.text.muted}
-                keyboardType="decimal-pad"
-                maxLength={6}
-              />
-            </View>
-
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSaveProfile}
-            >
-              <Text style={styles.saveButtonText}>Salvar Alterações</Text>
-            </TouchableOpacity>
-          </ScrollView>
-          </SafeAreaView>
-        </View>
-      </Modal>
     </View>
   );
 };
@@ -667,6 +602,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.surfaceDark,
   },
+  editableRow: {
+    paddingVertical: Spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.surfaceDark,
+  },
   lastRow: {
     borderBottomWidth: 0,
     marginBottom: -Spacing.sm,
@@ -675,13 +615,12 @@ const styles = StyleSheet.create({
     ...Typography.body,
     fontSize: 14,
     color: Colors.textTertiary,
-    flex: 1.5,
+    marginBottom: Spacing.xs,
   },
   infoValue: {
     ...Typography.body,
     color: Colors.textPrimary,
-    flex: 1.5,
-    textAlign: 'right',
+    fontSize: 16,
   },
   editButton: {
     padding: Spacing.xs,
@@ -692,6 +631,68 @@ const styles = StyleSheet.create({
     marginBottom: -Spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  cancelButton: {
+    padding: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ThemeColors.surface.secondary,
+  },
+  saveIconButton: {
+    padding: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ThemeColors.surface.secondary,
+  },
+  inlineInput: {
+    backgroundColor: ThemeColors.background.primary,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    fontSize: 16,
+    color: Colors.textPrimary,
+    borderWidth: 2,
+    borderColor: ThemeColors.interactive.primary,
+  },
+  numberInput: {
+    maxWidth: 100,
+  },
+  genderSelectionContainer: {
+    flexDirection: 'row',
+    gap: Spacing.xs,
+    flexWrap: 'wrap',
+    marginTop: Spacing.xs,
+  },
+  genderChip: {
+    backgroundColor: ThemeColors.surface.secondary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 2,
+    borderColor: ThemeColors.border.default,
+  },
+  genderChipSelected: {
+    backgroundColor: ThemeColors.interactive.primary,
+    borderColor: ThemeColors.interactive.primary,
+  },
+  genderChipText: {
+    ...Typography.body,
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+  },
+  genderChipTextSelected: {
+    color: Colors.textWhite,
+    fontWeight: '600',
   },
   logoutButton: {
     flexDirection: 'row',
@@ -707,141 +708,6 @@ const styles = StyleSheet.create({
     ...Typography.button,
     color: Colors.textWhite,
     fontWeight: '600',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContentWrapper: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '90%',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: Colors.textDark,
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalContent: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: Colors.textLight,
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  textInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: Colors.textDark,
-  },
-  genderButton: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  genderButtonText: {
-    fontSize: 16,
-    color: Colors.textDark,
-  },
-  saveButton: {
-    backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 20,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  genderDialogOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Spacing.xl,
-  },
-  genderDialog: {
-    backgroundColor: ThemeColors.surface.primary,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.xl,
-    width: '100%',
-    maxWidth: 400,
-  },
-  genderDialogTitle: {
-    ...Typography.h3,
-    color: ThemeColors.text.primary,
-    marginBottom: Spacing.sm,
-  },
-  genderDialogSubtitle: {
-    ...Typography.body,
-    color: ThemeColors.text.secondary,
-    marginBottom: Spacing.lg,
-  },
-  genderOptionButton: {
-    backgroundColor: ThemeColors.background.primary,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.base,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: ThemeColors.border.default,
-  },
-  genderOptionText: {
-    ...Typography.button,
-    color: ThemeColors.text.primary,
-    textAlign: 'center',
-  },
-  genderCancelButton: {
-    backgroundColor: ThemeColors.surface.secondary,
-    marginTop: Spacing.md,
-  },
-  genderCancelText: {
-    ...Typography.button,
-    color: ThemeColors.text.secondary,
-    textAlign: 'center',
-  },
-  photoOptionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.sm,
-  },
-  deletePhotoButton: {
-    borderColor: Colors.danger,
-    borderWidth: 1,
-  },
-  deletePhotoText: {
-    color: Colors.danger,
   },
 });
 
