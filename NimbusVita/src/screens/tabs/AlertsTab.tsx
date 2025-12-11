@@ -169,10 +169,8 @@ const AlertsTab: React.FC = () => {
     <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          <AlertCard />
-
-          {/* Medications Section - Sem divisória */}
-          <View style={styles.medicationsSection}>
+          {/* Container de Medicações no Topo */}
+          <View style={styles.medicationsContainer}>
             <View style={styles.medicationsHeader}>
               <MaterialCommunityIcons name="pill" size={24} color={Colors.primary} />
               <Text style={styles.medicationsTitle}>Minhas Medicações</Text>
@@ -267,6 +265,11 @@ const AlertsTab: React.FC = () => {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Alertas Preventivos por Localização */}
+          <View style={styles.alertsSection}>
+            <AlertCard />
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -287,6 +290,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
     marginBottom: Spacing.md,
     backgroundColor: Colors.accent,
+  },
+  medicationsContainer: {
+    ...ComponentStyles.card,
+    marginBottom: Spacing.lg,
+    backgroundColor: Colors.background,
+  },
+  alertsSection: {
+    marginTop: Spacing.md,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -346,10 +357,6 @@ const styles = StyleSheet.create({
   },
   emptyStateSubtext: {
     ...ComponentStyles.emptyStateSubtext,
-  },
-  medicationsSection: {
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.xl,
   },
   inlineSection: {
     marginBottom: Spacing.md,
