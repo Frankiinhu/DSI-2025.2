@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, Touchable
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useAuth } from '../../contexts/AuthContext';
 import WeatherCard from '../../components/WeatherCard';
 import StatusCard from '../../components/StatusCard';
@@ -52,8 +53,10 @@ const HomeTab: React.FC = () => {
   });
   const [loadingWeather, setLoadingWeather] = useState<boolean>(false);
   const [weatherSource, setWeatherSource] = useState<'api' | 'simulado'>('simulado');
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number; city: string } | null>(null);
+  const [loadingLocation, setLoadingLocation] = useState<boolean>(false);
   const [statusData, setStatusData] = useState<StatusData>({
-    location: 'Recife-PE, Brasil',
+    location: 'Obtendo localização...',
     riskLevel: 'Moderado',
     riskPercentage: 60,
     description: 'Conectando ao serviço meteorológico...',
@@ -315,12 +318,59 @@ const HomeTab: React.FC = () => {
                      riskPercentage < 60 ? 'Moderado' : 'Alto';
 
     setStatusData({
-      location: 'Recife-PE, Brasil',
+      location: userLocation?.city || 'Localização desconhecida',
       riskLevel,
       riskPercentage,
       description: generateStatusDescription(data),
       lastUpdate: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     });
+  };
+
+  // Obtém localização GPS do usuário
+  const getUserLocation = async () => {
+    setLoadingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('⚠️ Permissão de localização negada');
+        setUserLocation({ latitude: -8.0476, longitude: -34.877, city: 'Recife-PE, Brasil' });
+        setLoadingLocation(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      // Reverter geocodificação para obter nome da cidade
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+
+      let cityName = 'Localização desconhecida';
+      if (reverseGeocode && reverseGeocode.length > 0) {
+        const address = reverseGeocode[0];
+        const city = address.city || address.subregion || address.region;
+        const state = address.region || address.isoCountryCode;
+        const country = address.country || 'Brasil';
+        cityName = `${city || 'Cidade'}${state ? `-${state}` : ''}, ${country}`;
+      }
+
+      setUserLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        city: cityName,
+      });
+
+      if (__DEV__) console.log('📍 Localização obtida:', cityName, location.coords);
+    } catch (error) {
+      console.error('❌ Erro ao obter localização:', error);
+      // Fallback para Recife se falhar
+      setUserLocation({ latitude: -8.0476, longitude: -34.877, city: 'Recife-PE, Brasil' });
+    } finally {
+      setLoadingLocation(false);
+    }
   };
 
   // Carrega localizações ao montar
@@ -330,8 +380,28 @@ const HomeTab: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
+      // Primeiro obter localização
+      await getUserLocation();
+    };
+    load();
+    // Atualizar relógio a cada minuto (não precisa de precisão de segundos)
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // 60 segundos
+    
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
+
+  // Carrega clima quando a localização estiver disponível
+  useEffect(() => {
+    const loadWeatherForLocation = async () => {
+      if (!userLocation) return;
+
       setLoadingWeather(true);
       try {
+        // Tentar carregar cache primeiro
         const cached = await loadWeatherCache();
         if (cached) {
           const cachedWeatherData = transformWeatherData(cached);
@@ -340,14 +410,18 @@ const HomeTab: React.FC = () => {
           updateStatus(cachedWeatherData);
         }
 
-        const real = await getCurrentWeather('Recife', 'BR');
+        // Buscar dados em tempo real usando coordenadas GPS
+        const real = await getWeatherByCoordinates(
+          userLocation.latitude,
+          userLocation.longitude
+        );
         const newWeatherData = transformWeatherData(real);
         setWeatherData(newWeatherData);
         setWeatherSource('api');
         updateStatus(newWeatherData);
         await saveWeatherCache(real);
       } catch (e) {
-        console.warn('getCurrentWeather: falhou, usando dados simulados', e);
+        console.warn('Erro ao carregar clima por GPS, usando dados simulados', e);
         const simulatedData = generateRandomWeatherData();
         setWeatherData(simulatedData);
         updateStatus(simulatedData);
@@ -356,17 +430,21 @@ const HomeTab: React.FC = () => {
         setLoadingWeather(false);
       }
     };
-    load();
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+
+    loadWeatherForLocation();
+  }, [userLocation]);
 
   const reloadWeather = async () => {
     setLoadingWeather(true);
     try {
-      const real = await getCurrentWeather('Recife', 'BR');
+      if (!userLocation) {
+        throw new Error('Localização não disponível');
+      }
+
+      const real = await getWeatherByCoordinates(
+        userLocation.latitude,
+        userLocation.longitude
+      );
       const newWeatherData = transformWeatherData(real);
       setWeatherData(newWeatherData);
       setWeatherSource('api');

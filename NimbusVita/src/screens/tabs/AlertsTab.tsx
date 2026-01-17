@@ -3,16 +3,18 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ToastAndroid, Pla
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AlertCard from '../../components/AlertCard';
-import MedicationsManager from '../../components/MedicationsManager';
+import MedicationsList from '../../components/MedicationsList';
+import MedicationForm from '../../components/MedicationForm';
 import { Colors, Typography, Spacing, ComponentStyles, BorderRadius, Shadows } from '../../styles';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMedications } from '../../services/supabase/medication.service';
-import type { Medication } from '../../types/medication.types';
+import { getMedications, createMedication, updateMedication, deleteMedication, toggleMedicationStatus } from '../../services/supabase/medication.service';
+import type { Medication, CreateMedicationDTO } from '../../types/medication.types';
 
 const AlertsTab: React.FC = () => {
   const { user } = useAuth();
   const [medications, setMedications] = useState<Medication[]>([]);
-  const [showMedicationsModal, setShowMedicationsModal] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<Medication | undefined>();
   const [loadingMedications, setLoadingMedications] = useState(false);
 
   // Carrega medicações
@@ -80,17 +82,95 @@ const AlertsTab: React.FC = () => {
 
   const activeMedications = medications.filter(m => m.is_active);
 
+  // Handlers para medicações
+  const handleAdd = () => {
+    setEditingMedication(undefined);
+    setShowForm(true);
+  };
+
+  const handleEdit = (medication: Medication) => {
+    setEditingMedication(medication);
+    setShowForm(true);
+  };
+
+  const handleCancelForm = () => {
+    setShowForm(false);
+    setEditingMedication(undefined);
+  };
+
+  const handleSubmit = async (data: CreateMedicationDTO) => {
+    if (!user?.id) return;
+
+    setLoadingMedications(true);
+    try {
+      let result;
+      if (editingMedication) {
+        result = await updateMedication(editingMedication.id, user.id, data);
+      } else {
+        result = await createMedication(user.id, data);
+      }
+
+      if (result.ok) {
+        RNAlert.alert('Sucesso', result.message);
+        setShowForm(false);
+        setEditingMedication(undefined);
+        await loadMedications();
+      } else {
+        RNAlert.alert('Erro', result.message);
+      }
+    } finally {
+      setLoadingMedications(false);
+    }
+  };
+
+  const handleDelete = (medication: Medication) => {
+    if (!user?.id) return;
+
+    RNAlert.alert(
+      'Confirmar Exclusão',
+      `Deseja remover "${medication.name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            setLoadingMedications(true);
+            const result = await deleteMedication(medication.id, user.id);
+            setLoadingMedications(false);
+
+            if (result.ok) {
+              RNAlert.alert('Sucesso', result.message);
+              await loadMedications();
+            } else {
+              RNAlert.alert('Erro', result.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleToggle = async (medication: Medication) => {
+    if (!user?.id) return;
+
+    setLoadingMedications(true);
+    const result = await toggleMedicationStatus(medication.id, user.id, !medication.is_active);
+    setLoadingMedications(false);
+
+    if (result.ok) {
+      await loadMedications();
+    } else {
+      RNAlert.alert('Erro', result.message);
+    }
+  };
+
   return (
     <View style={styles.safeArea}>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.container}>
-          <AlertCard />
-
-          {/* Divider */}
-          <View style={styles.divider} />
-
-          {/* Medications Section */}
-          <View style={styles.medicationsSection}>
+          {/* Container de Medicações no Topo */}
+          <View style={styles.medicationsContainer}>
             <View style={styles.medicationsHeader}>
               <MaterialCommunityIcons name="pill" size={24} color={Colors.primary} />
               <Text style={styles.medicationsTitle}>Minhas Medicações</Text>
@@ -148,29 +228,50 @@ const AlertsTab: React.FC = () => {
               </View>
             )}
 
-            {/* Manage Button */}
-            <TouchableOpacity
-              style={styles.manageButton}
-              onPress={() => setShowMedicationsModal(true)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="add-circle" size={20} color={Colors.textWhite} />
-              <Text style={styles.manageButtonText}>
-                {medications.length === 0 ? 'Adicionar Medicação' : 'Gerenciar Medicações'}
-              </Text>
-            </TouchableOpacity>
+            {/* Formulário de Adição/Edição Inline */}
+            {showForm && (
+              <View style={styles.inlineSection}>
+                <MedicationForm
+                  medication={editingMedication}
+                  onSubmit={handleSubmit}
+                  onCancel={handleCancelForm}
+                />
+              </View>
+            )}
+
+            {/* Lista de Medicações */}
+            {!showForm && medications.length > 0 && (
+              <View style={styles.inlineSection}>
+                <MedicationsList
+                  medications={medications}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onToggleStatus={(med, isActive) => handleToggle(med)}
+                />
+              </View>
+            )}
+
+            {/* Botão Adicionar */}
+            {!showForm && (
+              <TouchableOpacity
+                style={styles.manageButton}
+                onPress={handleAdd}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="add-circle" size={20} color={Colors.textWhite} />
+                <Text style={styles.manageButtonText}>
+                  {medications.length === 0 ? 'Adicionar Medicação' : 'Adicionar Nova Medicação'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Alertas Preventivos por Localização */}
+          <View style={styles.alertsSection}>
+            <AlertCard />
           </View>
         </View>
       </ScrollView>
-
-      {/* Medications Manager Modal */}
-      <MedicationsManager
-        visible={showMedicationsModal}
-        onClose={() => setShowMedicationsModal(false)}
-        userId={user?.id || ''}
-        medications={medications}
-        onRefresh={loadMedications}
-      />
     </View>
   );
 };
@@ -189,6 +290,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xl,
     marginBottom: Spacing.md,
     backgroundColor: Colors.accent,
+  },
+  medicationsContainer: {
+    ...ComponentStyles.card,
+    marginBottom: Spacing.lg,
+    backgroundColor: Colors.background,
+  },
+  alertsSection: {
+    marginTop: Spacing.md,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -249,13 +358,8 @@ const styles = StyleSheet.create({
   emptyStateSubtext: {
     ...ComponentStyles.emptyStateSubtext,
   },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginVertical: Spacing.xl,
-  },
-  medicationsSection: {
-    marginBottom: Spacing.xl,
+  inlineSection: {
+    marginBottom: Spacing.md,
   },
   medicationsHeader: {
     flexDirection: 'row',
