@@ -1,315 +1,146 @@
-# NimbusVita - Aplicativo de Saúde Preventiva
+# NimbusVita
 
-![NimbusVita Logo](./NimbusVita/assets/logo.png)
+Mobile health monitoring application that uses machine learning to predict disease risks based on symptoms and weather conditions.
 
-## 📱 Sobre o Projeto
+## Overview
 
-**NimbusVita** é um aplicativo mobile de saúde preventiva que correlaciona sintomas clínicos com condições climáticas para prever riscos de doenças. Utilizando React Native/Expo e Supabase, oferece uma experiência completa de monitoramento de saúde.
+NimbusVita is a React Native/Expo application that combines symptom tracking with real-time weather data to provide health risk assessments. The app uses a FastAPI ML backend with a trained classifier to predict potential health conditions based on user-reported symptoms and environmental factors.
 
-### ✨ Funcionalidades Principais
+**⚠️ Educational Project:** This is a prototype for educational purposes. Predictions are not medical advice and should not replace professional healthcare consultation.
 
-- 🔐 **Autenticação Segura** via Supabase Auth
-- 🩺 **Verificador de Sintomas** com algoritmo de predição inteligente
-- ☁️ **Monitoramento Climático** em tempo real
-- 📊 **Histórico Completo** de verificações
-- 📈 **Estatísticas e Insights** de saúde
-- 🔔 **Alertas Inteligentes** baseados em padrões
-- 🌐 **Sincronização em Nuvem** com Supabase
-- 📱 **Suporte iOS e Android**
+## Key Features
 
----
+- **Symptom Checker**: Track and report symptoms with severity levels
+- **ML-Based Predictions**: Disease risk assessment using trained classifier
+- **Weather Integration**: Real-time weather data correlation with symptoms
+- **Health History**: Complete symptom check-up history tracking
+- **Family Monitoring**: Monitor health status of family members
+- **Location Tracking**: Map-based health location monitoring
+- **Smart Alerts**: Automated health risk notifications
+- **User Authentication**: Secure login with Supabase
 
-## 🚀 Início Rápido
+## Tech Stack
 
-### Pré-requisitos
+### Frontend
+- React Native 0.81.4 with Expo SDK 54
+- TypeScript 5.9.2
+- React Navigation 7.x
+- Supabase Client 2.39.0
 
-- Node.js >= 16.x
-- npm ou yarn
-- Expo CLI
-- Conta no Supabase (gratuita)
+### Backend
+- Supabase (PostgreSQL, Auth, Realtime)
+- FastAPI ML service (Python)
+- Scikit-learn classifier (joblib)
 
-### Instalação
+### Key Dependencies
+- `@react-navigation/native` - Navigation
+- `@supabase/supabase-js` - Backend integration
+- `expo-location` - GPS services
+- `react-native-maps` - Map visualization
+- `lottie-react-native` - Animations
 
-1. **Clone o repositório**
-   ```bash
-   git clone https://github.com/Frankiinhu/DSI-2025.2.git
-   cd NimbusVita
-   ```
-
-2. **Execute o script de setup**
-   
-   **Windows (PowerShell):**
-   ```powershell
-   .\setup.ps1
-   ```
-   
-   **Mac/Linux:**
-   ```bash
-   chmod +x setup.sh
-   ./setup.sh
-   ```
-
-3. **Configure o Supabase**
-   
-   a. Crie um projeto em [supabase.com](https://supabase.com)
-   
-   b. Copie suas credenciais para `.env`:
-   ```env
-   EXPO_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=sua-anon-key-aqui
-   ```
-   
-   c. Execute o schema SQL no Supabase SQL Editor:
-   - Abra o SQL Editor no dashboard do Supabase
-   - Cole o conteúdo de `supabase_schema.sql`
-   - Execute o script
-
-4. **Inicie o desenvolvimento**
-   ```bash
-   npm start
-   ```
-
-5. **Execute no dispositivo**
-   - Escaneie o QR code com Expo Go (iOS/Android)
-   - Ou pressione `a` para Android emulator
-   - Ou pressione `i` para iOS simulator
-
----
-
-## 📁 Estrutura do Projeto
+## Project Structure
 
 ```
 NimbusVita/
 ├── src/
-│   ├── screens/              # Telas do app
-│   │   ├── Splash.tsx
+│   ├── screens/
+│   │   ├── tabs/           # Main app tabs (Home, Checkup, Alerts, Maps, Family, Profile)
 │   │   ├── LoginScreen.tsx
-│   │   ├── SignupScreen.tsx
-│   │   └── tabs/
-│   │       ├── HomeTab.tsx
-│   │       ├── CheckupTab.tsx
-│   │       ├── AlertsTab.tsx
-│   │       └── ProfileTab.tsx
-│   ├── components/           # Componentes reutilizáveis
-│   │   ├── SymptomChecker.tsx
-│   │   ├── WeatherCard.tsx
-│   │   ├── RiskAnalysis.tsx
-│   │   └── ...
-│   ├── services/             # Lógica de negócio
-│   │   ├── supabase/
-│   │   │   ├── auth.service.ts
-│   │   │   └── checkup.service.ts
-│   │   └── auth.ts (legacy)
-│   ├── config/               # Configurações
-│   │   └── supabase.ts
-│   ├── types/                # TypeScript types
-│   │   └── database.types.ts
-│   ├── contexts/             # React Context
-│   └── utils/                # Funções auxiliares
-├── assets/                   # Imagens, ícones, etc
-├── supabase_schema.sql       # Schema do banco
-├── package.json
-├── tsconfig.json
-└── README.md
+│   │   └── SignupScreen.tsx
+│   ├── components/         # Reusable UI components
+│   ├── services/           # Business logic (Supabase, ML API)
+│   ├── contexts/           # React contexts (Auth)
+│   ├── config/             # App configuration
+│   ├── types/              # TypeScript definitions
+│   └── utils/              # Helper functions
+├── ml-backend/             # FastAPI ML service
+│   ├── main.py             # API endpoints
+│   ├── models/             # Trained ML models
+│   └── requirements.txt
+├── assets/                 # Images and resources
+└── App.tsx                 # Entry point
 ```
 
----
+## Setup
 
-## 🛠️ Tecnologias Utilizadas
+### Prerequisites
+- Node.js 16+
+- Expo CLI
+- Python 3.11+ (for ML backend)
+- Supabase account (free tier)
 
-### Frontend
-- **React Native** 0.76.5
-- **Expo** SDK 54
-- **TypeScript** 5.9.2
-- **React Navigation** 7.x
-- **Lottie** para animações
+### Installation
 
-### Backend
-- **Supabase** (PostgreSQL + Auth + Realtime)
-- **AsyncStorage** para cache local
+1. **Clone and install dependencies**
+   ```bash
+   git clone https://github.com/Frankiinhu/DSI-2025.2.git
+   cd DSI-2025.2/NimbusVita
+   npm install
+   ```
 
-### DevTools
-- **ESLint** para linting
-- **Prettier** para formatação
-- **Jest** para testes (planejado)
+2. **Configure Supabase**
+   
+   Create `.env` file:
+   ```env
+   EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+   ```
 
----
+3. **Setup ML Backend (optional)**
+   ```bash
+   cd ml-backend
+   pip install -r requirements.txt
+   python main.py
+   ```
+   
+   Update `src/config/ml.config.ts` with your local IP if testing on physical device.
 
-## 📊 Banco de Dados
+4. **Run the app**
+   ```bash
+   npm start
+   ```
+   
+   Scan QR code with Expo Go app or press `a` for Android / `i` for iOS emulator.
 
-### Tabelas Principais
+## ML Model
 
-1. **profiles** - Perfis de usuários
-2. **symptoms_catalog** - Catálogo de sintomas
-3. **symptom_checkups** - Verificações de sintomas
-4. **weather_history** - Histórico climático
-5. **health_alerts** - Alertas de saúde
-6. **user_conditions** - Condições pré-existentes
+The classifier predicts disease risks based on:
+- **User Symptoms**: 40+ mapped symptoms
+- **Weather Data**: Temperature, humidity, wind speed
+- **User Context**: Age, gender, medical history
 
-### Diagrama ER
+Model features include respiratory, neurological, and systemic symptoms mapped to specific health conditions.
 
-```
-profiles (1) ----< (N) symptom_checkups
-profiles (1) ----< (N) user_conditions
-profiles (1) ----< (N) health_alerts
-symptoms_catalog (1) ----< (N) [referenciado em checkups]
-```
+## Development
 
----
+### Available Scripts
+- `npm start` - Start Expo dev server
+- `npm run android` - Run on Android
+- `npm run ios` - Run on iOS
+- `npm run reset` - Clear cache and restart
 
-## 🔐 Segurança
+### Architecture
+- **Authentication**: Supabase Auth with JWT tokens
+- **State Management**: React Context API
+- **Data Persistence**: Supabase PostgreSQL + AsyncStorage cache
+- **ML Integration**: REST API communication with FastAPI backend
 
-- ✅ Autenticação via Supabase Auth
-- ✅ Row Level Security (RLS) habilitado
-- ✅ Tokens JWT com refresh automático
-- ✅ Criptografia de dados sensíveis
-- ✅ Validação de inputs
-- ✅ HTTPS obrigatório
+## Deployment
 
----
-
-## 📱 Funcionalidades Detalhadas
-
-### 1. Verificador de Sintomas
-
-- 60+ sintomas catalogados
-- Categorização por sistema (respiratório, neurológico, etc)
-- Severidade de 1-5
-- Duração em horas
-- Algoritmo de predição ponderado
-- Resultados em tempo real
-
-### 2. Monitoramento Climático
-
-- Temperatura, umidade, pressão
-- Índice UV
-- Qualidade do ar
-- Velocidade do vento
-- Correlação com sintomas
-
-### 3. Histórico e Estatísticas
-
-- CRUD completo de verificações
-- Filtros por período (hoje, 7 dias, 30 dias)
-- Dias consecutivos
-- Gráficos de evolução
-- Exportação de relatórios
-
-### 4. Alertas Inteligentes
-
-- Sintomas severos detectados
-- Padrões de sintomas
-- Riscos climáticos
-- Qualidade do ar crítica
-- Surtos de doenças (planejado)
-
----
-
-## 🧪 Testes
-
-### Executar Testes
-
-```bash
-npm test
-```
-
-### Coverage
-
-```bash
-npm run test:coverage
-```
-
----
-
-## 📦 Build para Produção
-
-### Android
-
+### Mobile App
 ```bash
 eas build --platform android --profile production
-```
-
-### iOS
-
-```bash
 eas build --platform ios --profile production
 ```
 
----
+### ML Backend
+Configured for Render deployment (see `ml-backend/render.yaml`)
 
-## 🤝 Contribuindo
+## License
 
-Contribuições são bem-vindas! Siga os passos:
+MIT License - see [LICENSE](LICENSE) file for details.
 
-1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/NovaFuncionalidade`)
-3. Commit suas mudanças (`git commit -m 'Adiciona nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/NovaFuncionalidade`)
-5. Abra um Pull Request
+## Repository
 
----
-
-## 📝 Convenções de Código
-
-- Use TypeScript strict mode
-- Siga ESLint rules
-- Componentes em PascalCase
-- Funções em camelCase
-- Constantes em UPPER_SNAKE_CASE
-- Commits semânticos (feat, fix, docs, etc)
-
----
-
-## 🐛 Problemas Conhecidos
-
-Consulte a [página de Issues](https://github.com/Frankiinhu/DSI-2025.2/issues) para problemas conhecidos e planejados.
-
----
-
-## 📚 Documentação Adicional
-
-- [Plano de Implementação](./IMPLEMENTATION_PLAN.md)
-- [Schema do Banco](./supabase_schema.sql)
-- [Tipos TypeScript](./src/types/database.types.ts)
-
----
-
-## 👥 Equipe
-
-- **Desenvolvimento:** [Seu Nome]
-- **Design:** [Designer]
-- **Consultoria Médica:** [Consultor]
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
----
-
-## 📞 Contato
-
-- **Email:** contato@nimbusvita.com
-- **Website:** [nimbusvita.com](https://nimbusvita.com)
-- **GitHub:** [github.com/Frankiinhu/DSI-2025.2](https://github.com/Frankiinhu/DSI-2025.2)
-
----
-
-## 🙏 Agradecimentos
-
-- Expo Team
-- Supabase Team
-- React Native Community
-- Material Icons
-- Lottie Animations
-
----
-
-## ⚠️ Disclaimer
-
-**IMPORTANTE:** Este aplicativo é um protótipo educacional. As predições são simuladas e **NÃO substituem** consulta médica profissional. Em caso de sintomas graves ou persistentes, **procure atendimento médico imediatamente**.
-
----
-
-**Desenvolvido com ❤️ para promover saúde preventiva**
+[github.com/Frankiinhu/DSI-2025.2](https://github.com/Frankiinhu/DSI-2025.2)
