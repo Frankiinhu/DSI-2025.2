@@ -1,3 +1,5 @@
+import { logger } from '../utils/logger';
+
 export interface CurrentWeatherResult {
   temperature: number | null;
   humidity: number | null;
@@ -7,6 +9,11 @@ export interface CurrentWeatherResult {
   uvFromApi: boolean; // indica se UV veio da API ou é fallback
   airQuality: number | null; // mapped AQI-like value
   condition: string;
+}
+
+interface WeatherCoordinates {
+  lat: number;
+  lon: number;
 }
 
 const mapAqiToNumber = (aqi: number) => {
@@ -75,7 +82,7 @@ export async function getCurrentWeather(cidade = 'Recife', pais = 'BR') : Promis
 }
 
 async function processWeatherData(
-  coord: any,
+  coord: WeatherCoordinates,
   temperature: number | null,
   humidity: number | null,
   pressure: number | null,
@@ -84,33 +91,27 @@ async function processWeatherData(
   BASE_URL: string,
   API_KEY: string
 ): Promise<CurrentWeatherResult> {
-  // Logs de diagnóstico
-  try {
-    console.log('Coordinates resolved for location:', coord ? `lat=${coord.lat}, lon=${coord.lon}` : 'coord missing');
-  } catch (e) {
-    // não deve quebrar a execução do serviço
-  }
+  logger.debug('Processing weather data', { coordinates: coord });
 
   let uvIndex = 0;
   let uvFromApi = false;
+  
   try {
     // Tentar One Call (v2.5) primeiro
     const onecallUrlV25 = `${BASE_URL}/onecall?lat=${coord.lat}&lon=${coord.lon}&exclude=minutely,hourly,daily,alerts&appid=${API_KEY}&units=metric`;
-    try {
-      console.log('Fetching UV from onecall v2.5 (masked):', onecallUrlV25.replace(`appid=${API_KEY}`, 'appid=***'));
-    } catch (e) {
-      // ignore
-    }
+    logger.debug('Fetching UV from onecall v2.5', { lat: coord.lat, lon: coord.lon });
+    
     let onecallRes = await fetch(onecallUrlV25);
-    console.log('UV API (onecall v2.5) response status:', onecallRes.status);
+    logger.debug('OneCall v2.5 response received', { status: onecallRes.status });
+    
     if (onecallRes.ok) {
       const onecallJson = await onecallRes.json();
-      uvIndex = onecallJson.current?.uvi ?? onecallJson.current?.uvi ?? 0;
+      uvIndex = onecallJson.current?.uvi ?? 0;
       uvFromApi = true;
-      console.log('UV index from onecall v2.5 API:', uvIndex);
+      logger.info('UV index fetched from onecall v2.5', { uvIndex });
     } else {
       const text = await onecallRes.text();
-      console.warn('onecall v2.5 não disponível:', onecallRes.status, text);
+      logger.warn('OneCall v2.5 unavailable', { status: onecallRes.status, response: text });
 
       // Se 401 ou endpoint não disponível, tentar One Call v3 (data/3.0)
       if (onecallRes.status === 401) {
@@ -118,18 +119,19 @@ async function processWeatherData(
           const altBase = BASE_URL.replace('/data/2.5', '/data/3.0');
           const onecallUrlV30 = `${altBase}/onecall?lat=${coord.lat}&lon=${coord.lon}&exclude=minutely,hourly,daily,alerts&appid=${API_KEY}&units=metric`;
           const onecallResV30 = await fetch(onecallUrlV30);
-          console.log('UV API (onecall v3) response status:', onecallResV30.status);
+          logger.debug('OneCall v3 response received', { status: onecallResV30.status });
+          
           if (onecallResV30.ok) {
             const onecallJson = await onecallResV30.json();
-            uvIndex = onecallJson.current?.uvi ?? onecallJson.current?.uvi ?? 0;
+            uvIndex = onecallJson.current?.uvi ?? 0;
             uvFromApi = true;
-            console.log('UV index from onecall v3 API:', uvIndex);
+            logger.info('UV index fetched from onecall v3', { uvIndex });
           } else {
             const t2 = await onecallResV30.text();
-            console.warn('onecall v3 não disponível:', onecallResV30.status, t2);
+            logger.warn('OneCall v3 unavailable', { status: onecallResV30.status, response: t2 });
           }
-        } catch (e) {
-          console.warn('Erro ao tentar onecall v3:', e);
+        } catch (error) {
+          logger.warn('Error trying onecall v3', { error });
         }
       }
 
@@ -137,28 +139,26 @@ async function processWeatherData(
       if (!uvFromApi) {
         try {
           const uviUrl = `${BASE_URL}/uvi?lat=${coord.lat}&lon=${coord.lon}&appid=${API_KEY}`;
-          try {
-            console.log('Fetching UV from /uvi (masked):', uviUrl.replace(`appid=${API_KEY}`, 'appid=***'));
-          } catch (e) {}
+          logger.debug('Fetching UV from legacy /uvi endpoint', { lat: coord.lat, lon: coord.lon });
+          
           const uviRes = await fetch(uviUrl);
-          console.log('UV API (uvi) response status:', uviRes.status);
+          logger.debug('UVI endpoint response received', { status: uviRes.status });
+          
           if (uviRes.ok) {
             const uviJson = await uviRes.json();
-            // Resposta do /uvi geralmente possui campo value
             uvIndex = uviJson.value ?? uviJson.uvi ?? 0;
             uvFromApi = true;
-            console.log('UV index from uvi API:', uvIndex);
+            logger.info('UV index fetched from /uvi endpoint', { uvIndex });
           } else {
-            console.warn('uvi endpoint não disponível:', await uviRes.text());
+            logger.warn('UVI endpoint unavailable', { status: uviRes.status });
           }
-        } catch (e) {
-          console.warn('Erro ao buscar /uvi:', e);
+        } catch (error) {
+          logger.warn('Error fetching /uvi endpoint', { error });
         }
       }
     }
-  } catch (e) {
-    console.warn('Erro ao buscar UV index:', e);
-    // fallback para 0
+  } catch (error) {
+    logger.warn('Error fetching UV index, using fallback', { error });
   }
 
   let airQuality = null;
@@ -167,13 +167,14 @@ async function processWeatherData(
     const airRes = await fetch(airUrl);
     if (airRes.ok) {
       const airJson = await airRes.json();
-      const aqi = airJson.list && airJson.list[0] && airJson.list[0].main ? airJson.list[0].main.aqi : null;
+      const aqi = airJson.list?.[0]?.main?.aqi;
       if (aqi) {
         airQuality = mapAqiToNumber(aqi);
+        logger.info('Air quality fetched', { aqi, airQuality });
       }
     }
-  } catch (e) {
-    console.warn('Erro ao buscar qualidade do ar:', e);
+  } catch (error) {
+    logger.warn('Error fetching air quality', { error });
   }
 
   return {
@@ -190,15 +191,16 @@ async function processWeatherData(
 
 // Cache helpers (AsyncStorage)
 const CACHE_KEY = '@nimbus:weather_latest';
-const CACHE_TTL = 1000 * 60 * 10; // 10 minutos
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-export async function saveWeatherCache(payload: CurrentWeatherResult) {
+export async function saveWeatherCache(payload: CurrentWeatherResult): Promise<void> {
   try {
     const toSave = JSON.stringify({ ts: Date.now(), data: payload });
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     await AsyncStorage.setItem(CACHE_KEY, toSave);
-  } catch (e) {
-    // ignore cache errors
+    logger.debug('Weather cache saved successfully');
+  } catch (error) {
+    logger.warn('Failed to save weather cache', { error });
   }
 }
 
@@ -206,12 +208,27 @@ export async function loadWeatherCache(): Promise<CurrentWeatherResult | null> {
   try {
     const AsyncStorage = require('@react-native-async-storage/async-storage').default;
     const raw = await AsyncStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      logger.debug('No weather cache found');
+      return null;
+    }
+    
     const parsed = JSON.parse(raw);
-    if (!parsed.ts || !parsed.data) return null;
-    if (Date.now() - parsed.ts > CACHE_TTL) return null;
+    if (!parsed.ts || !parsed.data) {
+      logger.warn('Invalid weather cache format');
+      return null;
+    }
+    
+    const cacheAge = Date.now() - parsed.ts;
+    if (cacheAge > CACHE_TTL) {
+      logger.debug('Weather cache expired', { ageMs: cacheAge });
+      return null;
+    }
+    
+    logger.debug('Weather cache loaded successfully', { ageMs: cacheAge });
     return parsed.data as CurrentWeatherResult;
-  } catch (e) {
+  } catch (error) {
+    logger.warn('Failed to load weather cache', { error });
     return null;
   }
 }

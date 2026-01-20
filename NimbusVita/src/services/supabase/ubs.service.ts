@@ -1,16 +1,20 @@
 import { supabase } from '../../config/supabase';
 import { UBSLocation } from '../../types/ubs.types';
+import { logger } from '../../utils/logger';
+import type { Database } from '../../types/database.types';
+
+type DatabaseUBS = Database['public']['Tables']['ubs_locations']['Row'];
 
 export interface UBSResponse {
   ok: boolean;
   message?: string;
-  data?: any;
+  data?: UBSLocation[];
 }
 
 /**
  * Mapeia dados do banco para o formato TypeScript
  */
-const mapUBSFromDatabase = (dbUBS: any): UBSLocation => ({
+const mapUBSFromDatabase = (dbUBS: DatabaseUBS): UBSLocation => ({
   id: dbUBS.id,
   name: dbUBS.name,
   address: dbUBS.address,
@@ -29,27 +33,26 @@ const mapUBSFromDatabase = (dbUBS: any): UBSLocation => ({
  */
 export const getAllUBS = async (): Promise<UBSResponse> => {
   try {
-    console.log('📡 Iniciando busca de UBS no Supabase...');
+    logger.info('Fetching all UBS locations from database');
     
     const { data, error } = await supabase
       .from('ubs_locations')
       .select('*')
       .order('name', { ascending: true });
 
-    console.log('📡 Resposta do Supabase:', { 
+    logger.debug('Supabase query response', { 
       hasData: !!data, 
       dataLength: data?.length, 
-      hasError: !!error,
-      errorDetails: error 
+      hasError: !!error
     });
 
     if (error) {
-      console.error('❌ Erro do Supabase:', error);
+      logger.error('Supabase error fetching UBS locations', { error });
       throw error;
     }
 
     if (!data || data.length === 0) {
-      console.warn('⚠️ Nenhuma UBS encontrada no banco de dados');
+      logger.warn('No UBS locations found in database');
       return {
         ok: true,
         data: [],
@@ -57,20 +60,18 @@ export const getAllUBS = async (): Promise<UBSResponse> => {
       };
     }
 
-    console.log('✅ Mapeando dados das UBS...');
     const mappedData = data.map(mapUBSFromDatabase);
-    console.log('✅ UBS mapeadas:', mappedData.length);
+    logger.info('UBS locations fetched successfully', { count: mappedData.length });
 
     return {
       ok: true,
       data: mappedData,
     };
-  } catch (error: any) {
-    console.error('❌ Erro ao buscar UBS:', error);
-    console.error('❌ Stack:', error.stack);
+  } catch (error) {
+    logger.error('Error fetching UBS locations', { error });
     return {
       ok: false,
-      message: error.message || 'Erro ao buscar UBS',
+      message: error instanceof Error ? error.message : 'Erro ao buscar UBS',
       data: [],
     };
   }
@@ -85,14 +86,23 @@ export const getNearbyUBS = async (
   radiusKm: number = 10
 ): Promise<UBSResponse> => {
   try {
+    logger.info('Fetching nearby UBS locations', { latitude, longitude, radiusKm });
+    
     const { data, error } = await supabase
       .from('ubs_locations')
       .select('*');
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Error querying UBS locations', { error });
+      throw error;
+    }
 
     // Filtra por distância manualmente (pode ser otimizado no banco)
-    const ubsWithDistance = (data || []).map((ubs: any) => {
+    interface UBSWithDistance extends UBSLocation {
+      distance: number;
+    }
+    
+    const ubsWithDistance: UBSWithDistance[] = (data || []).map((ubs) => {
       const mappedUBS = mapUBSFromDatabase(ubs);
       const distance = calculateDistance(
         latitude,
@@ -104,18 +114,20 @@ export const getNearbyUBS = async (
     });
 
     const nearbyUBS = ubsWithDistance
-      .filter((ubs: any) => ubs.distance <= radiusKm)
-      .sort((a: any, b: any) => a.distance - b.distance);
+      .filter((ubs) => ubs.distance <= radiusKm)
+      .sort((a, b) => a.distance - b.distance);
+
+    logger.info('Nearby UBS locations found', { count: nearbyUBS.length, radiusKm });
 
     return {
       ok: true,
       data: nearbyUBS,
     };
-  } catch (error: any) {
-    console.error('Erro ao buscar UBS próximas:', error);
+  } catch (error) {
+    logger.error('Error fetching nearby UBS locations', { error, latitude, longitude });
     return {
       ok: false,
-      message: error.message || 'Erro ao buscar UBS próximas',
+      message: error instanceof Error ? error.message : 'Erro ao buscar UBS próximas',
       data: [],
     };
   }
