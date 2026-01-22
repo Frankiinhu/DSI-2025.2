@@ -18,7 +18,7 @@ export const getMonitoredLocations = async (
   userId: string
 ): Promise<MonitoredLocationResponse> => {
   try {
-    logger.info('🔍 Buscando localizações monitoradas...');
+    logger.info('Fetching monitored locations', { userId });
 
     const { data, error } = await supabase
       .from('monitored_locations')
@@ -27,19 +27,22 @@ export const getMonitoredLocations = async (
       .order('is_primary', { ascending: false })
       .order('created_at', { ascending: true });
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Error fetching monitored locations', { error, userId });
+      throw error;
+    }
 
-    logger.info(`✅ ${data?.length || 0} localizações encontradas`);
+    logger.info('Monitored locations fetched successfully', { userId, count: data?.length || 0 });
 
     return {
       ok: true,
       data: data || [],
     };
-  } catch (error: any) {
-    logger.error('❌ Erro ao buscar localizações:', error);
+  } catch (error) {
+    logger.error('Failed to fetch monitored locations', { error, userId });
     return {
       ok: false,
-      message: error.message || 'Erro ao buscar localizações',
+      message: error instanceof Error ? error.message : 'Erro ao buscar localizações',
     };
   }
 };
@@ -98,6 +101,7 @@ export const updateMonitoredLocation = async (
   updates: UpdateMonitoredLocationDTO
 ): Promise<MonitoredLocationResponse> => {
   try {
+    logger.info('Updating monitored location', { locationId, userId });
     logger.info('✏️ Atualizando localização...');
 
     // Se está marcando como primary, remove o flag das outras

@@ -115,7 +115,8 @@ function log(level: LogLevel, message: string, context?: LogContext, error?: unk
   
   // In production, send to error tracking service (Sentry, Bugsnag, etc.)
   if (!isDevelopment && level >= LogLevel.ERROR) {
-    // TODO: Integrate with error tracking service
+    // Integration point for error tracking services (Sentry, Crashlytics, etc.)
+    // Example: Sentry.captureException(error, { level, extra: context });
     // Example: Sentry.captureException(error, { contexts: { custom: metadata } });
   }
   

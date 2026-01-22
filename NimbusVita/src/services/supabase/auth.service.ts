@@ -1,6 +1,7 @@
 import { supabase } from '../../config/supabase';
 import { Database } from '../../types/database.types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '../../utils/logger';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
@@ -17,8 +18,8 @@ const getUsernameIndex = async (): Promise<Record<string, string>> => {
   try {
     const raw = await AsyncStorage.getItem(USERNAME_INDEX_KEY);
     return raw ? JSON.parse(raw) : {};
-  } catch (e) {
-    console.error('Erro lendo índice de usernames:', e);
+  } catch (error) {
+    logger.error('Error reading username index from AsyncStorage', { error });
     return {};
   }
 };
@@ -26,8 +27,8 @@ const getUsernameIndex = async (): Promise<Record<string, string>> => {
 const setUsernameIndex = async (index: Record<string, string>) => {
   try {
     await AsyncStorage.setItem(USERNAME_INDEX_KEY, JSON.stringify(index));
-  } catch (e) {
-    console.error('Erro salvando índice de usernames:', e);
+  } catch (error) {
+    logger.error('Error saving username index to AsyncStorage', { error });
   }
 };
 
@@ -66,11 +67,16 @@ export const registerUser = async (
     });
 
     if (authError) {
-      console.error('Auth error:', authError);
+      logger.error('Supabase auth signup error', { error: authError, email });
       return { ok: false, message: authError.message };
     }
 
-    if (!authData.user) return { ok: false, message: 'Erro ao criar usuário' };
+    if (!authData.user) {
+      logger.error('Auth signup succeeded but no user returned');
+      return { ok: false, message: 'Erro ao criar usuário' };
+    }
+
+    logger.info('User created in auth', { userId: authData.user.id, email });
 
     // 4. Criar perfil no banco
     const computeAge = (iso?: string) => {
@@ -90,7 +96,7 @@ export const registerUser = async (
       full_name: fullName ?? null,
       age: age ?? null,
       gender: gender ?? null,
-    } as any;
+    };
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
@@ -99,22 +105,24 @@ export const registerUser = async (
       .single();
 
     if (profileError) {
-      console.error('Profile error:', profileError);
+      logger.error('Error creating user profile', { error: profileError, userId: authData.user.id });
       await supabase.auth.signOut();
       return { ok: false, message: `Erro ao criar perfil: ${profileError.message}` };
     }
+
+    logger.info('User profile created successfully', { userId: profile.id, username });
 
     try {
       const index = await getUsernameIndex();
       index[username.trim()] = email.trim().toLowerCase();
       await setUsernameIndex(index);
-    } catch (e) {
-      console.warn('Não foi possível atualizar índice local de usernames:', e);
+    } catch (error) {
+      logger.warn('Failed to update local username index', { error, username });
     }
 
     return { ok: true, user: profile };
   } catch (error) {
-    console.error('Register error:', error);
+    logger.error('Unexpected error during user registration', { error, email });
     return { ok: false, message: 'Erro inesperado ao registrar' };
   }
 };
@@ -133,10 +141,12 @@ export const loginUser = async (
 
     // Se não é email, buscar email pelo username
     if (!email.includes('@')) {
+      logger.debug('Login with username, resolving email', { username: email });
       const index = await getUsernameIndex();
       const found = index[email];
       if (found) {
         email = found;
+        logger.debug('Email resolved from local index', { username: emailOrUsername });
       } else {
         // fallback: query profiles table
         try {
@@ -147,13 +157,16 @@ export const loginUser = async (
             .single();
           
           if (profileError || !profile) {
-            console.error('Profile lookup error:', profileError);
+            logger.warn('Username not found in database', { username: email, error: profileError });
             return { ok: false, message: 'Credenciais inválidas' };
           }
           email = profile.email;
-        } catch (profileErr: any) {
-          console.error('Profile lookup exception:', profileErr);
-          if (profileErr.message?.includes('Network request failed') || profileErr.name === 'AuthRetryableFetchError') {
+          logger.debug('Email resolved from database', { username: emailOrUsername });
+        } catch (profileErr) {
+          logger.error('Error looking up username', { error: profileErr, username: email });
+          if (profileErr instanceof Error && 
+              (profileErr.message?.includes('Network request failed') || 
+               profileErr.name === 'AuthRetryableFetchError')) {
             return { ok: false, message: 'Erro de conexão. Verifique sua internet e tente novamente.' };
           }
           return { ok: false, message: 'Credenciais inválidas' };
@@ -161,9 +174,11 @@ export const loginUser = async (
       }
     }
 
+    logger.info('Attempting user login', { email });
     const { data, error } = await supabase.auth.signInWithPassword({ email: email.toLowerCase(), password });
+    
     if (error) {
-      console.error('Login error:', error);
+      logger.error('Login failed', { error, email });
       if (error.message?.includes('Network request failed') || error.name === 'AuthRetryableFetchError') {
         return { ok: false, message: 'Erro de conexão. Verifique sua internet e tente novamente.' };
       }
@@ -172,13 +187,21 @@ export const loginUser = async (
       }
       return { ok: false, message: error.message || 'Credenciais inválidas' };
     }
-    if (!data.user) return { ok: false, message: 'Erro ao fazer login' };
+    
+    if (!data.user) {
+      logger.error('Login succeeded but no user returned');
+      return { ok: false, message: 'Erro ao fazer login' };
+    }
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+    logger.info('User logged in successfully', { userId: data.user.id });
+    
     return { ok: true, user: profile || undefined };
-  } catch (error: any) {
-    console.error('Login error:', error);
-    if (error.message?.includes('Network request failed') || error.name === 'AuthRetryableFetchError') {
+  } catch (error) {
+    logger.error('Unexpected error during login', { error });
+    if (error instanceof Error && 
+        (error.message?.includes('Network request failed') || 
+         error.name === 'AuthRetryableFetchError')) {
       return { ok: false, message: 'Erro de conexão. Verifique sua internet e tente novamente.' };
     }
     return { ok: false, message: 'Erro inesperado ao fazer login' };
@@ -190,9 +213,11 @@ export const loginUser = async (
  */
 export const signOut = async (): Promise<void> => {
   try {
+    logger.info('User signing out');
     await supabase.auth.signOut();
+    logger.info('User signed out successfully');
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Error during sign out', { error });
   }
 };
 
@@ -204,15 +229,18 @@ export const getCurrentUser = async (): Promise<Profile | null> => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError) {
-      console.error('getCurrentUser auth error:', authError);
+      logger.error('Error getting current user from auth', { error: authError });
       // Network errors should not prevent app from loading
       if (authError.message?.includes('Network request failed') || authError.name === 'AuthRetryableFetchError') {
-        console.warn('⚠️ Network error getting user - app will continue without session');
+        logger.warn('Network error getting user, app will continue without session');
       }
       return null;
     }
 
-    if (!user) return null;
+    if (!user) {
+      logger.debug('No authenticated user found');
+      return null;
+    }
 
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -221,18 +249,22 @@ export const getCurrentUser = async (): Promise<Profile | null> => {
       .maybeSingle();
 
     if (error) {
-      console.error('getCurrentUser profile error:', error);
+      logger.error('Error fetching user profile', { error, userId: user.id });
       return null;
     }
 
-    // Se 'profile' for null (0 linhas encontradas), ele retorna null.
-    // Se 'profile' for o objeto (1 linha encontrada), ele retorna o perfil.
+    if (profile) {
+      logger.debug('Current user profile loaded', { userId: profile.id });
+    }
+    
     return profile;
     
-  } catch (error: any) {
-    console.error('getCurrentUser error:', error);
-    if (error.message?.includes('Network request failed') || error.name === 'AuthRetryableFetchError') {
-      console.warn('⚠️ Network error getting user - app will continue without session');
+  } catch (error) {
+    logger.error('Unexpected error getting current user', { error });
+    if (error instanceof Error && 
+        (error.message?.includes('Network request failed') || 
+         error.name === 'AuthRetryableFetchError')) {
+      logger.warn('Network error getting user, app will continue without session');
     }
     return null;
   }

@@ -138,6 +138,8 @@ export const getNearbyUBS = async (
  */
 export const addUBS = async (ubs: Omit<UBSLocation, 'id'>): Promise<UBSResponse> => {
   try {
+    logger.info('Adding new UBS location', { name: ubs.name, district: ubs.district });
+    
     const { data, error } = await supabase
       .from('ubs_locations')
       .insert({
@@ -155,18 +157,22 @@ export const addUBS = async (ubs: Omit<UBSLocation, 'id'>): Promise<UBSResponse>
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Error adding UBS location', { error, name: ubs.name });
+      throw error;
+    }
 
+    logger.info('UBS location added successfully', { id: data.id, name: ubs.name });
     return {
       ok: true,
       message: 'UBS adicionada com sucesso!',
-      data,
+      data: [mapUBSFromDatabase(data)],
     };
-  } catch (error: any) {
-    console.error('Erro ao adicionar UBS:', error);
+  } catch (error) {
+    logger.error('Failed to add UBS location', { error, ubsName: ubs.name });
     return {
       ok: false,
-      message: error.message || 'Erro ao adicionar UBS',
+      message: error instanceof Error ? error.message : 'Erro ao adicionar UBS',
     };
   }
 };
@@ -179,6 +185,8 @@ export const updateUBS = async (
   updates: Partial<UBSLocation>
 ): Promise<UBSResponse> => {
   try {
+    logger.info('Updating UBS location', { id, updates });
+    
     const { data, error } = await supabase
       .from('ubs_locations')
       .update({
@@ -197,18 +205,22 @@ export const updateUBS = async (
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Error updating UBS location', { error, id });
+      throw error;
+    }
 
+    logger.info('UBS location updated successfully', { id });
     return {
       ok: true,
       message: 'UBS atualizada com sucesso!',
-      data,
+      data: [mapUBSFromDatabase(data)],
     };
-  } catch (error: any) {
-    console.error('Erro ao atualizar UBS:', error);
+  } catch (error) {
+    logger.error('Failed to update UBS location', { error, id });
     return {
       ok: false,
-      message: error.message || 'Erro ao atualizar UBS',
+      message: error instanceof Error ? error.message : 'Erro ao atualizar UBS',
     };
   }
 };
@@ -218,22 +230,28 @@ export const updateUBS = async (
  */
 export const deleteUBS = async (id: string): Promise<UBSResponse> => {
   try {
+    logger.info('Deleting UBS location', { id });
+    
     const { error } = await supabase
       .from('ubs_locations')
       .delete()
       .eq('id', id);
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Error deleting UBS location', { error, id });
+      throw error;
+    }
 
+    logger.info('UBS location deleted successfully', { id });
     return {
       ok: true,
       message: 'UBS removida com sucesso!',
     };
-  } catch (error: any) {
-    console.error('Erro ao remover UBS:', error);
+  } catch (error) {
+    logger.error('Failed to delete UBS location', { error, id });
     return {
       ok: false,
-      message: error.message || 'Erro ao remover UBS',
+      message: error instanceof Error ? error.message : 'Erro ao remover UBS',
     };
   }
 };
@@ -272,32 +290,36 @@ export const getAddressFromCoordinates = async (
   longitude: number
 ): Promise<UBSResponse> => {
   try {
+    logger.debug('Performing reverse geocoding', { latitude, longitude });
+    
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
     );
     const data = await response.json();
 
     if (data && data.display_name) {
+      logger.info('Address resolved successfully', { address: data.display_name });
       return {
         ok: true,
-        data: {
+        data: [{
           address: data.display_name,
           city: data.address?.city || data.address?.town || data.address?.village,
           state: data.address?.state,
           postcode: data.address?.postcode,
-        },
+        }],
       };
     }
 
+    logger.warn('Address not found for coordinates', { latitude, longitude });
     return {
       ok: false,
       message: 'Endereço não encontrado',
     };
-  } catch (error: any) {
-    console.error('Erro ao buscar endereço:', error);
+  } catch (error) {
+    logger.error('Error performing reverse geocoding', { error, latitude, longitude });
     return {
       ok: false,
-      message: error.message || 'Erro ao buscar endereço',
+      message: error instanceof Error ? error.message : 'Erro ao buscar endereço',
     };
   }
 };

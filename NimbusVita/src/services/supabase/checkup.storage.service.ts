@@ -13,6 +13,7 @@ import {
   updateCheckup
 } from './checkup.service';
 import { SymptomInput, PredictionResult, WeatherData } from '../../types/database.types';
+import { logger } from '../../utils/logger';
 
 const STORAGE_KEY = '@nimbusvita:checkups';
 const PENDING_SYNC_KEY = '@nimbusvita:pending_sync';
@@ -62,7 +63,7 @@ const saveLocalCheckup = async (checkup: LocalCheckup): Promise<void> => {
     
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(checkups));
   } catch (error) {
-    console.error('Error saving local checkup:', error);
+    logger.error('Error saving local checkup', { error, checkupId: checkup.id });
     throw error;
   }
 };
@@ -75,7 +76,7 @@ const getLocalCheckups = async (): Promise<LocalCheckup[]> => {
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error('Error getting local checkups:', error);
+    logger.error('Error getting local checkups', { error });
     return [];
   }
 };
@@ -91,7 +92,7 @@ const deleteLocalCheckup = async (id: string): Promise<void> => {
     const filtered = checkups.filter(c => c.id !== id);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
   } catch (error) {
-    console.error('Error deleting local checkup:', error);
+    logger.error('Error deleting local checkup', { error, checkupId: id });
     throw error;
   }
 };
@@ -111,7 +112,7 @@ const addToPendingSync = async (checkup: LocalCheckup): Promise<void> => {
       await AsyncStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(pending));
     }
   } catch (error) {
-    console.error('Error adding to pending sync:', error);
+    logger.error('Error adding to pending sync', { error, checkupId: checkup.id });
   }
 };
 
@@ -126,7 +127,7 @@ const removeFromPendingSync = async (id: string): Promise<void> => {
     const filtered = pending.filter(c => c.id !== id);
     await AsyncStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(filtered));
   } catch (error) {
-    console.error('Error removing from pending sync:', error);
+    logger.error('Error removing from pending sync', { error, checkupId: id });
   }
 };
 
@@ -138,7 +139,7 @@ const getPendingSyncCheckups = async (): Promise<LocalCheckup[]> => {
     const stored = await AsyncStorage.getItem(PENDING_SYNC_KEY);
     return stored ? JSON.parse(stored) : [];
   } catch (error) {
-    console.error('Error getting pending sync checkups:', error);
+    logger.error('Error getting pending sync checkups', { error });
     return [];
   }
 };
@@ -170,7 +171,7 @@ export const createCheckupOfflineFirst = async (
   try {
     // 1. Salvar localmente PRIMEIRO (rápido e sempre funciona)
     await saveLocalCheckup(localCheckup);
-    console.log('✅ Checkup salvo localmente:', localCheckup.id);
+    logger.info('Checkup saved locally', { checkupId: localCheckup.id, userId });
 
     // 2. Tentar sincronizar com Supabase
     const online = await isOnline();
@@ -198,19 +199,23 @@ export const createCheckupOfflineFirst = async (
         localCheckup.supabaseId = response.data.id;
         localCheckup.syncStatus = 'synced';
         await saveLocalCheckup(localCheckup);
-        console.log('✅ Checkup sincronizado com Supabase:', response.data.id);
+        logger.info('Checkup synced with Supabase', { 
+          localId: localCheckup.id, 
+          supabaseId: response.data.id,
+          userId 
+        });
       } else {
         throw new Error(response.message || 'Erro ao sincronizar');
       }
     } else {
       // Offline: adicionar à fila
       await addToPendingSync(localCheckup);
-      console.log('📱 Offline: Checkup adicionado à fila de sincronização');
+      logger.info('Offline: checkup added to sync queue', { checkupId: localCheckup.id, userId });
     }
 
     return { ok: true, checkup: localCheckup };
   } catch (error) {
-    console.error('Error creating checkup:', error);
+    logger.error('Error creating checkup', { error, userId });
     
     // Mesmo com erro, o checkup está salvo localmente
     localCheckup.syncStatus = 'error';
@@ -238,11 +243,11 @@ export const getCheckupsOfflineFirst = async (
     // Buscar dados locais (rápido)
     const localCheckups = await getLocalCheckups();
     const userCheckups = localCheckups.filter(c => c.userId === userId);
-    console.log(`📱 Carregados ${userCheckups.length} checkups locais`);
+    logger.info('Loaded checkups from local storage', { userId, count: userCheckups.length });
 
     return { ok: true, checkups: userCheckups };
   } catch (error) {
-    console.error('Error getting checkups:', error);
+    logger.error('Error getting checkups', { error, userId });
     return { 
       ok: false, 
       message: 'Erro ao carregar checkups',
@@ -269,22 +274,26 @@ export const deleteCheckupOfflineFirst = async (
 
     // 2. Deletar localmente
     await deleteLocalCheckup(checkupId);
-    console.log('✅ Checkup deletado localmente:', checkupId);
+    logger.info('Checkup deleted locally', { checkupId, userId });
 
     // 3. Tentar deletar no Supabase
     const online = await isOnline();
     if (online && checkup.supabaseId) {
       const response = await deleteCheckup(checkup.supabaseId, userId);
       if (response.ok) {
-        console.log('✅ Checkup deletado no Supabase:', checkup.supabaseId);
+        logger.info('Checkup deleted from Supabase', { supabaseId: checkup.supabaseId, userId });
       } else {
-        console.warn('⚠️ Erro ao deletar no Supabase, mas já foi deletado localmente');
+        logger.warn('Failed to delete from Supabase, but locally deleted', { 
+          supabaseId: checkup.supabaseId, 
+          userId,
+          error: response.message 
+        });
       }
     }
 
     return { ok: true, message: 'Checkup deletado com sucesso' };
   } catch (error) {
-    console.error('Error deleting checkup:', error);
+    logger.error('Error deleting checkup', { error, checkupId, userId });
     return { ok: false, message: 'Erro ao deletar checkup' };
   }
 };
@@ -299,25 +308,27 @@ export const updateCheckupOfflineFirst = async (
   symptoms: string[],
   results: Record<string, number>
 ): Promise<CheckupStorageResponse> => {
-  console.log('🔍 updateCheckupOfflineFirst: Iniciando...');
-  console.log('  - checkupId:', checkupId);
-  console.log('  - userId:', userId);
+  logger.debug('Starting checkup update', { checkupId, userId });
   
   try {
     // 1. Buscar checkup local
     const localCheckups = await getLocalCheckups();
-    console.log(`📱 Total de checkups locais: ${localCheckups.length}`);
-    console.log(`📋 IDs disponíveis: ${localCheckups.map(c => c.id).join(', ')}`);
+    logger.debug('Local checkups retrieved', { 
+      totalCount: localCheckups.length,
+      availableIds: localCheckups.map(c => c.id)
+    });
     
     const checkupIndex = localCheckups.findIndex(c => c.id === checkupId);
     
     if (checkupIndex === -1) {
-      console.error(`❌ Checkup não encontrado! ID buscado: ${checkupId}`);
-      console.error(`   IDs disponíveis: ${localCheckups.map(c => c.id).join(', ')}`);
+      logger.error('Checkup not found for update', { 
+        checkupId,
+        availableIds: localCheckups.map(c => c.id)
+      });
       return { ok: false, message: 'Checkup não encontrado' };
     }
 
-    console.log(`✅ Checkup encontrado no índice ${checkupIndex}`);
+    logger.debug('Checkup found for update', { checkupId, index: checkupIndex });
     const existingCheckup = localCheckups[checkupIndex];
     
     // 2. Atualizar dados localmente (mantém data e timestamp originais)
@@ -331,7 +342,7 @@ export const updateCheckupOfflineFirst = async (
 
     localCheckups[checkupIndex] = updatedCheckup;
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(localCheckups));
-    console.log('✅ Checkup atualizado localmente:', checkupId);
+    logger.info('Checkup updated locally', { checkupId, userId });
 
     // 3. Tentar atualizar no Supabase
     const online = await isOnline();
@@ -348,7 +359,7 @@ export const updateCheckupOfflineFirst = async (
           userId,
           { 
             symptoms: symptomInputs,
-            predictions: results as any
+            predictions: results as unknown as PredictionResult
           }
         );
         
@@ -356,17 +367,17 @@ export const updateCheckupOfflineFirst = async (
           updatedCheckup.syncStatus = 'synced';
           localCheckups[checkupIndex] = updatedCheckup;
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(localCheckups));
-          console.log('✅ Checkup atualizado no Supabase:', existingCheckup.supabaseId);
+          logger.info('Checkup updated in Supabase', { supabaseId: existingCheckup.supabaseId, userId });
         }
       } catch (syncError) {
-        console.error('Erro ao sincronizar atualização:', syncError);
+        logger.error('Error syncing checkup update', { error: syncError, checkupId, userId });
         // Adicionar à fila de pendentes
         await addToPendingSync(updatedCheckup);
       }
     } else {
       // Offline: adicionar à fila
       await addToPendingSync(updatedCheckup);
-      console.log('📱 Offline: Atualização adicionada à fila de sincronização');
+      logger.info('Offline: checkup update queued for sync', { checkupId, userId });
     }
 
     return { 
@@ -377,7 +388,7 @@ export const updateCheckupOfflineFirst = async (
         : 'Checkup atualizado localmente. Será sincronizado quando houver conexão.'
     };
   } catch (error) {
-    console.error('Error updating checkup:', error);
+    logger.error('Error updating checkup', { error, checkupId, userId });
     return { 
       ok: false, 
       message: error instanceof Error ? error.message : 'Erro ao atualizar checkup'
@@ -391,7 +402,7 @@ export const updateCheckupOfflineFirst = async (
  */
 const syncCheckupsInBackground = async (userId: string): Promise<void> => {
   try {
-    console.log('🔄 Iniciando sincronização em background...');
+    logger.info('Starting background sync', { userId });
     
     // 1. Buscar checkups do Supabase
     const response = await getCheckups(userId);
@@ -414,7 +425,7 @@ const syncCheckupsInBackground = async (userId: string): Promise<void> => {
     });
     
     // 2. Converter para formato local (PRESERVANDO ID LOCAL SE EXISTIR)
-    const converted: LocalCheckup[] = supabaseCheckups.map((checkup: any) => {
+    const converted: LocalCheckup[] = supabaseCheckups.map((checkup) => {
       const existingLocal = localBySupabaseId.get(checkup.id);
       
       return {
@@ -422,7 +433,7 @@ const syncCheckupsInBackground = async (userId: string): Promise<void> => {
         userId: checkup.user_id,
         date: new Date(checkup.checkup_date).toLocaleString('pt-BR'),
         symptoms: Array.isArray(checkup.symptoms)
-          ? checkup.symptoms.map((s: any) => s.symptom_name || s.symptom_key || s)
+          ? checkup.symptoms.map((s) => s.symptom_name || s.symptom_key || s)
           : [],
         results: checkup.predictions || {},
         timestamp: new Date(checkup.checkup_date).getTime(),
@@ -456,10 +467,10 @@ const syncCheckupsInBackground = async (userId: string): Promise<void> => {
 
     // 5. Salvar versão mesclada
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(uniqueCheckups));
-    console.log(`✅ Sincronização completa: ${uniqueCheckups.length} checkups`);
+    logger.info('Background sync complete', { userId, totalCheckups: uniqueCheckups.length });
     
   } catch (error) {
-    console.error('Background sync error:', error);
+    logger.error('Background sync error', { error, userId });
   }
 };
 
@@ -474,12 +485,12 @@ export const syncPendingCheckups = async (): Promise<{
   try {
     const online = await isOnline();
     if (!online) {
-      console.log('📱 Offline: Não é possível sincronizar agora');
+      logger.info('Offline: cannot sync pending checkups now');
       return { synced: 0, failed: 0 };
     }
 
     const pending = await getPendingSyncCheckups();
-    console.log(`🔄 Sincronizando ${pending.length} checkups pendentes...`);
+    logger.info('Syncing pending checkups', { pendingCount: pending.length });
 
     let synced = 0;
     let failed = 0;
@@ -507,20 +518,20 @@ export const syncPendingCheckups = async (): Promise<{
           await saveLocalCheckup(checkup);
           await removeFromPendingSync(checkup.id);
           synced++;
-          console.log(`✅ Sincronizado: ${checkup.id} → ${response.data.id}`);
+          logger.info('Pending checkup synced', { localId: checkup.id, supabaseId: response.data.id });
         } else {
           throw new Error(response.message);
         }
       } catch (error) {
-        console.error(`❌ Erro ao sincronizar ${checkup.id}:`, error);
+        logger.error('Error syncing pending checkup', { error, checkupId: checkup.id });
         failed++;
       }
     }
 
-    console.log(`✅ Sincronização completa: ${synced} sucesso, ${failed} falhas`);
+    logger.info('Pending sync complete', { synced, failed });
     return { synced, failed };
   } catch (error) {
-    console.error('Error syncing pending checkups:', error);
+    logger.error('Error syncing pending checkups', { error });
     return { synced: 0, failed: 0 };
   }
 };
@@ -532,12 +543,12 @@ export const syncPendingCheckups = async (): Promise<{
  */
 export const syncCheckupsOnStartup = async (userId: string): Promise<void> => {
   try {
-    console.log('🚀 Iniciando sincronização de startup...');
+    logger.info('Starting startup sync', { userId });
     
     // Verificar se está online
     const online = await isOnline();
     if (!online) {
-      console.log('📱 Offline: Usando apenas dados locais');
+      logger.info('Offline: using only local data', { userId });
       return;
     }
 
@@ -545,17 +556,20 @@ export const syncCheckupsOnStartup = async (userId: string): Promise<void> => {
     const response = await getCheckups(userId);
     
     if (!response.ok || !response.data) {
-      console.warn('⚠️ Erro ao buscar dados do Supabase:', response.message);
+      logger.warn('Failed to fetch data from Supabase during startup', { 
+        userId,
+        error: response.message 
+      });
       return;
     }
 
     const supabaseCheckups = Array.isArray(response.data) ? response.data : [response.data];
-    console.log(`☁️ Encontrados ${supabaseCheckups.length} checkups no Supabase`);
+    logger.info('Supabase checkups fetched', { userId, count: supabaseCheckups.length });
 
     // Buscar dados locais PRIMEIRO para preservar IDs
     const localCheckups = await getLocalCheckups();
     const userLocalCheckups = localCheckups.filter(c => c.userId === userId);
-    console.log(`📱 Encontrados ${userLocalCheckups.length} checkups locais`);
+    logger.info('Local checkups retrieved', { userId, count: userLocalCheckups.length });
     
     // Criar mapa de checkups locais por supabaseId
     const localBySupabaseId = new Map<string, LocalCheckup>();
@@ -566,7 +580,7 @@ export const syncCheckupsOnStartup = async (userId: string): Promise<void> => {
     });
 
     // 2. Converter para formato local (PRESERVANDO ID LOCAL SE EXISTIR)
-    const convertedCheckups: LocalCheckup[] = supabaseCheckups.map((checkup: any) => {
+    const convertedCheckups: LocalCheckup[] = supabaseCheckups.map((checkup) => {
       const existingLocal = localBySupabaseId.get(checkup.id);
       
       return {
@@ -574,7 +588,7 @@ export const syncCheckupsOnStartup = async (userId: string): Promise<void> => {
         userId: checkup.user_id,
         date: new Date(checkup.checkup_date).toLocaleString('pt-BR'),
         symptoms: Array.isArray(checkup.symptoms)
-          ? checkup.symptoms.map((s: any) => s.symptom_name || s.symptom_key || s)
+          ? checkup.symptoms.map((s) => s.symptom_name || s.symptom_key || s)
           : [],
         results: checkup.predictions || {},
         timestamp: new Date(checkup.checkup_date).getTime(),
@@ -588,7 +602,7 @@ export const syncCheckupsOnStartup = async (userId: string): Promise<void> => {
       (c.syncStatus === 'pending' || c.syncStatus === 'error') &&
       !c.supabaseId // Só incluir se ainda não foi sincronizado
     );
-    console.log(`⏳ ${pendingCheckups.length} checkups pendentes de sincronização`);
+    logger.info('Pending checkups identified', { userId, pendingCount: pendingCheckups.length });
 
     // 5. Criar mapa de IDs do Supabase para evitar duplicatas
     const supabaseIds = new Set(convertedCheckups.map(c => c.supabaseId));
@@ -616,18 +630,21 @@ export const syncCheckupsOnStartup = async (userId: string): Promise<void> => {
     ];
 
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(allCheckups));
-    console.log(`✅ Sincronização de startup completa: ${finalCheckups.length} checkups salvos`);
+    logger.info('Startup sync complete', { userId, totalCheckups: finalCheckups.length });
 
     // 10. Tentar sincronizar pendentes em background
     if (pendingCheckups.length > 0) {
-      console.log(`🔄 Sincronizando ${pendingCheckups.length} checkups pendentes...`);
+      logger.info('Starting background sync of pending checkups', { 
+        userId,
+        pendingCount: pendingCheckups.length 
+      });
       syncPendingCheckups().catch(err => 
-        console.error('Erro ao sincronizar pendentes:', err)
+        logger.error('Error syncing pending checkups in background', { error: err, userId })
       );
     }
 
   } catch (error) {
-    console.error('❌ Erro na sincronização de startup:', error);
+    logger.error('Error in startup sync', { error, userId });
   }
 };
 
@@ -639,9 +656,9 @@ export const clearLocalCheckups = async (): Promise<void> => {
   try {
     await AsyncStorage.removeItem(STORAGE_KEY);
     await AsyncStorage.removeItem(PENDING_SYNC_KEY);
-    console.log('✅ Cache local limpo');
+    logger.info('Local cache cleared');
   } catch (error) {
-    console.error('Error clearing local checkups:', error);
+    logger.error('Error clearing local checkups', { error });
   }
 };
 
@@ -664,7 +681,7 @@ export const getSyncStatus = async (): Promise<{
       error: checkups.filter(c => c.syncStatus === 'error').length,
     };
   } catch (error) {
-    console.error('Error getting sync status:', error);
+    logger.error('Error getting sync status', { error });
     return { total: 0, synced: 0, pending: 0, error: 0 };
   }
 };

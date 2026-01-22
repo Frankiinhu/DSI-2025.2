@@ -3,6 +3,7 @@
  */
 
 import { supabase } from '../../config/supabase';
+import { logger } from '../../utils/logger';
 
 const BUCKET_NAME = 'profile-pictures';
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
@@ -52,7 +53,7 @@ export async function uploadProfilePicture(
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Erro no upload:', error);
+      logger.error('Profile picture upload failed', { error, userId });
       return { ok: false, error: 'Erro ao fazer upload' };
     }
 
@@ -61,10 +62,11 @@ export async function uploadProfilePicture(
       .from(BUCKET_NAME)
       .getPublicUrl(filePath);
 
+    logger.info('Profile picture uploaded successfully', { userId, url: publicUrlData.publicUrl });
     return { ok: true, url: publicUrlData.publicUrl };
-  } catch (error: any) {
-    console.error('Erro ao fazer upload da foto:', error);
-    return { ok: false, error: error.message };
+  } catch (error) {
+    logger.error('Error uploading profile picture', { error, userId });
+    return { ok: false, error: error instanceof Error ? error.message : 'Upload error' };
   }
 }
 
@@ -82,19 +84,22 @@ export async function deleteProfilePicture(
     const urlParts = fileUrl.split('/');
     const filePath = `${userId}/${urlParts[urlParts.length - 1]}`;
 
+    logger.info('Deleting profile picture', { userId, filePath });
+
     const { error } = await supabase.storage
       .from(BUCKET_NAME)
       .remove([filePath]);
 
     if (error) {
-      console.error('Erro ao deletar foto:', error);
+      logger.error('Error deleting profile picture from storage', { error, userId });
       return { ok: false, error: error.message };
     }
 
+    logger.info('Profile picture deleted successfully', { userId });
     return { ok: true };
-  } catch (error: any) {
-    console.error('Erro ao deletar foto:', error);
-    return { ok: false, error: error.message };
+  } catch (error) {
+    logger.error('Failed to delete profile picture', { error, userId });
+    return { ok: false, error: error instanceof Error ? error.message : 'Delete error' };
   }
 }
 
@@ -108,19 +113,22 @@ export async function updateProfilePictureUrl(
   avatarUrl: string | null
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    logger.info('Updating profile picture URL in database', { userId, hasAvatar: !!avatarUrl });
+
     const { error } = await supabase
       .from('profiles')
       .update({ avatar_url: avatarUrl })
       .eq('id', userId);
 
     if (error) {
-      console.error('Erro ao atualizar URL da foto:', error);
+      logger.error('Error updating profile picture URL', { error, userId });
       return { ok: false, error: error.message };
     }
 
+    logger.info('Profile picture URL updated successfully', { userId });
     return { ok: true };
-  } catch (error: any) {
-    console.error('Erro ao atualizar URL:', error);
-    return { ok: false, error: error.message };
+  } catch (error) {
+    logger.error('Failed to update profile picture URL', { error, userId });
+    return { ok: false, error: error instanceof Error ? error.message : 'Update error' };
   }
 }

@@ -1,5 +1,6 @@
 import { supabase } from '../../config/supabase';
 import { Database, SymptomInput, PredictionResult, WeatherData } from '../../types/database.types';
+import { logger } from '../../utils/logger';
 
 type SymptomCheckup = Database['public']['Tables']['symptom_checkups']['Row'];
 type SymptomCheckupInsert = Database['public']['Tables']['symptom_checkups']['Insert'];
@@ -35,14 +36,17 @@ export const createCheckup = async (
 ): Promise<CheckupResponse> => {
   try {
     if (!symptoms || symptoms.length === 0) {
+      logger.warn('Attempted to create checkup without symptoms', { userId });
       return { ok: false, message: 'Selecione pelo menos um sintoma' };
     }
 
+    logger.info('Creating new checkup', { userId, symptomCount: symptoms.length });
+
     const checkupData: SymptomCheckupInsert = {
       user_id: userId,
-      symptoms: symptoms as any,
-      predictions: predictions as any,
-      weather_data: weatherData as any,
+      symptoms: symptoms as unknown as SymptomCheckupInsert['symptoms'],
+      predictions: predictions as unknown as SymptomCheckupInsert['predictions'],
+      weather_data: weatherData as unknown as SymptomCheckupInsert['weather_data'],
       location_lat: locationData?.lat,
       location_lng: locationData?.lng,
       location_name: locationData?.name,
@@ -56,13 +60,14 @@ export const createCheckup = async (
       .single();
 
     if (error) {
-      console.error('Create checkup error:', error);
+      logger.error('Error creating checkup in database', { error, userId });
       return { ok: false, message: 'Erro ao salvar verificação' };
     }
 
+    logger.info('Checkup created successfully', { checkupId: data.id, userId });
     return { ok: true, data };
   } catch (error) {
-    console.error('Create checkup error:', error);
+    logger.error('Unexpected error creating checkup', { error, userId });
     return { ok: false, message: 'Erro inesperado ao criar verificação' };
   }
 };
@@ -105,13 +110,14 @@ export const getCheckups = async (
     const { data, error } = await query;
 
     if (error) {
-      console.error('Get checkups error:', error);
+      logger.error('Error fetching checkups', { error, userId, options });
       return { ok: false, message: 'Erro ao buscar verificações' };
     }
 
+    logger.info('Checkups fetched successfully', { userId, count: data?.length || 0 });
     return { ok: true, data: data || [] };
   } catch (error) {
-    console.error('Get checkups error:', error);
+    logger.error('Unexpected error fetching checkups', { error, userId });
     return { ok: false, message: 'Erro inesperado ao buscar verificações' };
   }
 };
@@ -132,13 +138,14 @@ export const getCheckupById = async (
       .single();
 
     if (error) {
-      console.error('Get checkup error:', error);
+      logger.error('Error fetching checkup by ID', { error, checkupId, userId });
       return { ok: false, message: 'Verificação não encontrada' };
     }
 
+    logger.info('Checkup fetched successfully', { checkupId, userId });
     return { ok: true, data };
   } catch (error) {
-    console.error('Get checkup error:', error);
+    logger.error('Unexpected error fetching checkup by ID', { error, checkupId, userId });
     return { ok: false, message: 'Erro inesperado ao buscar verificação' };
   }
 };
@@ -158,9 +165,9 @@ export const updateCheckup = async (
 ): Promise<CheckupResponse> => {
   try {
     const updateData: SymptomCheckupUpdate = {
-      symptoms: updates.symptoms as any,
-      predictions: updates.predictions as any,
-      weather_data: updates.weather_data as any,
+      symptoms: updates.symptoms as unknown as SymptomCheckupUpdate['symptoms'],
+      predictions: updates.predictions as unknown as SymptomCheckupUpdate['predictions'],
+      weather_data: updates.weather_data as unknown as SymptomCheckupUpdate['weather_data'],
       notes: updates.notes,
     };
 
@@ -173,13 +180,14 @@ export const updateCheckup = async (
       .single();
 
     if (error) {
-      console.error('Update checkup error:', error);
+      logger.error('Error updating checkup', { error, checkupId, userId });
       return { ok: false, message: 'Erro ao atualizar verificação' };
     }
 
+    logger.info('Checkup updated successfully', { checkupId, userId });
     return { ok: true, data };
   } catch (error) {
-    console.error('Update checkup error:', error);
+    logger.error('Unexpected error updating checkup', { error, checkupId, userId });
     return { ok: false, message: 'Erro inesperado ao atualizar verificação' };
   }
 };
@@ -199,13 +207,14 @@ export const deleteCheckup = async (
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Delete checkup error:', error);
-      return { ok: false, message: 'Erro ao excluir verificação' };
+      logger.error('Error deleting checkup', { error, checkupId, userId });
+      return { ok: false, message: 'Erro ao deletar verificação' };
     }
 
+    logger.info('Checkup deleted successfully', { checkupId, userId });
     return { ok: true };
   } catch (error) {
-    console.error('Delete checkup error:', error);
+    logger.error('Unexpected error deleting checkup', { error, checkupId, userId });
     return { ok: false, message: 'Erro inesperado ao excluir verificação' };
   }
 };
@@ -238,7 +247,7 @@ export const getCheckupsByPeriod = async (
 
     return getCheckups(userId, { startDate });
   } catch (error) {
-    console.error('Get checkups by period error:', error);
+    logger.error('Error fetching checkups by period', { error, userId, period });
     return { ok: false, message: 'Erro ao buscar verificações' };
   }
 };
@@ -256,13 +265,14 @@ export const getSymptomsCatalog = async (): Promise<SymptomCatalogResponse> => {
       .order('symptom_name', { ascending: true });
 
     if (error) {
-      console.error('Get symptoms catalog error:', error);
+      logger.error('Error fetching symptoms catalog', { error });
       return { ok: false, message: 'Erro ao buscar catálogo de sintomas' };
     }
 
+    logger.info('Symptoms catalog fetched successfully', { count: data?.length || 0 });
     return { ok: true, data: data || [] };
   } catch (error) {
-    console.error('Get symptoms catalog error:', error);
+    logger.error('Unexpected error fetching symptoms catalog', { error });
     return { ok: false, message: 'Erro inesperado ao buscar catálogo' };
   }
 };
@@ -277,13 +287,14 @@ export const getUserStats = async (userId: string) => {
     });
 
     if (error) {
-      console.error('Get user stats error:', error);
+      logger.error('Error fetching user stats', { error, userId });
       return null;
     }
 
+    logger.info('User stats fetched successfully', { userId });
     return data;
   } catch (error) {
-    console.error('Get user stats error:', error);
+    logger.error('Unexpected error fetching user stats', { error, userId });
     return null;
   }
 };
@@ -447,7 +458,7 @@ export const calculatePredictions = async (
 
     return percentages;
   } catch (error) {
-    console.error('Calculate predictions error:', error);
+    logger.error('Error calculating predictions', { error, symptomCount: symptoms.length });
     // Retornar predições genéricas em caso de erro
     return {
       'COVID-19': 20,

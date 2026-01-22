@@ -18,7 +18,7 @@ export const getMedications = async (
   userId: string
 ): Promise<MedicationResponse> => {
   try {
-    logger.info('🔍 Buscando medicações...');
+    logger.info('Fetching user medications', { userId });
 
     const { data, error } = await supabase
       .from('medications')
@@ -26,19 +26,22 @@ export const getMedications = async (
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      logger.error('Error fetching medications', { error, userId });
+      throw error;
+    }
 
-    logger.info(`✅ ${data?.length || 0} medicações encontradas`);
+    logger.info('Medications fetched successfully', { userId, count: data?.length || 0 });
 
     return {
       ok: true,
       data: data || [],
     };
-  } catch (error: any) {
-    logger.error('❌ Erro ao buscar medicações:', error);
+  } catch (error) {
+    logger.error('Failed to fetch medications', { error, userId });
     return {
       ok: false,
-      message: error.message || 'Erro ao buscar medicações',
+      message: error instanceof Error ? error.message : 'Erro ao buscar medicações',
     };
   }
 };
@@ -90,7 +93,7 @@ export const updateMedication = async (
   updates: UpdateMedicationDTO
 ): Promise<MedicationResponse> => {
   try {
-    logger.info('✏️ Atualizando medicação...');
+    logger.info('Updating medication', { medicationId, userId });
 
     const { data, error } = await supabase
       .from('medications')

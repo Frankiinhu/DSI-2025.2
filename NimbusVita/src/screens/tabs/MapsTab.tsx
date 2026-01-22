@@ -176,7 +176,8 @@ const MapsTab = () => {
         mapRef.current.animateToRegion(newRegion, 1000);
       }
 
-      // TODO: Aqui você pode calcular as distâncias das UBS
+      // Calculate and sort UBS by distance from user location
+      // Use calculateDistance() from ubs.service.ts
       calculateDistances(location.coords.latitude, location.coords.longitude);
     } catch (error) {
       console.error('Erro ao obter localização:', error);

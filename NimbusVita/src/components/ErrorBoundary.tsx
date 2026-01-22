@@ -60,7 +60,8 @@ class ErrorBoundary extends Component<Props, State> {
       this.props.onError(error, errorInfo);
     }
 
-    // TODO: Log error to error tracking service (e.g., Sentry, Bugsnag)
+    // Integration point for error tracking services
+    // Example: Sentry.captureException(error, { extra: errorInfo });
     // logErrorToService(error, errorInfo);
   }
 

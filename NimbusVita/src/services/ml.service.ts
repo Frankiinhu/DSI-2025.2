@@ -2,41 +2,19 @@
  * Serviço para integração com a API de Machine Learning
  */
 
-import { Platform } from 'react-native';
-import { ML_API_HOST, ML_API_PORT, ML_API_PRODUCTION_URL } from '../config/ml.config';
+import { ML_API_PRODUCTION_URL } from '../config/ml.config';
 import { logger } from '../utils/logger';
 
 // URL da API - alterar conforme ambiente
 const getApiUrl = () => {
-  // FORÇAR PRODUÇÃO: Sempre usar Render para testes
+  // Always use production URL (Render deployment)
+  // For local development, update ML_API_PRODUCTION_URL in ml.config.ts
   return ML_API_PRODUCTION_URL;
-  
-  // Modo DEV desabilitado temporariamente
-  /* if (!__DEV__) {
-    return ML_API_PRODUCTION_URL;
-  }
-  
-  // Se IP customizado foi configurado (dispositivo físico)
-  if (ML_API_HOST) {
-    return `http://${ML_API_HOST}:${ML_API_PORT}`;
-  } */
-  
-  // Configuração automática para emuladores
-  if (Platform.OS === 'android') {
-    // Android Emulator usa 10.0.2.2 para acessar localhost da máquina host
-    return `http://10.0.2.2:${ML_API_PORT}`;
-  } else if (Platform.OS === 'ios') {
-    // iOS Simulator pode usar localhost
-    return `http://localhost:${ML_API_PORT}`;
-  } else {
-    // Web ou outras plataformas
-    return `http://localhost:${ML_API_PORT}`;
-  }
 };
 
 const ML_API_URL = getApiUrl();
 
-logger.info('📡 ML API configurada:', ML_API_URL);
+logger.info('ML API configured', { url: ML_API_URL, env: __DEV__ ? 'development' : 'production' });
 
 export interface ShapExplanation {
   feature: string;
@@ -70,7 +48,7 @@ export async function predictDiagnosis(
   symptoms: string[]
 ): Promise<PredictionResponse> {
   try {
-    logger.debug('🔍 Tentando conectar à API:', ML_API_URL);
+    logger.debug('Connecting to ML API for prediction', { url: ML_API_URL, symptomCount: symptoms.length });
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos timeout (Render cold start)
@@ -88,17 +66,24 @@ export async function predictDiagnosis(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Erro HTTP: ${response.status}`);
+      const errorMsg = errorData.detail || `HTTP error: ${response.status}`;
+      logger.error('ML API returned error response', { status: response.status, error: errorData });
+      throw new Error(errorMsg);
     }
 
     const data: PredictionResponse = await response.json();
-    logger.info('✅ Resposta da API recebida');
+    logger.info('ML API prediction received successfully', { 
+      diagnosesCount: data.diagnoses.length,
+      symptomCount: data.total_symptoms 
+    });
     return data;
-  } catch (error: any) {
-    if (error.name === 'AbortError') {
-      logger.error('⏱️ Timeout: API não respondeu em 60 segundos');
-    } else {
-      logger.error('❌ Erro ao chamar API de ML:', error.message);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        logger.error('ML API request timeout after 60 seconds');
+      } else {
+        logger.error('Error calling ML API', { error: error.message, symptomCount: symptoms.length });
+      }
     }
     throw error;
   }
@@ -113,7 +98,10 @@ export async function predictDiagnosisWithExplanations(
   symptoms: string[]
 ): Promise<PredictionResponse> {
   try {
-    logger.debug('🔍 Tentando conectar à API (com explicações):', ML_API_URL);
+    logger.debug('Connecting to ML API for prediction with SHAP explanations', { 
+      url: ML_API_URL, 
+      symptomCount: symptoms.length 
+    });
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
@@ -130,17 +118,20 @@ export async function predictDiagnosisWithExplanations(
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      // Fallback para predição sem explicações se o endpoint não estiver disponível
-      logger.warn('⚠️ Endpoint com explicações não disponível, usando predição padrão');
+      logger.warn('Explanations endpoint unavailable, falling back to standard prediction', { 
+        status: response.status 
+      });
       return await predictDiagnosis(symptoms);
     }
 
     const data: PredictionResponse = await response.json();
-    logger.info('✅ Resposta da API recebida (com explicações SHAP)');
+    logger.info('ML API prediction with SHAP explanations received', { 
+      diagnosesCount: data.diagnoses.length,
+      hasExplanations: data.diagnoses.some(d => d.explanations && d.explanations.length > 0)
+    });
     return data;
-  } catch (error: any) {
-    logger.warn('⚠️ Erro ao buscar explicações, tentando predição padrão');
-    // Fallback para predição sem explicações
+  } catch (error) {
+    logger.warn('Error fetching explanations, falling back to standard prediction', { error });
     return await predictDiagnosis(symptoms);
   }
 }
@@ -151,6 +142,8 @@ export async function predictDiagnosisWithExplanations(
  */
 export async function checkMLApiHealth(): Promise<boolean> {
   try {
+    logger.debug('Checking ML API health', { url: ML_API_URL });
+    
     const response = await fetch(`${ML_API_URL}/health`, {
       method: 'GET',
       headers: {
@@ -159,13 +152,16 @@ export async function checkMLApiHealth(): Promise<boolean> {
     });
 
     if (!response.ok) {
+      logger.warn('ML API health check failed', { status: response.status });
       return false;
     }
 
     const data = await response.json();
-    return data.status === 'healthy';
+    const isHealthy = data.status === 'healthy';
+    logger.info('ML API health check completed', { isHealthy, status: data.status });
+    return isHealthy;
   } catch (error) {
-    logger.warn('⚠️ API de ML não está disponível');
+    logger.warn('ML API is not available', { error });
     return false;
   }
 }
